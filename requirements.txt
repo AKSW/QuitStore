@@ -1,0 +1,6 @@
+Flask-API==0.6.4
+pyyaml
+rdflib==4.2.0
+rfc3987
+dulwich
+GitPython

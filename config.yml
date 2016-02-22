@@ -1,0 +1,24 @@
+apikeys:
+  norman: 123456789
+graphdir: graphs/
+buildingraphs:
+  versioning:
+    graphuri: http://leds.aksw.org/versioning/
+    filename: versioning.nt
+graphs:
+  default:
+    graphuri: http://example.com/
+    repository: graphs/default
+    filename: default.nt
+    versioning: True
+#  swdf2:
+#    graphuri: http://swdf.org/
+#    repository: ../add-delete-git/
+#    filename: swdf2.nt
+#    versioning: False
+#  dbpedia:
+#    originFor: swdf2
+#    graphuri: http://dbpedia.org/
+#    repository: downloads/dbpedia/
+#    filename: dbpedia2.nt
+#    versioning: False
