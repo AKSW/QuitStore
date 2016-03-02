@@ -3,7 +3,7 @@ from flask.ext.api import FlaskAPI, status, exceptions
 import yaml
 from rdflib import Graph
 from rfc3987 import parse
-import quitFiles
+from quitFiles import *
 import handleexit
 
 app = FlaskAPI(__name__)
@@ -14,7 +14,7 @@ notes = {
     2: 'paint the door',
 }
 
-def getGraphs():
+def initializegraphs():
     try:
         f = open('config.yml')
         conf = yaml.safe_load(f)
@@ -23,23 +23,21 @@ def getGraphs():
     except :
         return False
 
-    graphs = quitFiles.FileList()
+    store = MemoryStore()
 
-    for k,v in graphConf.items():
-        print('graphconf: ' + k + ':' + str(v))
-        try:
-            path       = v['repository']
-            versioning = v['versioning']
-            filename   = v['filename']
-            graphuri   = v['graphuri']
-            graph = quitFiles.GraphFile(path, filename, versioning)
-            graphs.addFile(graphuri, graph)
+    settings = store.getstoresettings()
+    repository = settings['gitrepo']
+
+    versioning = True
+    graphs = store.getgraphsfromconf()
+    for graphuri, filename in graphs.items():
+        print(graphuri, filename)
+        if store.graphexists(graphuri) == False:
+            graph = FileReference(filename, versioning)
+            store.addFile(graphuri, graph)
             print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
-        except:
-            print('Error: Überspringe Graph ' + graphuri)
-            pass
 
-    return graphs
+    return store
 
 def note_repr(key):
     return {
@@ -48,16 +46,19 @@ def note_repr(key):
     }
 
 def processsparql(querystring):
+    print('query: ', querystring)
     try:
-        query = quitFiles.QueryCheck(querystring, graphs)
+        query = QueryCheck(querystring)
     except:
         return ('Konnte das Objekt nicht anlegen')
         raise Exception()
 
-    if query.getType == 'SELECT':
-        return query.getResult()
+    if query.getType() == 'SELECT':
+        return store.query(querystring)
+    else:
+        print('Hier Problem')
 
-    return ('Query query is OK')
+    return ('Query is OK')
 
 def checkrequest(request):
     data = []
@@ -118,7 +119,7 @@ def applychanges(values):
 
     # to commit a transaction, save the state of graph
     for graph in values['graphs']:
-        currentgraph = graphs.getgraphobject(graph)
+        currentgraph = store.getgraphobject(graph)
         backup[graph] = currentgraph.getcontent()
         print('Trying to save graph with URI: ' + graph)
 
@@ -126,7 +127,7 @@ def applychanges(values):
         # delete all triples that should be added and keep them in mind
         if data['action'] == 'add':
             addedtriples[data['triple']] = data['graph']
-            currentgraph = graphs.getgraphobject(data['graph'])
+            currentgraph = store.getgraphobject(data['graph'])
             print('Trying to delete: ' + data['triple'])
             currentgraph.deletetriple(data['triple'])
         # collect all triples that should be deleted
@@ -141,23 +142,23 @@ def applychanges(values):
             print("Error: not a valid transaction")
             # discard changes
             for graph in values['graphs']:
-                currentgraph = graphs.getgraphobject(graph)
+                currentgraph = store.getgraphobject(graph)
                 currentgraph.setcontent(backup[graph])
             return
         else:
-            currentgraph = graphs.getgraphobject(graph)
+            currentgraph = store.getgraphobject(graph)
             print('Trying to delete: ' + triple)
             currentgraph.deletetriple(triple)
 
     # add all triples that should be added
     for triple, graph in addedtriples.items():
-        currentgraph = graphs.getgraphobject(graph)
+        currentgraph = store.getgraphobject(graph)
         currentgraph.addtriple(triple, False)
 
     # sort files that took part and save them
     for graph in values['graphs']:
         print('Trying to save graph with URI: ' + graph)
-        currentgraph = graphs.getgraphobject(graph)
+        currentgraph = store.getgraphobject(graph)
         currentgraph.sortfile()
         currentgraph.savefile()
         currentgraph.commit()
@@ -166,8 +167,8 @@ def applychanges(values):
 
 def savegraphs():
     print("Finishing ...")
-    for graphuri in graphs.getgraphlist():
-        currentgraph = graphs.getgraphobject(graphuri)
+    for graphuri, filename in store.getgraphs():
+        currentgraph = store.getgraphobject(graphuri)
         if not currentgraph.isversioned():
             print("saving a graph ...")
             currentgraph.sortfile()
@@ -205,14 +206,12 @@ def sparql():
         return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_400_BAD_REQUEST
 
     try:
-        print(processsparql(querystring))
-        return note_repr(10), status.HTTP_201_CREATED
+        result = processsparql(query)
+        print('gut')
     except:
         print('Mit der Query stimmt etwas nicht')
         return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_400_BAD_REQUEST
-
-
-
+    return sparqlresponse(result)
 
 @app.route("/add/", methods=['POST', 'GET'])
 def addTriple():
@@ -227,9 +226,9 @@ def addTriple():
         if values == False:
             return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
-        print('Graphliste: ' + str(graphs.getgraphlist()))
+        print('Graphliste: ' + str(store.getgraphlist()))
         for graphuri in values['graphs']:
-            if not graphs.graphexists(graphuri):
+            if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
                 return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
@@ -287,5 +286,5 @@ def main():
 
 if __name__ == '__main__':
     with handleexit.handle_exit(savegraphs):
-        graphs = getGraphs()
+        store = initializegraphs()
         main()

@@ -1,4 +1,5 @@
-from rdflib import ConjunctiveGraph
+from flask import Response
+from rdflib import ConjunctiveGraph, Graph
 from rdflib.plugins.sparql import parser
 from rfc3987 import parse
 import os
@@ -6,45 +7,65 @@ import sys
 import git
 from dulwich.repo import Repo
 
+'''
+This class stores inforamtation about the location of a n-quad file and is able
+to add and delete triples/quads to that file. Optionally it enables versioning
+via git
+'''
+class FileReference:
 
-class GraphFile:
-    def __init__(self, directory, graphfile, versioning):
-        self.graphfile = graphfile
+    directory = '../store/'
+
+    def __init__(self, filelocation, versioning):
         self.modified = False
-        self.versioining = False
+        self.versioning = True
 
-        if directory.endswith('/'):
-            filepath = directory + graphfile
-            directory = directory[:-1]
-            self.repodir = directory
-        else:
-            filepath = directory + '/' + graphfile
-            self.repodir = directory
-
-        if os.path.isfile(filepath):
+        # Try to open file and set the new path if file was not part of the git store, yet
+        if os.path.isfile(os.path.join(self.directory, filelocation)):
             try:
-                with open(filepath, 'r') as f:
+                with open(filelocation, 'r') as f:
                     self.content = f.readlines()
                 f.close
-                self.path = filepath
             except:
-                print('Error: Path ' +  filepath + ' could not been opened')
-                raise ValueError
+                pass
+            # File was already part of our store
+            self.path = os.path.join(self.directory, filelocation)
+            self.filename = filelocation
+        elif os.path.isfile(filelocation):
+            # File is read the first time
+            try:
+                with open(filelocation, 'r') as f:
+                    self.content = f.readlines()
+                f.close
+                filename = os.path.split(filelocation)
+                # Set path to
+                self.path = os.path.join(self.directory, filename[1])
+                self.filename = filename[1]
+            except:
+                print('Error: Path ' + filelocation + ' is no file')
         else:
-            print('Error: Path ' + filepath + ' is no file')
             raise ValueError
 
-        print('Success: File ' + filepath + ' is now known as a graph')
+        print('Success: File ' + self.filename + ' is now known as a graph')
 
-        if versioning == True:
-            self.versioning = True
+        if versioning == False:
+            self.versioning = False
+        else:
             try:
                 #print(test[0])
-                self.repo = git.Repo(directory)
+                self.repo = git.Repo(self.directory)
                 assert not self.repo.bare
             except:
-                print('Error: ' + directory + ' is not a valid git repository. Versioning will fail. Aborting')
+                print('Error: ' + self.directory + ' is not a valid git repository. Versioning will fail. Aborting')
                 raise
+
+        return
+
+    def getcontent(self):
+        return self.filecontent
+
+    def setcontent(self, content):
+        self.content = content
         return
 
     def savefile(self):
@@ -76,10 +97,10 @@ class GraphFile:
             return
 
         try:
-            print("Trying to stage " + self.graphfile)
-            self.repo.index.add([self.graphfile])
+            print("Trying to stage " + self.FileReference)
+            self.repo.index.add([self.FileReference])
         except:
-            print('Couldn\'t stage file: ' + self.graphfile)
+            print('Couldn\'t stage file: ' + self.FileReference)
             raise
 
         msg = '\"New commit from quit-store\"'
@@ -87,7 +108,7 @@ class GraphFile:
         #commitid = self.repo.do_commit(msg, committer)
 
         try:
-            print("Trying to commit " + self.graphfile)
+            print("Trying to commit " + self.FileReference)
             self.repo.git.commit('-m', msg)
         except:
             print('Couldn\'t commit file: ' + self.path)
@@ -132,10 +153,33 @@ class GitRepo:
     def __init__(self, path):
         self.path = path
 
-class FileList:
+'''
+This class contains information about all Graphs, their corresponding URIs and
+pathes in the file system. To every Graph (context of Quad-Store) exists a
+FileReference object (n-quad) that enables versioning (with git) and persistence.
+'''
+class MemoryStore:
     def __init__(self):
-        self.store = ConjunctiveGraph()
+        self.path = '../store'
+        self.sysconf = Graph()
+        self.sysconf.parse('config.ttl', format='turtle')
+        self.store = ConjunctiveGraph(identifier='default')
         self.files = {}
+        return
+
+    def getgraphs(self):
+        return self.files.items()
+
+    def storeisvalid(self):
+        graphsfromconf = list(self.getgraphsfromconf().values())
+        graphsfromdir  = self.getgraphsfromdir()
+        for filename in graphsfromconf:
+            print('checking: ', filename)
+            if filename not in graphsfromdir:
+                return False
+            else:
+                print('File found')
+        return True
 
     def getgraphobject(self, graphuri):
         for k, v in self.files.items():
@@ -151,39 +195,90 @@ class FileList:
         except ValueError:
             return False
 
-    def addFile(self, graphuri, graphFileObject):
+    def addFile(self, graphuri, FileReferenceObject):
+        # look if file is already part of repo
+        # if not, test if given path exists, is file, is valid
+        # if so, import into grahp and edit triple to right path if needed
+
         try:
-            self.files[graphuri] = graphFileObject
-            self.store.parse(graphFileObject[''])
+            self.files[graphuri] = FileReferenceObject
         except:
             print('Something went wrong with file: ' + name)
             raise ValueError
 
-    def getgraphlist(self):
-        return list(self.files.keys())
+    def getconfforgraph(self, graphuri):
+        nsQuit = 'http://quit.aksw.org'
+        query = 'SELECT ?graphuri ?filename WHERE { '
+        query+= '  <' + graphuri + '> <' + nsQuit + '/Graph> . '
+        query+= '  ?graph <' + nsQuit + '/graphUri> ?graphuri . '
+        query+= '  ?graph <' + nsQuit + '/hasQuadFile> ?filename . '
+        query+= '}'
+        result = self.sysconf.query(query)
+
+        for row in result:
+            values[str(row['graphuri'])] = str(row['filename'])
+        #return list(self.files.keys())
+        return values
+
+
+    def getgraphsfromconf(self):
+        nsQuit = 'http://quit.aksw.org'
+        query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
+        query+= '  ?graph a <' + nsQuit + '/Graph> . '
+        query+= '  ?graph <' + nsQuit + '/graphUri> ?graphuri . '
+        query+= '  ?graph <' + nsQuit + '/hasQuadFile> ?filename . '
+        query+= '}'
+        result = self.sysconf.query(query)
+        values = {}
+        for row in result:
+            values[str(row['graphuri'])] = str(row['filename'])
+        #return list(self.files.keys())
+        return values
+
+    def getgraphsfromdir(self):
+        path = self.path
+        files = [ f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        return files
+
+    def getstoresettings(self):
+        nsQuit = 'http://quit.aksw.org'
+        query = 'SELECT ?gitrepo WHERE { '
+        query+= '  <http://my.quit.conf/store> <' + nsQuit + '/pathOfGitRepo> ?gitrepo . '
+        query+= '}'
+        result = self.sysconf.query(query)
+        settings = {}
+        for value in result:
+            settings['gitrepo'] = value['gitrepo']
+        #return list(self.files.keys())
+        return settings
+
+    def query(self, querystring):
+        return self.store.query(querystring)
 
 class QueryCheck:
-    def __init__(self, querystring, graphs):
+    def __init__(self, querystring):
+        self.query = querystring
+        self.parsedQuery = None
+        self.queryType = None
+
         try:
             self.parsedQuery = parser.parseQuery(querystring)
-            print('SELECT Query')
             self.queryType = 'SELECT'
+            return
         except:
             pass
 
         try:
-            self.parsedQuery = parser.parseUpdate(self.query)
-            print('Update Query')
+            self.parsedQuery = parser.parseUpdate(querystring)
             self.queryType = 'UPDATE'
+            return
         except:
             pass
 
-        if self.parsedQuery == None:
-            print('Mit der Query stimmt etwas nicht')
-            raise Exception()
+        raise Exception
 
-        self.query = querystring
-        return
+    def getType(self):
+        return self.queryType
 
     '''
     This method checks the given SPARQL query. All Select Queries will return
@@ -228,3 +323,18 @@ class QueryCheck:
 
     def __parse(self):
         return
+
+def sparqlresponse(result, output='application/sparql-result+json'):
+    print('Result in Response: ', result)
+    if output == 'application/sparql-results+json':
+        return Response(
+                result.serialize(format='json').decode('utf-8'),
+                content_type='application/sparql-results+json'
+                )
+    elif output == 'application/sparql-results+xml':
+        return Response(
+                result.serialize(format='xml').decode('utf-8'),
+                content_type='application/sparql-results+xml')
+
+    else:
+        return None
