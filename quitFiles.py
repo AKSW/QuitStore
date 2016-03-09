@@ -6,6 +6,7 @@ import os
 import sys
 import git
 from dulwich.repo import Repo
+import pdb
 
 '''
 This class stores inforamtation about the location of a n-quad file and is able
@@ -15,58 +16,70 @@ via git
 class FileReference:
 
     directory = '../store/'
+    directory = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
 
     def __init__(self, filelocation, versioning):
+        self.content = None
         self.modified = False
         self.versioning = True
 
         # Try to open file and set the new path if file was not part of the git store, yet
         if os.path.isfile(os.path.join(self.directory, filelocation)):
-            try:
-                with open(filelocation, 'r') as f:
-                    self.content = f.readlines()
-                f.close
-            except:
-                pass
-            # File was already part of our store
             self.path = os.path.join(self.directory, filelocation)
             self.filename = filelocation
         elif os.path.isfile(filelocation):
             # File is read the first time
-            try:
-                with open(filelocation, 'r') as f:
-                    self.content = f.readlines()
-                f.close
-                filename = os.path.split(filelocation)
-                # Set path to
-                self.path = os.path.join(self.directory, filename[1])
-                self.filename = filename[1]
-            except:
-                print('Error: Path ' + filelocation + ' is no file')
+            filename = os.path.split(filelocation)
+            # Set path to
+            self.path = os.path.join(self.directory, filename[1])
+            self.filename = filename[1]
         else:
             raise ValueError
 
-        print('Success: File ' + self.filename + ' is now known as a graph')
 
         if versioning == False:
             self.versioning = False
         else:
             try:
-                #print(test[0])
                 self.repo = git.Repo(self.directory)
                 assert not self.repo.bare
             except:
                 print('Error: ' + self.directory + ' is not a valid git repository. Versioning will fail. Aborting')
                 raise
 
+        graph = ConjunctiveGraph()
+
+
+        try:
+            print('Success: File parsed')
+            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
+        except:
+            # Given file contains non valid rdf data
+            print('Error: File not parsed')
+            raise
+
+        quads = graph.quads()
+        self.__setcontent(self.__serializequads(quads))
+        graph = None
+
         return
 
-    def getcontent(self):
-        return self.filecontent
+    def __getcontent(self):
+        return self.content
 
-    def setcontent(self, content):
+    def __setcontent(self, content):
         self.content = content
         return
+
+    def __serializequads(self, quads):
+        data = ''
+        for quad in quads:
+            graph = quad[3].n3().strip('[]')
+            if graph.startswith('_:', 0, 2):
+                data+= quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
+            else:
+                data+= quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
+        return data
 
     def savefile(self):
         if self.modified == False:
@@ -174,7 +187,6 @@ class MemoryStore:
         graphsfromconf = list(self.getgraphsfromconf().values())
         graphsfromdir  = self.getgraphsfromdir()
         for filename in graphsfromconf:
-            print('checking: ', filename)
             if filename not in graphsfromdir:
                 return False
             else:
@@ -200,8 +212,9 @@ class MemoryStore:
         # if not, test if given path exists, is file, is valid
         # if so, import into grahp and edit triple to right path if needed
 
+        self.files[graphuri] = FileReferenceObject
         try:
-            self.files[graphuri] = FileReferenceObject
+            self.store.parse(data=FileReferenceObject.getcontent(), format='nquads')
         except:
             print('Something went wrong with file: ' + name)
             raise ValueError
@@ -324,17 +337,8 @@ class QueryCheck:
     def __parse(self):
         return
 
-def sparqlresponse(result, output='application/sparql-result+json'):
-    print('Result in Response: ', result)
-    if output == 'application/sparql-results+json':
-        return Response(
-                result.serialize(format='json').decode('utf-8'),
-                content_type='application/sparql-results+json'
-                )
-    elif output == 'application/sparql-results+xml':
-        return Response(
-                result.serialize(format='xml').decode('utf-8'),
-                content_type='application/sparql-results+xml')
-
-    else:
-        return None
+def sparqlresponse(result):
+    return Response(
+            result.serialize(format='json').decode('utf-8'),
+            content_type='application/sparql-results+json'
+            )

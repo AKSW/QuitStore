@@ -15,14 +15,6 @@ notes = {
 }
 
 def initializegraphs():
-    try:
-        f = open('config.yml')
-        conf = yaml.safe_load(f)
-        f.close()
-        graphConf = conf['graphs']
-    except :
-        return False
-
     store = MemoryStore()
 
     settings = store.getstoresettings()
@@ -31,7 +23,6 @@ def initializegraphs():
     versioning = True
     graphs = store.getgraphsfromconf()
     for graphuri, filename in graphs.items():
-        print(graphuri, filename)
         if store.graphexists(graphuri) == False:
             graph = FileReference(filename, versioning)
             store.addFile(graphuri, graph)
@@ -46,7 +37,6 @@ def note_repr(key):
     }
 
 def processsparql(querystring):
-    print('query: ', querystring)
     try:
         query = QueryCheck(querystring)
     except:
@@ -167,12 +157,13 @@ def applychanges(values):
 
 def savegraphs():
     print("Finishing ...")
-    for graphuri, filename in store.getgraphs():
-        currentgraph = store.getgraphobject(graphuri)
-        if not currentgraph.isversioned():
+    for graphuri, fileobject in store.getgraphs():
+        print ('Test: Saving ', graphuri, fileobject)
+        print('Test: Is versioned: ', fileobject.isversioned())
+        if fileobject.isversioned():
             print("saving a graph ...")
-            currentgraph.sortfile()
-            currentgraph.savefile()
+            #fileobject.sortfile()
+            fileobject.savefile()
     print("Bye !!!")
 
 '''
@@ -207,7 +198,6 @@ def sparql():
 
     try:
         result = processsparql(query)
-        print('gut')
     except:
         print('Mit der Query stimmt etwas nicht')
         return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_400_BAD_REQUEST
@@ -282,7 +272,7 @@ def notes_detail(key):
     return note_repr(key)
 
 def main():
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
     with handleexit.handle_exit(savegraphs):
