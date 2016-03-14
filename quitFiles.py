@@ -110,10 +110,10 @@ class FileReference:
             return
 
         try:
-            print("Trying to stage " + self.FileReference)
-            self.repo.index.add([self.FileReference])
+            print("Trying to stage " + self.filename)
+            self.repo.index.add([self.filename])
         except:
-            print('Couldn\'t stage file: ' + self.FileReference)
+            print('Couldn\'t stage file: ' + self.filename)
             raise
 
         msg = '\"New commit from quit-store\"'
@@ -121,7 +121,7 @@ class FileReference:
         #commitid = self.repo.do_commit(msg, committer)
 
         try:
-            print("Trying to commit " + self.FileReference)
+            print("Trying to commit " + self.filename)
             self.repo.git.commit('-m', msg)
         except:
             print('Couldn\'t commit file: ' + self.path)

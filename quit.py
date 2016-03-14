@@ -89,13 +89,13 @@ def checkrequest(request):
             print("Value must be a valid IRI")
             return False
 
-        triple = s + ' ' + p + ' ' + o + ' .'
+        quad = s + ' ' + p + ' ' + o + ' <' + g + '> .'
 
         try:
-            graph = Graph().parse(format='nt',data=triple)
-            data.append({'action': v['action'], 'graph': g, 'triple': triple})
+            graph = ConjunctiveGraph().parse(format='nquads',data=quad)
+            data.append({'action': v['action'], 'graph': g, 'quad': quad})
         except:
-            print('Triple: ' + triple + ' is not valid')
+            print('Quad: ' + quad + ' is not valid')
             return False
 
     return {"graphs": graphsInRequest, "data": data}
@@ -114,13 +114,13 @@ def applychanges(values):
     for data in values['data']:
         # delete all triples that should be added and keep them in mind
         if data['action'] == 'add':
-            addedtriples[data['triple']] = data['graph']
+            addedtriples[data['quad']] = data['graph']
             currentgraph = store.getgraphobject(data['graph'])
-            print('Trying to delete: ' + data['triple'])
-            currentgraph.deletetriple(data['triple'])
+            print('Trying to delete: ' + data['quad'])
+            currentgraph.deletetriple(data['quad'])
         # collect all triples that should be deleted
         elif data['action'] == 'delete':
-            deletetriples[data['triple']] = data['graph']
+            deletetriples[data['quad']] = data['graph']
 
     # delete all triples that should be deleted
     for triple, graph in deletetriples.items():
@@ -226,7 +226,7 @@ def addTriple():
         for k, v in values.items():
             print("applychanges : " + k + ':' + str(v) )
 
-        print('Graphliste: ' + str(store.getgraphlist()))
+        print('Graphliste: ' + str(store.getgraphs()))
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
@@ -253,7 +253,7 @@ def deleteTriple():
             return '', status.HTTP_204_NO_CONTENT
         notes[idx] = values['triple']
 
-        print('Graphliste: ' + str(store.getgraphlist()))
+        print('Graphliste: ' + str(store.getgraphs()))
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
