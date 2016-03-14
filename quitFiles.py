@@ -72,18 +72,18 @@ class FileReference:
         return
 
     def __serializequads(self, quads):
-        data = ''
+        data = []
         for quad in quads:
             graph = quad[3].n3().strip('[]')
             if graph.startswith('_:', 0, 2):
-                data+= quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
+                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n')
             else:
-                data+= quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
+                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n')
         return data
 
     def savefile(self):
-        if self.modified == False:
-            return
+        #if self.modified == False:
+        #    return
 
         f = open(self.path, "w")
 
@@ -214,7 +214,8 @@ class MemoryStore:
 
         self.files[graphuri] = FileReferenceObject
         try:
-            self.store.parse(data=FileReferenceObject.getcontent(), format='nquads')
+            content = FileReferenceObject.getcontent()
+            self.store.parse(data=''.join(content), format='nquads')
         except:
             print('Something went wrong with file: ' + name)
             raise ValueError
@@ -267,6 +268,25 @@ class MemoryStore:
 
     def query(self, querystring):
         return self.store.query(querystring)
+
+    def update(self, querystring):
+        return self.store.update(querystring)
+
+    def getgraphcontent(self, graphuri):
+        try:
+            quads = self.store.quads((None, None, None, graphuri))
+        except:
+            raise
+
+        data = []
+        for quad in quads:
+            graph = quad[3].n3().strip('[]')
+            if graph.startswith('_:', 0, 2):
+                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n')
+            else:
+                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n')
+        return data
+
 
 class QueryCheck:
     def __init__(self, querystring):

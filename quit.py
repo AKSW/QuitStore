@@ -40,15 +40,13 @@ def processsparql(querystring):
     try:
         query = QueryCheck(querystring)
     except:
-        return ('Konnte das Objekt nicht anlegen')
         raise Exception()
 
     if query.getType() == 'SELECT':
-        return store.query(querystring)
+        return 'SELECT', store.query(querystring)
     else:
-        print('Hier Problem')
-
-    return ('Query is OK')
+        print('Update-Query')
+        return 'UPDATE', store.update(querystring)
 
 def checkrequest(request):
     data = []
@@ -155,28 +153,33 @@ def applychanges(values):
 
     return
 
-def savegraphs():
-    print("Finishing ...")
+'''
+If the store was updated via a SPARQL-Update, we have to update the
+content of FileReference too
+NOTE: This method will be replaced by a more granular method that get the exact triples
+which where added/deleted and will add/delete them in file content.
+'''
+def updatefilecontent():
     for graphuri, fileobject in store.getgraphs():
-        print ('Test: Saving ', graphuri, fileobject)
-        print('Test: Is versioned: ', fileobject.isversioned())
         if fileobject.isversioned():
-            print("saving a graph ...")
-            #fileobject.sortfile()
+            content = store.getgraphcontent(graphuri)
+            fileobject.setcontent(content)
+            fileobject.sortfile()
             fileobject.savefile()
-    print("Bye !!!")
+            fileobject.commit()
+
+    return
+
+def savegraphs():
+    for graphuri, fileobject in store.getgraphs():
+        if fileobject.isversioned():
+            fileobject.sortfile()
+            fileobject.savefile()
+            fileobject.commit()
 
 '''
 API
 '''
-
-@app.route("/", methods=['GET'])
-def notes_list():
-    '''
-    List last commits.
-    '''
-    # request.method == 'GET'
-    return [note_repr(idx) for idx in sorted(notes.keys())]
 
 @app.route("/sparql/", methods=['POST', 'GET'])
 def sparql():
@@ -194,14 +197,21 @@ def sparql():
                 query = request.form['query']
     except:
         print('Es kam gar keine Query an')
-        return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_400_BAD_REQUEST
+        return '', status.HTTP_400_BAD_REQUEST
 
     try:
         result = processsparql(query)
+        print('Query-Result', result)
     except:
         print('Mit der Query stimmt etwas nicht')
-        return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_400_BAD_REQUEST
-    return sparqlresponse(result)
+        return '', status.HTTP_400_BAD_REQUEST
+
+    if result[0] == 'SELECT':
+        return sparqlresponse(result[1])
+    else:
+        updatefilecontent()
+        return '', status.HTTP_200_OK
+
 
 @app.route("/add/", methods=['POST', 'GET'])
 def addTriple():
@@ -211,29 +221,23 @@ def addTriple():
     if request.method == 'POST':
         print('Post-Request ' + str(request))
         values = checkrequest(request)
+        if values == False:
+            return '', status.HTTP_403_FORBIDDEN
         for k, v in values.items():
             print("applychanges : " + k + ':' + str(v) )
-        if values == False:
-            return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
         print('Graphliste: ' + str(store.getgraphlist()))
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
-                return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
-
-        idx = max(notes.keys()) + 1
+                return '', status.HTTP_403_FORBIDDEN
 
         applychanges(values)
 
-        notes[idx] = values['data']
-        return note_repr(idx), status.HTTP_201_CREATED
+        return '', status.HTTP_201_CREATED
     else:
         print('Get-Request ' + str(request))
         values = checkrequest(request)
-
-    # request.method == 'GET'
-    return [note_repr(idx) for idx in sorted(notes.keys())]
 
 @app.route("/delete/", methods=['POST', 'GET'])
 def deleteTriple():
@@ -242,10 +246,19 @@ def deleteTriple():
     '''
     if request.method == 'POST':
         values = checkrequest(request)
+        if values == False:
+            return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
         idx = max(notes.keys()) + 1
         if not deleteFromGraph(values):
             return '', status.HTTP_204_NO_CONTENT
         notes[idx] = values['triple']
+
+        print('Graphliste: ' + str(store.getgraphlist()))
+        for graphuri in values['graphs']:
+            if not store.graphexists(graphuri):
+                print('Graph ' + graphuri + ' nicht da')
+                return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
+
         return note_repr(idx), status.HTTP_201_CREATED
 
     # request.method == 'GET'
