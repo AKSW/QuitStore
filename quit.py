@@ -74,12 +74,12 @@ def addtriples(values):
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
         print('Trying to delete: ' + data['quad'])
-        currentgraph.deletetriple(data['quad']):
+        currentgraph.deletetriple(data['quad'])
 
     for data in values['data']:
         # and now add them
         currentgraph = store.getgraphobject(data['graph'])
-        currentgraph.addtriple(data['quad']):
+        currentgraph.addtriple(data['quad'])
 
     # sort files that took part and save them
     for graph in values['graphs']:
@@ -217,17 +217,17 @@ def addTriple():
         except:
             return '', status.HTTP_403_FORBIDDEN
 
-        for k, v in values.items():
+        for k, v in data.items():
             print("applychanges : " + k + ':' + str(v) )
 
         print('Graphliste: ' + str(store.getgraphs()))
 
-        for graphuri in values['graphs']:
+        for graphuri in data['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
                 return '', status.HTTP_403_FORBIDDEN
 
-        addedtriples = addtriples(values)
+        addedtriples = addtriples(data)
 
         return '', status.HTTP_201_CREATED
     else:
