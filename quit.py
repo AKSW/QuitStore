@@ -1,5 +1,7 @@
 from flask import request, url_for
+from flask.ext.api.decorators import set_parsers
 from flask.ext.api import FlaskAPI, status, exceptions
+from FlaskApiParser import *
 import yaml
 from rdflib import Graph
 from rfc3987 import parse
@@ -51,54 +53,43 @@ def processsparql(querystring):
 def checkrequest(request):
     data = []
     graphsInRequest = set()
-    for v in request.data.values():
-        if not (v['action'] == 'add' or v['action'] == 'delete'):
-            return False
+    reqdata = request.data
+    print('Das kam an', reqdata)
+    test = ConjunctiveGraph()
+    try:
+        test.parse(data=reqdata, format='nquads')
+    except:
+        raise
 
-        try:
-            s = v['s']
-            p = v['p']
-            o = v['o']
-            g = v['g']
-        except IndexError:
-            print("Missing parameter in JSON")
-            return False
+    quads = test.quads((None, None, None, None))
+    data = splitinformation(quads)
 
-        check = [s,p,o,g]
+    return data
 
-        if '' in check:
-            print("Empty value for parameter in JSON")
-            return False
+def addtriples(values):
+    backup = {}
+    addedtriples = {}
 
-        try:
-            parse(o, rule='IRI')
-            # resource
-            o = '<' + o + '>'
-        except ValueError:
-            # literal
-            o = '"' + o + '"'
+    for data in values['data']:
+        # delete all triples that should be added
+        currentgraph = store.getgraphobject(data['graph'])
+        print('Trying to delete: ' + data['quad'])
+        currentgraph.deletetriple(data['quad']):
 
-        try:
-            parse(s, rule='IRI')
-            parse(p, rule='IRI')
-            parse(g, rule='IRI')
-            s = '<' + s + '>'
-            p = '<' + p + '>'
-            graphsInRequest.add(g)
-        except ValueError:
-            print("Value must be a valid IRI")
-            return False
+    for data in values['data']:
+        # and now add them
+        currentgraph = store.getgraphobject(data['graph'])
+        currentgraph.addtriple(data['quad']):
 
-        quad = s + ' ' + p + ' ' + o + ' <' + g + '> .'
+    # sort files that took part and save them
+    for graph in values['graphs']:
+        print('Trying to save graph with URI: ' + graph)
+        currentgraph = store.getgraphobject(graph)
+        currentgraph.sortfile()
+        currentgraph.savefile()
+        currentgraph.commit()
 
-        try:
-            graph = ConjunctiveGraph().parse(format='nquads',data=quad)
-            data.append({'action': v['action'], 'graph': g, 'quad': quad})
-        except:
-            print('Quad: ' + quad + ' is not valid')
-            return False
-
-    return {"graphs": graphsInRequest, "data": data}
+    return
 
 def applychanges(values):
     backup = {}
@@ -214,25 +205,29 @@ def sparql():
 
 
 @app.route("/add/", methods=['POST', 'GET'])
+@set_parsers(NQuadsParser)
 def addTriple():
     '''
     List or create notes.
     '''
     if request.method == 'POST':
         print('Post-Request ' + str(request))
-        values = checkrequest(request)
-        if values == False:
+        try:
+            data = checkrequest(request)
+        except:
             return '', status.HTTP_403_FORBIDDEN
+
         for k, v in values.items():
             print("applychanges : " + k + ':' + str(v) )
 
         print('Graphliste: ' + str(store.getgraphs()))
+
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
                 return '', status.HTTP_403_FORBIDDEN
 
-        applychanges(values)
+        addedtriples = addtriples(values)
 
         return '', status.HTTP_201_CREATED
     else:
@@ -245,13 +240,13 @@ def deleteTriple():
     List or create notes.
     '''
     if request.method == 'POST':
-        values = checkrequest(request)
-        if values == False:
-            return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
-        idx = max(notes.keys()) + 1
+        try:
+            values = checkrequest(request)
+        except:
+            return '', status.HTTP_403_FORBIDDEN
+
         if not deleteFromGraph(values):
             return '', status.HTTP_204_NO_CONTENT
-        notes[idx] = values['triple']
 
         print('Graphliste: ' + str(store.getgraphs()))
         for graphuri in values['graphs']:
@@ -259,6 +254,9 @@ def deleteTriple():
                 print('Graph ' + graphuri + ' nicht da')
                 return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
+        deletedtriples = deletetriples(values)
+
+        return '', status.HTTP_201_CREATED
         return note_repr(idx), status.HTTP_201_CREATED
 
     # request.method == 'GET'

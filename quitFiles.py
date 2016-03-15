@@ -129,9 +129,9 @@ class FileReference:
 
         self.modified == False
 
-    def addtriple(self, triple, resort = True):
-        print('Trying to add: ' + triple)
-        self.content.append(triple + '\n')
+    def addtriple(self, quad, resort = True):
+        print('Trying to add: ' + quad)
+        self.content.append(quad + '\n')
         self.modified = True
 
     def searchtriple(self, triple):
@@ -142,16 +142,16 @@ class FileReference:
 
         return False
 
-    def deletetriple(self, triple):
-        searchPattern = triple + '\n'
+    def deletetriple(self, quad):
+        searchPattern = quad + '\n'
         try:
             self.content.remove(searchPattern)
             self.modified = True
         except ValueError:
             #not in list
-            pass
-        except AttributeError:
-            pass
+            return False
+
+        return True
 
     def getcontent(self):
         return(self.content)
@@ -362,3 +362,22 @@ def sparqlresponse(result):
             result.serialize(format='json').decode('utf-8'),
             content_type='application/sparql-results+json'
             )
+
+def splitinformation(quads):
+    data = []
+    graphsInRequest = set()
+    for quad in quads:
+        graph = quad[3].n3().strip('[]')
+        if graph.startswith('_:', 0, 2):
+            graphsInRequest.add('default')
+            data.append({
+                        'graph': 'default',
+                        'quad' : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
+                        })
+        else:
+            graphsInRequest.add(graph)
+            data.append({
+                        'graph': graph,
+                        'quad' : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
+                        })
+    return {'graphs':graphsInRequest, 'data':data}
