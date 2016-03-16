@@ -5,7 +5,6 @@ from rfc3987 import parse
 import os
 import sys
 import git
-from dulwich.repo import Repo
 import pdb
 
 '''
@@ -123,7 +122,7 @@ class FileReference:
         try:
             print("Trying to commit " + self.filename)
             self.repo.git.commit('-m', msg)
-        except:
+        except git.exc.GitCommandError:
             print('Couldn\'t commit file: ' + self.path)
             raise
 
@@ -131,11 +130,11 @@ class FileReference:
 
     def addtriple(self, quad, resort = True):
         print('Trying to add: ' + quad)
-        self.content.append(quad + '\n')
+        self.content.append(quad)
         self.modified = True
 
-    def searchtriple(self, triple):
-        searchPattern = triple + '\n'
+    def searchtriple(self, quad):
+        searchPattern = quad + '\n'
 
         if searchPattern in self.content:
             return True
@@ -143,7 +142,7 @@ class FileReference:
         return False
 
     def deletetriple(self, quad):
-        searchPattern = quad + '\n'
+        searchPattern = quad
         try:
             self.content.remove(searchPattern)
             self.modified = True
@@ -165,6 +164,54 @@ class FileReference:
 class GitRepo:
     def __init__(self, path):
         self.path = path
+        self.repo = git.Repo(self.path)
+        self.git = self.repo.git
+
+        return
+
+    def addfile(self, filename):
+        gitstatus = self.git.status('--porcelain')
+
+        print('Git-Status: ', gitstatus)
+        if gitstatus == '':
+            self.modified = False
+            return
+
+        try:
+            print("Trying to stage")
+            self.git.add([filename])
+        except:
+            print('Couldn\'t stage file')
+            raise
+
+    def update(self):
+        gitstatus = self.repo.git.status('--porcelain')
+
+        print('Git-Status: ', gitstatus)
+
+        try:
+            print("Trying to stage")
+            self.git.add([''],'-u')
+        except:
+            print('Couldn\'t stage file(s)')
+            raise
+
+        return
+
+    def commit(self):
+        msg = '\"New commit from quit-store\"'
+        committer = str.encode('Quit-Store <quit.store@aksw.org>')
+        #commitid = self.repo.do_commit(msg, committer)
+
+        try:
+            print("Trying to commit ")
+            self.git.commit('-m', msg)
+        except git.exc.GitCommandError:
+            print('Couldn\'t commit')
+            raise
+
+        return
+
 
 '''
 This class contains information about all Graphs, their corresponding URIs and
@@ -173,7 +220,7 @@ FileReference object (n-quad) that enables versioning (with git) and persistence
 '''
 class MemoryStore:
     def __init__(self):
-        self.path = '../store'
+        self.path = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
         self.sysconf = Graph()
         self.sysconf.parse('config.ttl', format='turtle')
         self.store = ConjunctiveGraph(identifier='default')
@@ -266,11 +313,37 @@ class MemoryStore:
         #return list(self.files.keys())
         return settings
 
+    def getstorepath(self):
+        return self.path
+
     def query(self, querystring):
         return self.store.query(querystring)
 
     def update(self, querystring):
-        return self.store.update(querystring)
+        self.store.update(querystring)
+        return
+
+    def addquads(self, quads):
+        self.store.addN(quads)
+
+    def removequads(self, quads):
+        self.store.remove((quads))
+
+    def reinitgraph(self, graphuri):
+        self.store.remove((None, None, None, graphuri))
+        print('graphuri: ', graphuri)
+        for k, v in self.files.items():
+            if k == graphuri:
+                FileReferenceObject = v
+                break
+        content = FileReferenceObject.getcontent()
+        self.store.parse(data=''.join(content), format='nquads')
+        try:
+            content = FileReferenceObject.getcontent()
+            self.store.parse(data=''.join(content), format='nquads')
+        except:
+            print('Something went wrong with file: ')
+            raise ValueError
 
     def getgraphcontent(self, graphuri):
         try:
@@ -363,7 +436,7 @@ def sparqlresponse(result):
             content_type='application/sparql-results+json'
             )
 
-def splitinformation(quads):
+def splitinformation(quads, GraphObject):
     data = []
     graphsInRequest = set()
     for quad in quads:
@@ -371,13 +444,13 @@ def splitinformation(quads):
         if graph.startswith('_:', 0, 2):
             graphsInRequest.add('default')
             data.append({
-                        'graph': 'default',
-                        'quad' : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
+                        'graph'  : 'default',
+                        'quad'   : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
                         })
         else:
-            graphsInRequest.add(graph)
+            graphsInRequest.add(graph.strip('<>'))
             data.append({
-                        'graph': graph,
-                        'quad' : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
+                        'graph'  : graph.strip('<>'),
+                        'quad'   : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
                         })
-    return {'graphs':graphsInRequest, 'data':data}
+    return {'graphs':graphsInRequest, 'data':data, 'GraphObject':GraphObject}

@@ -10,14 +10,10 @@ import handleexit
 
 app = FlaskAPI(__name__)
 
-notes = {
-    0: 'do the shopping',
-    1: 'build the codez',
-    2: 'paint the door',
-}
-
 def initializegraphs():
     store = MemoryStore()
+    print('Storepath', store.getstorepath())
+    gitrepo = GitRepo(store.getstorepath())
 
     settings = store.getstoresettings()
     repository = settings['gitrepo']
@@ -30,7 +26,7 @@ def initializegraphs():
             store.addFile(graphuri, graph)
             print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
 
-    return store
+    return {'store':store, 'gitrepo':gitrepo}
 
 def note_repr(key):
     return {
@@ -62,14 +58,11 @@ def checkrequest(request):
         raise
 
     quads = test.quads((None, None, None, None))
-    data = splitinformation(quads)
+    data = splitinformation(quads, test)
 
     return data
 
 def addtriples(values):
-    backup = {}
-    addedtriples = {}
-
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -87,7 +80,27 @@ def addtriples(values):
         currentgraph = store.getgraphobject(graph)
         currentgraph.sortfile()
         currentgraph.savefile()
-        currentgraph.commit()
+
+    store.addquads(values['GraphObject'].quads((None,None,None,None)))
+
+    return
+
+def deletetriples(values):
+    for data in values['data']:
+        # delete all triples that should be added
+        currentgraph = store.getgraphobject(data['graph'])
+        print('Trying to delete: ' + data['quad'])
+        currentgraph.deletetriple(data['quad'])
+
+    # sort files that took part and save them
+    for graph in values['graphs']:
+        print('Trying to save graph with URI: ' + graph)
+        currentgraph = store.getgraphobject(graph)
+        currentgraph.sortfile()
+        currentgraph.savefile()
+        store.reinitgraph(graph)
+
+    #store.removequads(values['GraphObject'].quads((None,None,None,None)))
 
     return
 
@@ -140,7 +153,14 @@ def applychanges(values):
         currentgraph = store.getgraphobject(graph)
         currentgraph.sortfile()
         currentgraph.savefile()
-        currentgraph.commit()
+
+    gitrepo.update()
+    gitrepo.commit()
+    try:
+        gitrepo.update()
+        gitrepo.commit()
+    except:
+        pass
 
     return
 
@@ -152,12 +172,19 @@ which where added/deleted and will add/delete them in file content.
 '''
 def updatefilecontent():
     for graphuri, fileobject in store.getgraphs():
-        if fileobject.isversioned():
-            content = store.getgraphcontent(graphuri)
-            fileobject.setcontent(content)
-            fileobject.sortfile()
-            fileobject.savefile()
-            fileobject.commit()
+        content = store.getgraphcontent(graphuri)
+        print('Content of ', graphuri, content)
+        fileobject.setcontent(content)
+        fileobject.sortfile()
+        fileobject.savefile()
+
+    gitrepo.update()
+    gitrepo.commit()
+
+    return
+def commitrepo():
+    gitrepo.update()
+    gitrepo.commit()
 
     return
 
@@ -166,7 +193,9 @@ def savegraphs():
         if fileobject.isversioned():
             fileobject.sortfile()
             fileobject.savefile()
-            fileobject.commit()
+
+    gitrepo.update()
+    gitrepo.commit()
 
 '''
 API
@@ -227,7 +256,8 @@ def addTriple():
                 print('Graph ' + graphuri + ' nicht da')
                 return '', status.HTTP_403_FORBIDDEN
 
-        addedtriples = addtriples(data)
+        addtriples(data)
+        commitrepo()
 
         return '', status.HTTP_201_CREATED
     else:
@@ -235,6 +265,7 @@ def addTriple():
         values = checkrequest(request)
 
 @app.route("/delete/", methods=['POST', 'GET'])
+@set_parsers(NQuadsParser)
 def deleteTriple():
     '''
     List or create notes.
@@ -245,23 +276,16 @@ def deleteTriple():
         except:
             return '', status.HTTP_403_FORBIDDEN
 
-        if not deleteFromGraph(values):
-            return '', status.HTTP_204_NO_CONTENT
-
         print('Graphliste: ' + str(store.getgraphs()))
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
                 return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
-        deletedtriples = deletetriples(values)
+        deletetriples(values)
+        commitrepo()
 
         return '', status.HTTP_201_CREATED
-        return note_repr(idx), status.HTTP_201_CREATED
-
-    # request.method == 'GET'
-    return [note_repr(idx) for idx in sorted(notes.keys())]
-
 
 @app.route("/<int:key>/", methods=['GET', 'PUT', 'DELETE'])
 def notes_detail(key):
@@ -287,5 +311,7 @@ def main():
 
 if __name__ == '__main__':
     with handleexit.handle_exit(savegraphs):
-        store = initializegraphs()
+        objects = initializegraphs()
+        store   = objects['store']
+        gitrepo = objects['gitrepo']
         main()
