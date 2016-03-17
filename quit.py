@@ -1,6 +1,7 @@
 from flask import request, url_for
 from flask.ext.api.decorators import set_parsers
 from flask.ext.api import FlaskAPI, status, exceptions
+from flask.ext.cors import CORS
 from FlaskApiParser import *
 import yaml
 from rdflib import Graph
@@ -9,10 +10,10 @@ from quitFiles import *
 import handleexit
 
 app = FlaskAPI(__name__)
+CORS(app)
 
 def initializegraphs():
     store = MemoryStore()
-    print('Storepath', store.getstorepath())
     gitrepo = GitRepo(store.getstorepath())
 
     settings = store.getstoresettings()
@@ -50,7 +51,6 @@ def checkrequest(request):
     data = []
     graphsInRequest = set()
     reqdata = request.data
-    print('Das kam an', reqdata)
     test = ConjunctiveGraph()
     try:
         test.parse(data=reqdata, format='nquads')
@@ -66,7 +66,7 @@ def addtriples(values):
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
-        print('Trying to delete: ' + data['quad'])
+        print('Quad:', data['quad'])
         currentgraph.deletetriple(data['quad'])
 
     for data in values['data']:
@@ -89,7 +89,6 @@ def deletetriples(values):
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
-        print('Trying to delete: ' + data['quad'])
         currentgraph.deletetriple(data['quad'])
 
     # sort files that took part and save them
@@ -104,66 +103,6 @@ def deletetriples(values):
 
     return
 
-def applychanges(values):
-    backup = {}
-    addedtriples = {}
-    deletetriples = {}
-
-    # to commit a transaction, save the state of graph
-    for graph in values['graphs']:
-        currentgraph = store.getgraphobject(graph)
-        backup[graph] = currentgraph.getcontent()
-        print('Trying to save graph with URI: ' + graph)
-
-    for data in values['data']:
-        # delete all triples that should be added and keep them in mind
-        if data['action'] == 'add':
-            addedtriples[data['quad']] = data['graph']
-            currentgraph = store.getgraphobject(data['graph'])
-            print('Trying to delete: ' + data['quad'])
-            currentgraph.deletetriple(data['quad'])
-        # collect all triples that should be deleted
-        elif data['action'] == 'delete':
-            deletetriples[data['quad']] = data['graph']
-
-    # delete all triples that should be deleted
-    for triple, graph in deletetriples.items():
-        # Check if there are triples that should be deleted but also
-        # be added. If so, abort and reset to old state of data
-        if triple in list(addedtriples.keys()):
-            print("Error: not a valid transaction")
-            # discard changes
-            for graph in values['graphs']:
-                currentgraph = store.getgraphobject(graph)
-                currentgraph.setcontent(backup[graph])
-            return
-        else:
-            currentgraph = store.getgraphobject(graph)
-            print('Trying to delete: ' + triple)
-            currentgraph.deletetriple(triple)
-
-    # add all triples that should be added
-    for triple, graph in addedtriples.items():
-        currentgraph = store.getgraphobject(graph)
-        currentgraph.addtriple(triple, False)
-
-    # sort files that took part and save them
-    for graph in values['graphs']:
-        print('Trying to save graph with URI: ' + graph)
-        currentgraph = store.getgraphobject(graph)
-        currentgraph.sortfile()
-        currentgraph.savefile()
-
-    gitrepo.update()
-    gitrepo.commit()
-    try:
-        gitrepo.update()
-        gitrepo.commit()
-    except:
-        pass
-
-    return
-
 '''
 If the store was updated via a SPARQL-Update, we have to update the
 content of FileReference too
@@ -173,15 +112,18 @@ which where added/deleted and will add/delete them in file content.
 def updatefilecontent():
     for graphuri, fileobject in store.getgraphs():
         content = store.getgraphcontent(graphuri)
-        print('Content of ', graphuri, content)
         fileobject.setcontent(content)
         fileobject.sortfile()
         fileobject.savefile()
 
     gitrepo.update()
-    gitrepo.commit()
+    try:
+        gitrepo.commit()
+    except:
+        pass
 
     return
+
 def commitrepo():
     gitrepo.update()
     gitrepo.commit()
@@ -196,6 +138,8 @@ def savegraphs():
 
     gitrepo.update()
     gitrepo.commit()
+
+    return
 
 '''
 API
@@ -221,7 +165,6 @@ def sparql():
 
     try:
         result = processsparql(query)
-        print('Query-Result', result)
     except:
         print('Mit der Query stimmt etwas nicht')
         return '', status.HTTP_400_BAD_REQUEST
@@ -233,23 +176,17 @@ def sparql():
         return '', status.HTTP_200_OK
 
 
-@app.route("/add/", methods=['POST', 'GET'])
+@app.route("/add/", methods=['POST'])
 @set_parsers(NQuadsParser)
 def addTriple():
     '''
     List or create notes.
     '''
     if request.method == 'POST':
-        print('Post-Request ' + str(request))
         try:
             data = checkrequest(request)
         except:
             return '', status.HTTP_403_FORBIDDEN
-
-        for k, v in data.items():
-            print("applychanges : " + k + ':' + str(v) )
-
-        print('Graphliste: ' + str(store.getgraphs()))
 
         for graphuri in data['graphs']:
             if not store.graphexists(graphuri):
@@ -261,8 +198,7 @@ def addTriple():
 
         return '', status.HTTP_201_CREATED
     else:
-        print('Get-Request ' + str(request))
-        values = checkrequest(request)
+        return '', status.HTTP_403_FORBIDDEN
 
 @app.route("/delete/", methods=['POST', 'GET'])
 @set_parsers(NQuadsParser)
@@ -276,7 +212,6 @@ def deleteTriple():
         except:
             return '', status.HTTP_403_FORBIDDEN
 
-        print('Graphliste: ' + str(store.getgraphs()))
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' nicht da')
@@ -286,6 +221,8 @@ def deleteTriple():
         commitrepo()
 
         return '', status.HTTP_201_CREATED
+    else:
+        return '', status.HTTP_403_FORBIDDEN
 
 @app.route("/<int:key>/", methods=['GET', 'PUT', 'DELETE'])
 def notes_detail(key):

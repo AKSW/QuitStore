@@ -86,15 +86,18 @@ class FileReference:
 
         f = open(self.path, "w")
 
-        for line in self.content:
+        content = self.__getcontent()
+        for line in content:
+            print(line)
             f.write(line)
         f.close
 
         print('File saved')
 
     def sortfile(self):
+        content = self.__getcontent()
         try:
-            self.content = sorted(self.content)
+            self.__setcontent(sorted(content))
         except AttributeError:
             pass
 
@@ -129,7 +132,6 @@ class FileReference:
         self.modified == False
 
     def addtriple(self, quad, resort = True):
-        print('Trying to add: ' + quad)
         self.content.append(quad)
         self.modified = True
 
@@ -156,7 +158,8 @@ class FileReference:
         return(self.content)
 
     def setcontent(self, content):
-        self.content = content
+        self.__setcontent(content)
+        return
 
     def isversioned(self):
         return(self.versioning)
@@ -172,42 +175,47 @@ class GitRepo:
     def addfile(self, filename):
         gitstatus = self.git.status('--porcelain')
 
-        print('Git-Status: ', gitstatus)
         if gitstatus == '':
             self.modified = False
             return
 
         try:
-            print("Trying to stage")
+            print("Trying to stage file", filename)
             self.git.add([filename])
         except:
-            print('Couldn\'t stage file')
+            print('Couldn\'t stage file', filename)
             raise
 
     def update(self):
-        gitstatus = self.repo.git.status('--porcelain')
+        gitstatus = self.git.status('--porcelain')
 
-        print('Git-Status: ', gitstatus)
+        if gitstatus == '':
+            print('Nothing to add')
+            return
 
         try:
-            print("Trying to stage")
+            print("Staging file(s)")
             self.git.add([''],'-u')
         except:
-            print('Couldn\'t stage file(s)')
             raise
 
         return
 
     def commit(self):
+        gitstatus = self.git.status('--porcelain')
+
+        if gitstatus == '':
+            print('Nothing to commit')
+            return
+
         msg = '\"New commit from quit-store\"'
         committer = str.encode('Quit-Store <quit.store@aksw.org>')
         #commitid = self.repo.do_commit(msg, committer)
 
         try:
-            print("Trying to commit ")
+            print('Commit updates')
             self.git.commit('-m', msg)
         except git.exc.GitCommandError:
-            print('Couldn\'t commit')
             raise
 
         return
@@ -321,17 +329,22 @@ class MemoryStore:
 
     def update(self, querystring):
         self.store.update(querystring)
+        self.store.commit()
         return
 
     def addquads(self, quads):
+        print('addN', quads)
         self.store.addN(quads)
+        self.store.commit()
+        return
 
     def removequads(self, quads):
         self.store.remove((quads))
+        self.store.commit()
+        return
 
     def reinitgraph(self, graphuri):
         self.store.remove((None, None, None, graphuri))
-        print('graphuri: ', graphuri)
         for k, v in self.files.items():
             if k == graphuri:
                 FileReferenceObject = v
@@ -339,11 +352,14 @@ class MemoryStore:
         content = FileReferenceObject.getcontent()
         self.store.parse(data=''.join(content), format='nquads')
         try:
-            content = FileReferenceObject.getcontent()
-            self.store.parse(data=''.join(content), format='nquads')
+            #content = FileReferenceObject.getcontent()
+            pass
+            #self.store.parse(data=''.join(content), format='nquads')
         except:
             print('Something went wrong with file: ')
             raise ValueError
+
+        return
 
     def getgraphcontent(self, graphuri):
         try:
