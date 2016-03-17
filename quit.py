@@ -66,7 +66,6 @@ def addtriples(values):
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
-        print('Quad:', data['quad'])
         currentgraph.deletetriple(data['quad'])
 
     for data in values['data']:

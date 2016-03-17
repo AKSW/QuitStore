@@ -88,7 +88,6 @@ class FileReference:
 
         content = self.__getcontent()
         for line in content:
-            print(line)
             f.write(line)
         f.close
 
@@ -333,7 +332,6 @@ class MemoryStore:
         return
 
     def addquads(self, quads):
-        print('addN', quads)
         self.store.addN(quads)
         self.store.commit()
         return
@@ -372,8 +370,10 @@ class MemoryStore:
             graph = quad[3].n3().strip('[]')
             if graph.startswith('_:', 0, 2):
                 data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n')
-            else:
+            elif graph == '<' + graphuri + '>':
                 data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n')
+            else:
+                pass
         return data
 
 

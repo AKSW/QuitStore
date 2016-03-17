@@ -1,6 +1,7 @@
 Flask-API==0.6.4
 pyyaml
-rdflib==4.2.0
+rdflib==4.2.1
 rfc3987
 dulwich
 GitPython
+flask-cors
