@@ -108,7 +108,7 @@ content of FileReference too
 NOTE: This method will be replaced by a more granular method that get the exact triples
 which where added/deleted and will add/delete them in file content.
 '''
-def updatefilecontent():
+def updatefilecontent(query):
     for graphuri, fileobject in store.getgraphs():
         content = store.getgraphcontent(graphuri)
         fileobject.setcontent(content)
@@ -117,7 +117,7 @@ def updatefilecontent():
 
     gitrepo.update()
     try:
-        gitrepo.commit()
+        gitrepo.commit(message='SPARQL Update\n\n' + query)
     except:
         pass
 
@@ -171,7 +171,7 @@ def sparql():
     if result[0] == 'SELECT':
         return sparqlresponse(result[1])
     else:
-        updatefilecontent()
+        updatefilecontent(query)
         return '', status.HTTP_200_OK
 
 
@@ -222,25 +222,6 @@ def deleteTriple():
         return '', status.HTTP_201_CREATED
     else:
         return '', status.HTTP_403_FORBIDDEN
-
-@app.route("/<int:key>/", methods=['GET', 'PUT', 'DELETE'])
-def notes_detail(key):
-    '''
-    Retrieve, update or delete note instances.
-    '''
-    if request.method == 'PUT':
-        note = str(request.data.get('text', ''))
-        notes[key] = note
-        return note_repr(key)
-
-    elif request.method == 'DELETE':
-        notes.pop(key, None)
-        return '', status.HTTP_204_NO_CONTENT
-
-    # request.method == 'GET'
-    if key not in notes:
-        raise exceptions.NotFound()
-    return note_repr(key)
 
 def main():
     app.run(debug=True, use_reloader=False)

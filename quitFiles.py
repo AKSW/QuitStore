@@ -200,20 +200,21 @@ class GitRepo:
 
         return
 
-    def commit(self):
+    def commit(self, message=''):
         gitstatus = self.git.status('--porcelain')
 
         if gitstatus == '':
             print('Nothing to commit')
             return
 
-        msg = '\"New commit from quit-store\"'
+        if message == '':
+            message = '\"New commit from quit-store\"'
         committer = str.encode('Quit-Store <quit.store@aksw.org>')
         #commitid = self.repo.do_commit(msg, committer)
 
         try:
             print('Commit updates')
-            self.git.commit('-m', msg)
+            self.git.commit('-m', message)
         except git.exc.GitCommandError:
             raise
 
