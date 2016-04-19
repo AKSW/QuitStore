@@ -144,7 +144,7 @@ def savegraphs():
 API
 '''
 
-@app.route("/sparql/", methods=['POST', 'GET'])
+@app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
     '''
     Process SPARQL-Query
@@ -159,13 +159,13 @@ def sparql():
             if 'query' in request.form:
                 query = request.form['query']
     except:
-        print('Es kam gar keine Query an')
+        print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
     try:
         result = processsparql(query)
     except:
-        print('Mit der Query stimmt etwas nicht')
+        print('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
 
     if result[0] == 'SELECT':
@@ -189,7 +189,7 @@ def addTriple():
 
         for graphuri in data['graphs']:
             if not store.graphexists(graphuri):
-                print('Graph ' + graphuri + ' nicht da')
+                print('Graph ' + graphuri + ' is not part of the store')
                 return '', status.HTTP_403_FORBIDDEN
 
         addtriples(data)
@@ -213,7 +213,7 @@ def deleteTriple():
 
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
-                print('Graph ' + graphuri + ' nicht da')
+                print('Graph ' + graphuri + ' is not part of the store')
                 return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
 
         deletetriples(values)
