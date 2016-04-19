@@ -1,5 +1,5 @@
 from flask import Response
-from rdflib import ConjunctiveGraph, Graph
+from rdflib import ConjunctiveGraph, Graph, URIRef
 from rdflib.plugins.sparql import parser
 from rfc3987 import parse
 import os
@@ -57,8 +57,9 @@ class FileReference:
             print('Error: File not parsed')
             raise
 
-        quads = graph.quads()
-        self.__setcontent(self.__serializequads(quads))
+        quadstring = graph.serialize(format="nquads").decode('UTF-8')
+        quadlist = quadstring.splitlines()
+        self.__setcontent(quadlist)
         graph = None
 
         return
@@ -70,16 +71,6 @@ class FileReference:
         self.content = content
         return
 
-    def __serializequads(self, quads):
-        data = []
-        for quad in quads:
-            graph = quad[3].n3().strip('[]')
-            if graph.startswith('_:', 0, 2):
-                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n')
-            else:
-                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n')
-        return data
-
     def savefile(self):
         #if self.modified == False:
         #    return
@@ -88,7 +79,7 @@ class FileReference:
 
         content = self.__getcontent()
         for line in content:
-            f.write(line)
+            f.write(line + '\n')
         f.close
 
         print('File saved')
@@ -268,11 +259,12 @@ class MemoryStore:
         # if so, import into grahp and edit triple to right path if needed
 
         self.files[graphuri] = FileReferenceObject
+        content = FileReferenceObject.getcontent()
+        data = '\n'.join(content)
         try:
-            content = FileReferenceObject.getcontent()
-            self.store.parse(data=''.join(content), format='nquads')
+            self.store.parse(data=data, format='nquads')
         except:
-            print('Something went wrong with file: ' + name)
+            print('Something went wrong with file: ' + self.file)
             raise ValueError
 
     def getconfforgraph(self, graphuri):
@@ -355,28 +347,25 @@ class MemoryStore:
             pass
             #self.store.parse(data=''.join(content), format='nquads')
         except:
-            print('Something went wrong with file: ')
+            print('Something went wrong with file:', self.filepath)
             raise ValueError
 
         return
 
     def getgraphcontent(self, graphuri):
-        try:
-            quads = self.store.quads((None, None, None, graphuri))
-        except:
-            raise
-
         data = []
-        for quad in quads:
-            graph = quad[3].n3().strip('[]')
-            if graph.startswith('_:', 0, 2):
-                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n')
-            elif graph == '<' + graphuri + '>':
-                data.append(quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n')
-            else:
-                pass
-        return data
+        context = self.store.get_context(URIRef(graphuri))
 
+        triplestring = context.serialize(format='nt').decode('UTF-8')
+
+        # Since we have triples here, we transform them to quads by adding the graphuri
+        # TODO This might cause problems if ' .\n' will be part of a literal.
+        #   Maybe a regex would be a better solution
+        triplestring = triplestring.replace(' .\n', ' <' + graphuri + '> .\n')
+
+        data = triplestring.splitlines()
+
+        return data
 
 class QueryCheck:
     def __init__(self, querystring):
