@@ -13,6 +13,12 @@ app = FlaskAPI(__name__)
 CORS(app)
 
 def initializegraphs():
+    """Build all needed objects.
+
+    Returns:
+        A dictionary containing the store object and git repo object.
+
+    """
     store = MemoryStore()
     gitrepo = GitRepo(store.getstorepath())
 
@@ -29,36 +35,52 @@ def initializegraphs():
 
     return {'store':store, 'gitrepo':gitrepo}
 
-def note_repr(key):
-    return {
-        'url': request.host_url.rstrip('/') + url_for('notes_detail', key=key),
-        'text': notes[key]
-    }
-
 def processsparql(querystring):
+    """This method takes a string containing a SPARQL query and executes it.
+
+    Args:
+        querystring: A SPARQL query string.
+    Raises:
+        Exception: If query is not a valid SPARQL update or select query
+
+    """
+
     try:
         query = QueryCheck(querystring)
     except:
         raise Exception()
 
     if query.getType() == 'SELECT':
-        return 'SELECT', store.query(querystring)
+        print('Execute select query')
+        store.query(querystring)
     else:
-        print('Update-Query')
-        return 'UPDATE', store.update(querystring)
+        print('Execute update query')
+        store.update(querystring)
+
+    return
 
 def checkrequest(request):
+    """Analyze RDF data contained in a POST request.
+
+    Args:
+        request: A Flask HTTP Request.
+    Returns:
+        data: A list with RDFLib.quads object and the rdflib.ConjunciveGraph object
+    Raises:
+        Exception: I contained data is not valid nquads.
+
+    """
     data = []
     graphsInRequest = set()
     reqdata = request.data
     test = ConjunctiveGraph()
     try:
-        test.parse(data=reqdata, format='nquads')
+        graph.parse(data=reqdata, format='nquads')
     except:
         raise
 
-    quads = test.quads((None, None, None, None))
-    data = splitinformation(quads, test)
+    quads = graph.quads((None, None, None, None))
+    data = splitinformation(quads, graph)
 
     return data
 
@@ -102,13 +124,9 @@ def deletetriples(values):
 
     return
 
-'''
-If the store was updated via a SPARQL-Update, we have to update the
-content of FileReference too
-NOTE: This method will be replaced by a more granular method that get the exact triples
-which where added/deleted and will add/delete them in file content.
-'''
 def updatefilecontent(query):
+    """Update the files after a update query was executed on the store.
+    """
     for graphuri, fileobject in store.getgraphs():
         content = store.getgraphcontent(graphuri)
         fileobject.setcontent(content)
@@ -146,11 +164,13 @@ API
 
 @app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
-    '''
-    Process SPARQL-Query
-      - update files on DELETE and UPDATE queries
-      - return result on SELECT
-    '''
+    """Process a SPARQL query (Select or Update).
+
+    Returns:
+        HTTP Response with query result: If query was a valid select query.
+        HTTP Response 200: If request contained a valid update query.
+        HTTP Response 400: If request doesn't contain a valid sparql query.
+    """
     try:
         if request.method == 'GET':
             if 'query' in request.args:
@@ -177,20 +197,34 @@ def sparql():
 
 @app.route("/checkout", methods=['POST'])
 def checkoutVersion():
+    """Receive a HTTP request with a commit id and initialize store with data from this commit.
+
+    Returns:
+        HTTP Response 200: If commit id is valid and store is reinitialized with the data.
+        HTTP Response 400: If commit id is not valid.
+    """
     return
 
 @app.route("/commits", methods=['GET'])
-def getVersions():
+def getCommits():
+    """Receive a HTTP request and reply with all known commits.
+
+    Returns:
+        HTTP Response: json containing id, committeddate and message.
+    """
     data = gitrepo.getcommits()
     resp = Response(json.dumps(data), status=200, mimetype='application/json')
     return resp
 
-@app.route("/add/", methods=['POST'])
+@app.route("/add", methods=['POST'])
 @set_parsers(NQuadsParser)
 def addTriple():
-    '''
-    List or create notes.
-    '''
+    """Add nquads to the store.
+
+    Returns:
+        HTTP Response 201: If data was processed (even if no data was added)
+        HTTP Response: 403: If Request contains non valid nquads
+    """
     if request.method == 'POST':
         try:
             data = checkrequest(request)
@@ -209,12 +243,15 @@ def addTriple():
     else:
         return '', status.HTTP_403_FORBIDDEN
 
-@app.route("/delete/", methods=['POST', 'GET'])
+@app.route("/delete", methods=['POST', 'GET'])
 @set_parsers(NQuadsParser)
 def deleteTriple():
-    '''
-    List or create notes.
-    '''
+    """Delete nquads from the store.
+
+    Returns:
+        HTTP Response 201: If data was processed (even if no data was deleted)
+        HTTP Response: 403: If Request contains non valid nquads
+    """
     if request.method == 'POST':
         try:
             values = checkrequest(request)
