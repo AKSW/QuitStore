@@ -1,4 +1,5 @@
 from flask import Response
+from datetime import datetime
 from rdflib import ConjunctiveGraph, Graph, URIRef
 from rdflib.plugins.sparql import parser
 from rfc3987 import parse
@@ -176,6 +177,26 @@ class GitRepo:
             print('Couldn\'t stage file', filename)
             raise
 
+
+    def getcommits(self):
+        """Return meta data about exitsting commits.
+
+        Returns:
+            A list containing dictionaries with commit meta data
+
+        """
+        versions = []
+        log = self.repo.iter_commits('master')
+        for entry in log:
+            # extract timestamp and convert to datetime
+            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
+            versions.append({
+                'id':str(entry),
+                'message':str(entry.message),
+                'committeddate':commitdate
+            })
+        return versions
+
     def update(self):
         gitstatus = self.git.status('--porcelain')
 
@@ -214,7 +235,7 @@ class GitRepo:
 
 '''
 This class contains information about all Graphs, their corresponding URIs and
-pathes in the file system. To every Graph (context of Quad-Store) exists a
+pathes in the file system. For every Graph (context of Quad-Store) exists a
 FileReference object (n-quad) that enables versioning (with git) and persistence.
 '''
 class MemoryStore:

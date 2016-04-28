@@ -1,9 +1,9 @@
-from flask import request, url_for
+from flask import request, url_for, Response
 from flask.ext.api.decorators import set_parsers
 from flask.ext.api import FlaskAPI, status, exceptions
 from flask.ext.cors import CORS
 from FlaskApiParser import *
-import yaml
+import yaml, json
 from rdflib import Graph
 from rfc3987 import parse
 from quitFiles import *
@@ -174,6 +174,16 @@ def sparql():
         updatefilecontent(query)
         return '', status.HTTP_200_OK
 
+
+@app.route("/checkout", methods=['POST'])
+def checkoutVersion():
+    return
+
+@app.route("/commits", methods=['GET'])
+def getVersions():
+    data = gitrepo.getcommits()
+    resp = Response(json.dumps(data), status=200, mimetype='application/json')
+    return resp
 
 @app.route("/add/", methods=['POST'])
 @set_parsers(NQuadsParser)
