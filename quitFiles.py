@@ -8,20 +8,27 @@ import sys
 import git
 import pdb
 
-'''
-This class stores inforamtation about the location of a n-quad file and is able
-to add and delete triples/quads to that file. Optionally it enables versioning
-via git
-'''
 class FileReference:
+    """A class that manages n-quad files.
 
-    directory = '../store/'
+    This class stores inforamtation about the location of a n-quad file and is able
+    to add and delete triples/quads to that file.
+    """
+
     directory = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
 
-    def __init__(self, filelocation, versioning):
+    def __init__(self, filelocation, versioning=True):
+        """Initialize a new FileReference instance.
+
+        Args:
+            filelocation: A string of the filepath.
+            versioning: Boolean if versioning is enabled or not. Default is true == enabled.
+
+        Raises:
+            ValueError: If no file at the filelocation, or in the given directory + filelocation.
+        """
         self.content = None
         self.modified = False
-        self.versioning = True
 
         # Try to open file and set the new path if file was not part of the git store, yet
         if os.path.isfile(os.path.join(self.directory, filelocation)):
@@ -51,11 +58,11 @@ class FileReference:
 
 
         try:
-            print('Success: File parsed')
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
+            print('Success: File',self.path,'parsed')
         except:
             # Given file contains non valid rdf data
-            print('Error: File not parsed')
+            print('Error: Filei', self.path, 'not parsed')
             raise
 
         quadstring = graph.serialize(format="nquads").decode('UTF-8')
@@ -66,16 +73,37 @@ class FileReference:
         return
 
     def __getcontent(self):
+        """Return the content of a n-quad file.
+        Returns:
+            content: A list of strings where each string is a quad.
+        """
         return self.content
 
-    def __setcontent(self, content):
+    def __setcontent(self, content: list):
+        """Set the content of a n-quad file.
+        Args:
+            content: A list of strings where each string is a quad.
+        """
         self.content = content
         return
 
-    def savefile(self):
-        #if self.modified == False:
-        #    return
+    def getcontent(self):
+        """Public method that returns the content of a nquad file.
+        Returns:
+            content: A list of strings where each string is a quad.
+        """
+        return self.__getcontent()
 
+    def setcontent(self, content: list):
+        """Public method to set the content of a n-quad file.
+        Args:
+            content: A list of strings where each string is a quad.
+        """
+        self.__setcontent(content)
+        return
+
+    def savefile(self):
+        """Save the file."""
         f = open(self.path, "w")
 
         content = self.__getcontent()
@@ -85,48 +113,27 @@ class FileReference:
 
         print('File saved')
 
-    def sortfile(self):
+    def sortcontent(self):
+        """Order file content."""
         content = self.__getcontent()
+
         try:
             self.__setcontent(sorted(content))
         except AttributeError:
             pass
 
-    def commit(self):
-        if self.versioning == False or self.modified == False:
-            return
-
-        gitstatus = self.repo.git.status('--porcelain')
-
-        if gitstatus == '':
-            self.modified = False
-            return
-
-        try:
-            print("Trying to stage " + self.filename)
-            self.repo.index.add([self.filename])
-        except:
-            print('Couldn\'t stage file: ' + self.filename)
-            raise
-
-        msg = '\"New commit from quit-store\"'
-        committer = str.encode('Quit-Store <quit.store@aksw.org>')
-        #commitid = self.repo.do_commit(msg, committer)
-
-        try:
-            print("Trying to commit " + self.filename)
-            self.repo.git.commit('-m', msg)
-        except git.exc.GitCommandError:
-            print('Couldn\'t commit file: ' + self.path)
-            raise
-
-        self.modified == False
-
-    def addtriple(self, quad, resort = True):
+    def addquads(self, quad, sort = True):
+        """Add quads to the file content."""
         self.content.append(quad)
-        self.modified = True
+        self.sortcontent()
 
-    def searchtriple(self, quad):
+        return
+
+    def searchquad(self, quad):
+        """Look if a quad is in the file content.
+        Returns:
+            True if quad was found, False else
+        """
         searchPattern = quad + '\n'
 
         if searchPattern in self.content:
@@ -134,7 +141,8 @@ class FileReference:
 
         return False
 
-    def deletetriple(self, quad):
+    def deletequad(self, quad):
+        """Add quads to the file content."""
         searchPattern = quad
         try:
             self.content.remove(searchPattern)
@@ -145,25 +153,44 @@ class FileReference:
 
         return True
 
-    def getcontent(self):
-        return(self.content)
-
-    def setcontent(self, content):
-        self.__setcontent(content)
-        return
-
     def isversioned(self):
         return(self.versioning)
 
 class GitRepo:
+    """A class that manages a git repository
+
+    This class enables versiong via git for a repository.
+    You can stage and commit files and checkout different commits of the repository.
+    """
+    commits = []
+
     def __init__(self, path):
-        self.path = path
-        self.repo = git.Repo(self.path)
-        self.git = self.repo.git
+        """Initialize a new repository.
+
+        Args:
+            path: A string containing the path to the repository.
+
+        Raises:
+            Exception if path is not a git repository.
+        """
+        self.path    = path
+        try:
+            self.repo    = git.Repo(self.path)
+        except:
+            raise
+        self.git     = self.repo.git
+        self.__setcommits()
 
         return
 
     def addfile(self, filename):
+        """Add a file that should be tracked.
+
+        Args:
+            filename: A string containing the path to the file.
+        Raises:
+            Exception: If file was not found under 'filename' or if file is part of store.
+        """
         gitstatus = self.git.status('--porcelain')
 
         if gitstatus == '':
@@ -178,26 +205,37 @@ class GitRepo:
             raise
 
 
+    def __setcommits(self):
+        """Save a list of all git commits, commit messages and dates. """
+        commits = []
+        log = self.repo.iter_commits('master')
+
+        for entry in log:
+            # extract timestamp and convert to datetime
+            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
+            commits.append({
+                'id':str(entry),
+                'message':str(entry.message),
+                'committeddate':commitdate
+            })
+
+        self.commits = commits
+        return
+
     def getcommits(self):
         """Return meta data about exitsting commits.
 
         Returns:
             A list containing dictionaries with commit meta data
-
         """
-        versions = []
-        log = self.repo.iter_commits('master')
-        for entry in log:
-            # extract timestamp and convert to datetime
-            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
-            versions.append({
-                'id':str(entry),
-                'message':str(entry.message),
-                'committeddate':commitdate
-            })
-        return versions
+        return self.commits
 
     def update(self):
+        """Tries to add all updated files.
+
+        Raises:
+            Exception: If no tracked file was changed.
+        """
         gitstatus = self.git.status('--porcelain')
 
         if gitstatus == '':
@@ -212,45 +250,99 @@ class GitRepo:
 
         return
 
-    def commit(self, message=''):
+    def commit(self, message=None):
+        """Commit staged files.
+
+        Args:
+            message: A string for the commit message.
+        Raises:
+            Exception: If no files in staging area.
+        """
         gitstatus = self.git.status('--porcelain')
 
         if gitstatus == '':
             print('Nothing to commit')
             return
 
-        if message == '':
+        if message == None:
             message = '\"New commit from quit-store\"'
+
         committer = str.encode('Quit-Store <quit.store@aksw.org>')
         #commitid = self.repo.do_commit(msg, committer)
 
         try:
             print('Commit updates')
             self.git.commit('-m', message)
+            self.__setcommits()
         except git.exc.GitCommandError:
             raise
 
         return
 
 
-'''
-This class contains information about all Graphs, their corresponding URIs and
-pathes in the file system. For every Graph (context of Quad-Store) exists a
-FileReference object (n-quad) that enables versioning (with git) and persistence.
-'''
 class MemoryStore:
+    """
+    A class that combines and syncronieses n-quad files and an in-memory quad store.
+
+    This class contains information about all graphs, their corresponding URIs and
+    pathes in the file system. For every Graph (context of Quad-Store) exists a
+    FileReference object (n-quad) that enables versioning (with git) and persistence.
+    """
     def __init__(self):
+        """Initialize a new MemoryStore instance."""
         self.path = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
         self.sysconf = Graph()
         self.sysconf.parse('config.ttl', format='turtle')
         self.store = ConjunctiveGraph(identifier='default')
+        self.repo = GitRepo(self.path)
         self.files = {}
         return
 
+    def exit(self):
+        """This method can be used to proceed actions on API shutdown."""
+        pass
+
+    def __updatecontentandsave(self):
+        """Update the files after a update query was executed on the store and save."""
+        for graphuri, fileobject in self.getgraphs():
+            content = self.getgraphcontent(graphuri)
+            fileobject.setcontent(content)
+            fileobject.savefile()
+
+        return
+
+    def __savefiles(self):
+        """Update the files after a update query was executed on the store."""
+        for graphuri, fileobject in self.getgraphs():
+            if fileobject.isversioned():
+                fileobject.savefile()
+
+        return
+
+    def __updategit(self):
+        self.repo.update()
+
+        return
+
+    def __commit(self, message=None):
+        self.repo.commit(message)
+
+        return
+
     def getgraphs(self):
+        """Method to get all available (public) named graphs.
+
+        Returns:
+            A dictionary of graphuri:FileReference tuples.
+        """
         return self.files.items()
 
     def storeisvalid(self):
+        """This method checks if the given MemoryStore is valid.
+
+        Returns:
+            True if, Fals if not.
+        """
         graphsfromconf = list(self.getgraphsfromconf().values())
         graphsfromdir  = self.getgraphsfromdir()
         for filename in graphsfromconf:
@@ -261,12 +353,30 @@ class MemoryStore:
         return True
 
     def getgraphobject(self, graphuri):
+        """This method returns the FileReference object for a named graph URI.
+
+        Args:
+            graphuri: A string containing the URI of a named graph
+
+        Returns:
+            The FileReference object if graphuri is a named graph of MemoryStore.
+            None if graphuri is not a named graph of MemoryStore.
+        """
         for k, v in self.files.items():
             if k == graphuri:
                 return v
         return
 
     def graphexists(self, graphuri):
+        """Ask if a named graph FileReference object for a named graph URI.
+
+        Args:
+            graphuri: A string containing the URI of a named graph
+
+        Returns:
+            The FileReference object if graphuri is a named graph of MemoryStore.
+            None if graphuri is not a named graph of MemoryStore.
+        """
         graphuris = list(self.files.keys())
         try:
             graphuris.index(graphuri)
@@ -337,12 +447,43 @@ class MemoryStore:
     def getstorepath(self):
         return self.path
 
-    def query(self, querystring):
+    def processsparql(self, querystring):
+        """This method takes a string containing a SPARQL query and executes it.
+
+        Args:
+            querystring: A SPARQL query string.
+        Returns:
+            SPARQL result set if valid select query.
+            None if valid update query.
+        Raises:
+            Exception: If query is not a valid SPARQL update or select query
+
+        """
+
+        #try:
+        query = QueryCheck(querystring)
+        #except:
+        #    raise Exception()
+
+        if query.getType() == 'SELECT':
+            print('Execute select query')
+            result = self.__query(querystring)
+            print('SELECT result', result)
+        else:
+            print('Execute update query')
+            result = self.__update(querystring)
+
+        return result
+
+    def __query(self, querystring):
         return self.store.query(querystring)
 
-    def update(self, querystring):
+    def __update(self, querystring):
         self.store.update(querystring)
         self.store.commit()
+        self.__updatecontentandsave()
+        self.__updategit()
+        self.__commit(querystring)
         return
 
     def addquads(self, quads):
@@ -413,13 +554,6 @@ class QueryCheck:
     def getType(self):
         return self.queryType
 
-    '''
-    This method checks the given SPARQL query. All Select Queries will return
-    an empty diff.
-    Queries containing the keywords 'insert' or 'delete' may return a diff.
-    To generate the diffs each occurence of 'insert' or 'delete' will be
-    rewritten into a construct query.
-    '''
     def getParsedQuery(self):
         return self.parsedQuery
 

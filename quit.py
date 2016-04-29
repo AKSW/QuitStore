@@ -20,10 +20,6 @@ def initializegraphs():
 
     """
     store = MemoryStore()
-    gitrepo = GitRepo(store.getstorepath())
-
-    settings = store.getstoresettings()
-    repository = settings['gitrepo']
 
     versioning = True
     graphs = store.getgraphsfromconf()
@@ -33,31 +29,7 @@ def initializegraphs():
             store.addFile(graphuri, graph)
             print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
 
-    return {'store':store, 'gitrepo':gitrepo}
-
-def processsparql(querystring):
-    """This method takes a string containing a SPARQL query and executes it.
-
-    Args:
-        querystring: A SPARQL query string.
-    Raises:
-        Exception: If query is not a valid SPARQL update or select query
-
-    """
-
-    try:
-        query = QueryCheck(querystring)
-    except:
-        raise Exception()
-
-    if query.getType() == 'SELECT':
-        print('Execute select query')
-        store.query(querystring)
-    else:
-        print('Execute update query')
-        store.update(querystring)
-
-    return
+    return store
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -88,12 +60,12 @@ def addtriples(values):
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
-        currentgraph.deletetriple(data['quad'])
+        currentgraph.deletequad(data['quad'])
 
     for data in values['data']:
         # and now add them
         currentgraph = store.getgraphobject(data['graph'])
-        currentgraph.addtriple(data['quad'])
+        currentgraph.addquads(data['quad'])
 
     # sort files that took part and save them
     for graph in values['graphs']:
@@ -110,7 +82,7 @@ def deletetriples(values):
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
-        currentgraph.deletetriple(data['quad'])
+        currentgraph.deletequad(data['quad'])
 
     # sort files that took part and save them
     for graph in values['graphs']:
@@ -124,37 +96,13 @@ def deletetriples(values):
 
     return
 
-def updatefilecontent(query):
-    """Update the files after a update query was executed on the store.
+def savedexit():
+    """This is the method called from exit handler.
+
+    Add methods you want to call on unexpected shutdown.
     """
-    for graphuri, fileobject in store.getgraphs():
-        content = store.getgraphcontent(graphuri)
-        fileobject.setcontent(content)
-        fileobject.sortfile()
-        fileobject.savefile()
 
-    gitrepo.update()
-    try:
-        gitrepo.commit(message='SPARQL Update\n\n' + query)
-    except:
-        pass
-
-    return
-
-def commitrepo():
-    gitrepo.update()
-    gitrepo.commit()
-
-    return
-
-def savegraphs():
-    for graphuri, fileobject in store.getgraphs():
-        if fileobject.isversioned():
-            fileobject.sortfile()
-            fileobject.savefile()
-
-    gitrepo.update()
-    gitrepo.commit()
+    store.exit()
 
     return
 
@@ -171,6 +119,7 @@ def sparql():
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
+
     try:
         if request.method == 'GET':
             if 'query' in request.args:
@@ -182,16 +131,17 @@ def sparql():
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
+    result = store.processsparql(query)
     try:
-        result = processsparql(query)
+        result = store.processsparql(query)
     except:
         print('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
 
-    if result[0] == 'SELECT':
-        return sparqlresponse(result[1])
+    # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
+    if result != None:
+        return sparqlresponse(result)
     else:
-        updatefilecontent(query)
         return '', status.HTTP_200_OK
 
 
@@ -271,11 +221,10 @@ def deleteTriple():
         return '', status.HTTP_403_FORBIDDEN
 
 def main():
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=True)
 
 if __name__ == '__main__':
-    with handleexit.handle_exit(savegraphs):
-        objects = initializegraphs()
-        store   = objects['store']
-        gitrepo = objects['gitrepo']
+    store = initializegraphs()
+    # The app is started with an exit handler
+    with handleexit.handle_exit(savedexit()):
         main()
