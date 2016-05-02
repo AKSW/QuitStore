@@ -131,7 +131,6 @@ def sparql():
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
-    result = store.processsparql(query)
     try:
         result = store.processsparql(query)
     except:

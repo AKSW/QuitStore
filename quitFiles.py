@@ -320,11 +320,13 @@ class MemoryStore:
         return
 
     def __updategit(self):
+        '''Private method to add all updated tracked files.'''
         self.repo.update()
 
         return
 
     def __commit(self, message=None):
+        '''Private method to commit the changes.'''
         self.repo.commit(message)
 
         return
@@ -385,9 +387,18 @@ class MemoryStore:
             return False
 
     def addFile(self, graphuri, FileReferenceObject):
-        # look if file is already part of repo
-        # if not, test if given path exists, is file, is valid
-        # if so, import into grahp and edit triple to right path if needed
+        '''Adds a file to the store.
+
+        This method looks if file is already part of repo.
+        If not, test if given path exists, is file, is valid.
+        If so, import into grahp and edit triple to right path if needed.
+
+        Args:
+            graphuri: The URI of a named graph.
+            FileReferenceObject: The FileReference instance linking the quad file.
+        Raises:
+            ValueError if the given file can't be parsed as nquads.
+        '''
 
         self.files[graphuri] = FileReferenceObject
         content = FileReferenceObject.getcontent()
@@ -398,7 +409,18 @@ class MemoryStore:
             print('Something went wrong with file: ' + self.file)
             raise ValueError
 
+        return
+
     def getconfforgraph(self, graphuri):
+        '''Get the configuration for a named graph.
+
+        This method returns configuration parameters (e.g. path to file) for a named graph.
+
+        Args:
+            graphuri: The URI if a named graph.
+        Returns:
+            A dictionary of configuration parameters and their values.
+        '''
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT ?graphuri ?filename WHERE { '
         query+= '  <' + graphuri + '> <' + nsQuit + '/Graph> . '
@@ -414,6 +436,13 @@ class MemoryStore:
 
 
     def getgraphsfromconf(self):
+        '''Get all URIs of graphs that are configured in config.ttl.
+
+        This method returns all graphs and their corroesponding quad files.
+
+        Returns:
+            A dictionary of URIs of named graphs their quad files.
+        '''
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
         query+= '  ?graph a <' + nsQuit + '/Graph> . '
@@ -422,17 +451,30 @@ class MemoryStore:
         query+= '}'
         result = self.sysconf.query(query)
         values = {}
+
         for row in result:
             values[str(row['graphuri'])] = str(row['filename'])
-        #return list(self.files.keys())
+
         return values
 
     def getgraphsfromdir(self):
+        '''Get the files that are part of the repository (tracked or not).
+
+        Returns:
+            A list of filepathes.
+        '''
+
         path = self.path
         files = [ f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         return files
 
     def getstoresettings(self):
+        '''Get the path of Git repository from configuration.
+
+        Returns:
+            A list of all repositories given in configuration.
+        '''
+
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT ?gitrepo WHERE { '
         query+= '  <http://my.quit.conf/store> <' + nsQuit + '/pathOfGitRepo> ?gitrepo . '
@@ -445,6 +487,12 @@ class MemoryStore:
         return settings
 
     def getstorepath(self):
+        '''Return the path of the repository.
+
+        Returns:
+            A string containing the path of git repository.
+        '''
+
         return self.path
 
     def processsparql(self, querystring):
@@ -460,10 +508,9 @@ class MemoryStore:
 
         """
 
-        #try:
-        query = QueryCheck(querystring)
-        #except:
-        #    raise Exception()
+        try:
+            query = QueryCheck(querystring)
+        except:
 
         if query.getType() == 'SELECT':
             print('Execute select query')
@@ -476,22 +523,53 @@ class MemoryStore:
         return result
 
     def __query(self, querystring):
+        '''Private method to execute a SPARQL select query.
+
+        Args:
+            querystring: A string containing a SPARQL ask or select query.
+        Returns:
+            The SPARQL result set
+        '''
+
         return self.store.query(querystring)
 
     def __update(self, querystring):
+        '''Private method to execute a SPARQL update query and update the store.
+
+        This method executes a SPARQL update query and updates and commits all affected files.
+
+        Args:
+            querystring: A string containing a SPARQL upate query.
+        '''
+        # methods of rdflib ConjunciveGraph
         self.store.update(querystring)
         self.store.commit()
+        # methods of MemoryStore to update the file system and git
         self.__updatecontentandsave()
         self.__updategit()
         self.__commit(querystring)
+
         return
 
     def addquads(self, quads):
+        '''Add quads to the MemoryStore.
+
+        Args:
+            quads: Rdflib.quads that should be added to the MemoryStore.
+        '''
+
         self.store.addN(quads)
         self.store.commit()
+
         return
 
     def removequads(self, quads):
+        '''Remove quads to the MemoryStore.
+
+        Args:
+            quads: Rdflib.quads that should be removed to the MemoryStore.
+        '''
+
         self.store.remove((quads))
         self.store.commit()
         return
