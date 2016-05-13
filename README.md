@@ -17,6 +17,8 @@ Adjust the config.ttl
 
 ```
 conf:store a <YourQuitStore> ;
+    <pathOfGitRepo> "../store" . # Set the path to the repository that contains the files .
+
 conf:example a <Graph> ; # Define a Graph resource for a named graph
     <graphUri> <http://example.org/> ; # Set the URI of named graph
     <isVersioned> 1 ; # Defaults to True, future work
