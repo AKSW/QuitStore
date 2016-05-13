@@ -163,6 +163,7 @@ class GitRepo:
     You can stage and commit files and checkout different commits of the repository.
     """
     commits = []
+    ids     = []
 
     def __init__(self, path):
         """Initialize a new repository.
@@ -173,12 +174,14 @@ class GitRepo:
         Raises:
             Exception if path is not a git repository.
         """
-        self.path    = path
+        self.path = path
+
         try:
             self.repo    = git.Repo(self.path)
         except:
             raise
-        self.git     = self.repo.git
+
+        self.git = self.repo.git
         self.__setcommits()
 
         return
@@ -208,11 +211,13 @@ class GitRepo:
     def __setcommits(self):
         """Save a list of all git commits, commit messages and dates. """
         commits = []
+        ids     = []
         log = self.repo.iter_commits('master')
 
         for entry in log:
             # extract timestamp and convert to datetime
             commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
+            ids.append(str(entry))
             commits.append({
                 'id':str(entry),
                 'message':str(entry.message),
@@ -220,6 +225,8 @@ class GitRepo:
             })
 
         self.commits = commits
+        self.ids     = ids
+
         return
 
     def getcommits(self):
@@ -229,6 +236,21 @@ class GitRepo:
             A list containing dictionaries with commit meta data
         """
         return self.commits
+
+    def commitexist(self, commitid):
+        """Check if a commit id is part of the repository history.
+
+        Args:
+            commitid: String of a Git commit id.
+        Returns:
+            True, if commitid is part of commit log
+            False, else.
+        """
+
+        if commitid in self.ids:
+            return True
+        else:
+            return False
 
     def update(self):
         """Tries to add all updated files.
@@ -278,7 +300,6 @@ class GitRepo:
             raise
 
         return
-
 
 class MemoryStore:
     """
@@ -511,6 +532,7 @@ class MemoryStore:
         try:
             query = QueryCheck(querystring)
         except:
+            raise Exception()
 
         if query.getType() == 'SELECT':
             print('Execute select query')
@@ -574,18 +596,31 @@ class MemoryStore:
         self.store.commit()
         return
 
+    def reinitstore(self, graphuri):
+        '''Reset store and (re)parse all local files.'''
+
+        self.store = ConjunctiveGraph(identifier='default')
+        self.repo = GitRepo(self.path)
+        self.files = {}
+        return
+
     def reinitgraph(self, graphuri):
+        '''Reset named graph.
+
+        Args:
+            graphuri: The URI of a named graph.
+        '''
+
         self.store.remove((None, None, None, graphuri))
+
         for k, v in self.files.items():
             if k == graphuri:
                 FileReferenceObject = v
                 break
-        content = FileReferenceObject.getcontent()
-        self.store.parse(data=''.join(content), format='nquads')
+
         try:
-            #content = FileReferenceObject.getcontent()
-            pass
-            #self.store.parse(data=''.join(content), format='nquads')
+            content = FileReferenceObject.getcontent()
+            self.store.parse(data=''.join(content), format='nquads')
         except:
             print('Something went wrong with file:', self.filepath)
             raise ValueError
@@ -593,9 +628,15 @@ class MemoryStore:
         return
 
     def getgraphcontent(self, graphuri):
+        '''Get the serialized content of a named graph.
+
+        Args:
+            graphuri: The URI of a named graph.
+        Returns:
+            content: A list of strings where each string is a quad.
+        '''
         data = []
         context = self.store.get_context(URIRef(graphuri))
-
         triplestring = context.serialize(format='nt').decode('UTF-8')
 
         # Since we have triples here, we transform them to quads by adding the graphuri

@@ -144,7 +144,7 @@ def sparql():
         return '', status.HTTP_200_OK
 
 
-@app.route("/checkout", methods=['POST'])
+@app.route("/git/checkout", methods=['POST'])
 def checkoutVersion():
     """Receive a HTTP request with a commit id and initialize store with data from this commit.
 
@@ -152,9 +152,23 @@ def checkoutVersion():
         HTTP Response 200: If commit id is valid and store is reinitialized with the data.
         HTTP Response 400: If commit id is not valid.
     """
-    return
 
-@app.route("/commits", methods=['GET'])
+    try:
+        if 'commitid' in request.form:
+            commitid = request.form['commitid']
+    except:
+        print('Commit id is missing in request')
+        return '', status.HTTP_400_BAD_REQUEST
+
+    if gitrepo.commitexist(commitid):
+        store.checkout(commitid)
+    else:
+        print('Not a valid commit id')
+        return '', status.HTTP_400_BAD_REQUEST
+
+    return '', status.HTTP_200_OK
+
+@app.route("/git/log", methods=['GET'])
 def getCommits():
     """Receive a HTTP request and reply with all known commits.
 
@@ -220,7 +234,7 @@ def deleteTriple():
         return '', status.HTTP_403_FORBIDDEN
 
 def main():
-    app.run(debug=True, use_reloader=True)
+    app.run(debug=False, use_reloader=False)
 
 if __name__ == '__main__':
     store = initializegraphs()
