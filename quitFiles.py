@@ -43,7 +43,6 @@ class FileReference:
         else:
             raise ValueError
 
-
         if versioning == False:
             self.versioning = False
         else:
@@ -68,6 +67,27 @@ class FileReference:
         quadstring = graph.serialize(format="nquads").decode('UTF-8')
         quadlist = quadstring.splitlines()
         self.__setcontent(quadlist)
+        graph = None
+
+        return
+
+    def reloadcontent(self):
+        """Reload the content from file."""
+
+        graph = ConjunctiveGraph()
+
+        try:
+            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
+            print('Success: File',self.path,'parsed')
+            quadstring = graph.serialize(format="nquads").decode('UTF-8')
+            quadlist = quadstring.splitlines()
+            self.__setcontent(quadlist)
+        except:
+            # Given file contains non valid rdf data
+            print('Error: File', self.path, 'not parsed')
+            self.__setcontent([[None] [None] [None] [None]])
+            pass
+
         graph = None
 
         return
@@ -237,6 +257,17 @@ class GitRepo:
         """
         return self.commits
 
+    def checkout(self, commitid):
+
+        print('Trying to checkout', commitid)
+        self.git.checkout(commitid)
+        try:
+            self.git.checkout(commitid)
+        except:
+            raise Exception()
+
+        return
+
     def commitexist(self, commitid):
         """Check if a commit id is part of the repository history.
 
@@ -319,6 +350,25 @@ class MemoryStore:
         self.files = {}
         return
 
+    def __reinit(self):
+        """Renitialize the ConjunctiveGraph."""
+        self.store = ConjunctiveGraph(identifier='default')
+
+        for graphuri in self.getgraphuris():
+            filereference = self.getgraphobject(graphuri)
+            filereference.reloadcontent()
+            content = filereference.getcontent()
+            data = '\n'.join(content)
+
+            try:
+                self.store.parse(data=data, format='nquads')
+            except:
+                print('Something went wrong with file for graph: ', graphuri)
+                self.store.__removefile(graphuri)
+                pass
+
+        return
+
     def exit(self):
         """This method can be used to proceed actions on API shutdown."""
         pass
@@ -341,13 +391,26 @@ class MemoryStore:
         return
 
     def __updategit(self):
-        '''Private method to add all updated tracked files.'''
+        """Private method to add all updated tracked files."""
         self.repo.update()
 
         return
 
+    def __removefile(self, graphuri):
+        try:
+            del self.files[graphuri]
+        except:
+            return
+
+        try:
+            self.store.remove((None, None, None, graphuri))
+        except:
+            return
+
+        return
+
     def __commit(self, message=None):
-        '''Private method to commit the changes.'''
+        """Private method to commit the changes."""
         self.repo.commit(message)
 
         return
@@ -374,6 +437,15 @@ class MemoryStore:
             else:
                 print('File found')
         return True
+
+    def getgraphuris(self):
+        """This method returns all URIs of named graphs.
+
+        Returns:
+            A dictionary containing all URIs of named graphs.
+        """
+
+        return self.files.keys()
 
     def getgraphobject(self, graphuri):
         """This method returns the FileReference object for a named graph URI.
@@ -408,7 +480,7 @@ class MemoryStore:
             return False
 
     def addFile(self, graphuri, FileReferenceObject):
-        '''Adds a file to the store.
+        """Adds a file to the store.
 
         This method looks if file is already part of repo.
         If not, test if given path exists, is file, is valid.
@@ -419,7 +491,7 @@ class MemoryStore:
             FileReferenceObject: The FileReference instance linking the quad file.
         Raises:
             ValueError if the given file can't be parsed as nquads.
-        '''
+        """
 
         self.files[graphuri] = FileReferenceObject
         content = FileReferenceObject.getcontent()
@@ -433,7 +505,7 @@ class MemoryStore:
         return
 
     def getconfforgraph(self, graphuri):
-        '''Get the configuration for a named graph.
+        """Get the configuration for a named graph.
 
         This method returns configuration parameters (e.g. path to file) for a named graph.
 
@@ -441,7 +513,7 @@ class MemoryStore:
             graphuri: The URI if a named graph.
         Returns:
             A dictionary of configuration parameters and their values.
-        '''
+        """
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT ?graphuri ?filename WHERE { '
         query+= '  <' + graphuri + '> <' + nsQuit + '/Graph> . '
@@ -457,13 +529,13 @@ class MemoryStore:
 
 
     def getgraphsfromconf(self):
-        '''Get all URIs of graphs that are configured in config.ttl.
+        """Get all URIs of graphs that are configured in config.ttl.
 
         This method returns all graphs and their corroesponding quad files.
 
         Returns:
             A dictionary of URIs of named graphs their quad files.
-        '''
+        """
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
         query+= '  ?graph a <' + nsQuit + '/Graph> . '
@@ -479,22 +551,22 @@ class MemoryStore:
         return values
 
     def getgraphsfromdir(self):
-        '''Get the files that are part of the repository (tracked or not).
+        """Get the files that are part of the repository (tracked or not).
 
         Returns:
             A list of filepathes.
-        '''
+        """
 
         path = self.path
         files = [ f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         return files
 
     def getstoresettings(self):
-        '''Get the path of Git repository from configuration.
+        """Get the path of Git repository from configuration.
 
         Returns:
             A list of all repositories given in configuration.
-        '''
+        """
 
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT ?gitrepo WHERE { '
@@ -508,11 +580,11 @@ class MemoryStore:
         return settings
 
     def getstorepath(self):
-        '''Return the path of the repository.
+        """Return the path of the repository.
 
         Returns:
             A string containing the path of git repository.
-        '''
+        """
 
         return self.path
 
@@ -545,24 +617,24 @@ class MemoryStore:
         return result
 
     def __query(self, querystring):
-        '''Private method to execute a SPARQL select query.
+        """Private method to execute a SPARQL select query.
 
         Args:
             querystring: A string containing a SPARQL ask or select query.
         Returns:
             The SPARQL result set
-        '''
+        """
 
         return self.store.query(querystring)
 
     def __update(self, querystring):
-        '''Private method to execute a SPARQL update query and update the store.
+        """Private method to execute a SPARQL update query and update the store.
 
         This method executes a SPARQL update query and updates and commits all affected files.
 
         Args:
             querystring: A string containing a SPARQL upate query.
-        '''
+        """
         # methods of rdflib ConjunciveGraph
         self.store.update(querystring)
         self.store.commit()
@@ -574,11 +646,11 @@ class MemoryStore:
         return
 
     def addquads(self, quads):
-        '''Add quads to the MemoryStore.
+        """Add quads to the MemoryStore.
 
         Args:
             quads: Rdflib.quads that should be added to the MemoryStore.
-        '''
+        """
 
         self.store.addN(quads)
         self.store.commit()
@@ -586,30 +658,22 @@ class MemoryStore:
         return
 
     def removequads(self, quads):
-        '''Remove quads to the MemoryStore.
+        """Remove quads from the MemoryStore.
 
         Args:
             quads: Rdflib.quads that should be removed to the MemoryStore.
-        '''
+        """
 
         self.store.remove((quads))
         self.store.commit()
         return
 
-    def reinitstore(self, graphuri):
-        '''Reset store and (re)parse all local files.'''
-
-        self.store = ConjunctiveGraph(identifier='default')
-        self.repo = GitRepo(self.path)
-        self.files = {}
-        return
-
     def reinitgraph(self, graphuri):
-        '''Reset named graph.
+        """Reset named graph.
 
         Args:
             graphuri: The URI of a named graph.
-        '''
+        """
 
         self.store.remove((None, None, None, graphuri))
 
@@ -628,13 +692,13 @@ class MemoryStore:
         return
 
     def getgraphcontent(self, graphuri):
-        '''Get the serialized content of a named graph.
+        """Get the serialized content of a named graph.
 
         Args:
             graphuri: The URI of a named graph.
         Returns:
             content: A list of strings where each string is a quad.
-        '''
+        """
         data = []
         context = self.store.get_context(URIRef(graphuri))
         triplestring = context.serialize(format='nt').decode('UTF-8')
@@ -647,6 +711,17 @@ class MemoryStore:
         data = triplestring.splitlines()
 
         return data
+
+    def getcommits(self):
+        return self.repo.getcommits()
+
+    def checkout(self, commitid):
+        self.repo.checkout(commitid)
+        self.__reinit()
+        return
+
+    def commitexists(self, commitid):
+        return self.repo.commitexist(commitid)
 
 class QueryCheck:
     def __init__(self, querystring):
@@ -711,6 +786,8 @@ class QueryCheck:
         return
 
 def sparqlresponse(result):
+    """Create a FLASK HTTP response for sparql-result+json."""
+
     return Response(
             result.serialize(format='json').decode('utf-8'),
             content_type='application/sparql-results+json'

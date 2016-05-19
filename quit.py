@@ -153,14 +153,14 @@ def checkoutVersion():
         HTTP Response 400: If commit id is not valid.
     """
 
-    try:
-        if 'commitid' in request.form:
-            commitid = request.form['commitid']
-    except:
+    if 'commitid' in request.form:
+        commitid = request.form['commitid']
+    else:
         print('Commit id is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
-    if gitrepo.commitexist(commitid):
+    print('COmmit-ID', commitid)
+    if store.commitexists(commitid):
         store.checkout(commitid)
     else:
         print('Not a valid commit id')
@@ -175,7 +175,7 @@ def getCommits():
     Returns:
         HTTP Response: json containing id, committeddate and message.
     """
-    data = gitrepo.getcommits()
+    data = store.getcommits()
     resp = Response(json.dumps(data), status=200, mimetype='application/json')
     return resp
 
@@ -234,7 +234,7 @@ def deleteTriple():
         return '', status.HTTP_403_FORBIDDEN
 
 def main():
-    app.run(debug=False, use_reloader=False)
+    app.run(debug=True, use_reloader=True)
 
 if __name__ == '__main__':
     store = initializegraphs()
