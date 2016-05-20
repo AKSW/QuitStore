@@ -2,17 +2,15 @@ from flask import Response
 from datetime import datetime
 from rdflib import ConjunctiveGraph, Graph, URIRef
 from rdflib.plugins.sparql import parser
-from rfc3987 import parse
 import os
-import sys
 import git
-import pdb
+
 
 class FileReference:
     """A class that manages n-quad files.
 
-    This class stores inforamtation about the location of a n-quad file and is able
-    to add and delete triples/quads to that file.
+    This class stores inforamtation about the location of a n-quad file and is
+    able to add and delete triples/quads to that file.
     """
 
     directory = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
@@ -22,7 +20,7 @@ class FileReference:
 
         Args:
             filelocation: A string of the filepath.
-            versioning: Boolean if versioning is enabled or not. Default is true == enabled.
+            versioning: Boolean if versioning is enabled or not. (Defaults true)
 
         Raises:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
@@ -43,22 +41,26 @@ class FileReference:
         else:
             raise ValueError
 
-        if versioning == False:
+        if not versioning:
             self.versioning = False
         else:
             try:
                 self.repo = git.Repo(self.directory)
                 assert not self.repo.bare
             except:
-                print('Error: ' + self.directory + ' is not a valid git repository. Versioning will fail. Aborting')
+                print(
+                    'Error:',
+                    self.directory,
+                    ' is not a valid Git repository.',
+                    'Versioning will fail. Aborting'
+                )
                 raise
 
         graph = ConjunctiveGraph()
 
-
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            print('Success: File',self.path,'parsed')
+            print('Success: File', self.path, 'parsed')
         except:
             # Given file contains non valid rdf data
             print('Error: Filei', self.path, 'not parsed')
@@ -73,19 +75,18 @@ class FileReference:
 
     def reloadcontent(self):
         """Reload the content from file."""
-
         graph = ConjunctiveGraph()
 
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            print('Success: File',self.path,'parsed')
+            print('Success: File', self.path, 'parsed')
             quadstring = graph.serialize(format="nquads").decode('UTF-8')
             quadlist = quadstring.splitlines()
             self.__setcontent(quadlist)
         except:
             # Given file contains non valid rdf data
             print('Error: File', self.path, 'not parsed')
-            self.__setcontent([[None] [None] [None] [None]])
+            self.__setcontent([[None][None][None][None]])
             pass
 
         graph = None
@@ -94,13 +95,15 @@ class FileReference:
 
     def __getcontent(self):
         """Return the content of a n-quad file.
+
         Returns:
             content: A list of strings where each string is a quad.
         """
         return self.content
 
-    def __setcontent(self, content: list):
+    def __setcontent(self, content):
         """Set the content of a n-quad file.
+
         Args:
             content: A list of strings where each string is a quad.
         """
@@ -109,13 +112,15 @@ class FileReference:
 
     def getcontent(self):
         """Public method that returns the content of a nquad file.
+
         Returns:
             content: A list of strings where each string is a quad.
         """
         return self.__getcontent()
 
-    def setcontent(self, content: list):
+    def setcontent(self, content):
         """Public method to set the content of a n-quad file.
+
         Args:
             content: A list of strings where each string is a quad.
         """
@@ -142,7 +147,7 @@ class FileReference:
         except AttributeError:
             pass
 
-    def addquads(self, quad, sort = True):
+    def addquads(self, quad):
         """Add quads to the file content."""
         self.content.append(quad)
         self.sortcontent()
@@ -151,6 +156,7 @@ class FileReference:
 
     def searchquad(self, quad):
         """Look if a quad is in the file content.
+
         Returns:
             True if quad was found, False else
         """
@@ -168,22 +174,25 @@ class FileReference:
             self.content.remove(searchPattern)
             self.modified = True
         except ValueError:
-            #not in list
+            # not in list
             return False
 
         return True
 
     def isversioned(self):
+        """Check if a File is part of version control system."""
         return(self.versioning)
 
+
 class GitRepo:
-    """A class that manages a git repository
+    """A class that manages a git repository.
 
     This class enables versiong via git for a repository.
     You can stage and commit files and checkout different commits of the repository.
     """
+
     commits = []
-    ids     = []
+    ids = []
 
     def __init__(self, path):
         """Initialize a new repository.
@@ -197,12 +206,33 @@ class GitRepo:
         self.path = path
 
         try:
-            self.repo    = git.Repo(self.path)
+            self.repo = git.Repo(self.path)
         except:
             raise
 
         self.git = self.repo.git
         self.__setcommits()
+
+        return
+
+    def __setcommits(self):
+        """Save a list of all git commits, commit messages and dates."""
+        commits = []
+        ids = []
+        log = self.repo.iter_commits('master')
+
+        for entry in log:
+            # extract timestamp and convert to datetime
+            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
+            ids.append(str(entry))
+            commits.append({
+                'id': str(entry),
+                'message': str(entry.message),
+                'committeddate': commitdate
+            })
+
+        self.commits = commits
+        self.ids = ids
 
         return
 
@@ -227,28 +257,6 @@ class GitRepo:
             print('Couldn\'t stage file', filename)
             raise
 
-
-    def __setcommits(self):
-        """Save a list of all git commits, commit messages and dates. """
-        commits = []
-        ids     = []
-        log = self.repo.iter_commits('master')
-
-        for entry in log:
-            # extract timestamp and convert to datetime
-            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
-            ids.append(str(entry))
-            commits.append({
-                'id':str(entry),
-                'message':str(entry.message),
-                'committeddate':commitdate
-            })
-
-        self.commits = commits
-        self.ids     = ids
-
-        return
-
     def getcommits(self):
         """Return meta data about exitsting commits.
 
@@ -258,7 +266,11 @@ class GitRepo:
         return self.commits
 
     def checkout(self, commitid):
+        """Checkout a commit by a commit id.
 
+        Args:
+            commitid: A string cotaining a commitid.
+        """
         print('Trying to checkout', commitid)
         self.git.checkout(commitid)
         try:
@@ -277,14 +289,13 @@ class GitRepo:
             True, if commitid is part of commit log
             False, else.
         """
-
         if commitid in self.ids:
             return True
         else:
             return False
 
     def update(self):
-        """Tries to add all updated files.
+        """Trie to add all updated files.
 
         Raises:
             Exception: If no tracked file was changed.
@@ -297,7 +308,7 @@ class GitRepo:
 
         try:
             print("Staging file(s)")
-            self.git.add([''],'-u')
+            self.git.add([''], '-u')
         except:
             raise
 
@@ -317,11 +328,12 @@ class GitRepo:
             print('Nothing to commit')
             return
 
-        if message == None:
+        if message is None:
             message = '\"New commit from quit-store\"'
 
-        committer = str.encode('Quit-Store <quit.store@aksw.org>')
-        #commitid = self.repo.do_commit(msg, committer)
+        # TODO Add a meta data
+        # committer = str.encode('Quit-Store <quit.store@aksw.org>')
+        # commitid = self.repo.do_commit(msg, committer)
 
         try:
             print('Commit updates')
@@ -332,6 +344,7 @@ class GitRepo:
 
         return
 
+
 class MemoryStore:
     """
     A class that combines and syncronieses n-quad files and an in-memory quad store.
@@ -340,6 +353,7 @@ class MemoryStore:
     pathes in the file system. For every Graph (context of Quad-Store) exists a
     FileReference object (n-quad) that enables versioning (with git) and persistence.
     """
+
     def __init__(self):
         """Initialize a new MemoryStore instance."""
         self.path = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
@@ -368,10 +382,6 @@ class MemoryStore:
                 pass
 
         return
-
-    def exit(self):
-        """This method can be used to proceed actions on API shutdown."""
-        pass
 
     def __updatecontentandsave(self):
         """Update the files after a update query was executed on the store and save."""
@@ -424,13 +434,14 @@ class MemoryStore:
         return self.files.items()
 
     def storeisvalid(self):
-        """This method checks if the given MemoryStore is valid.
+        """Check if the given MemoryStore is valid.
 
         Returns:
             True if, Fals if not.
         """
         graphsfromconf = list(self.getgraphsfromconf().values())
-        graphsfromdir  = self.getgraphsfromdir()
+        graphsfromdir = self.getgraphsfromdir()
+
         for filename in graphsfromconf:
             if filename not in graphsfromdir:
                 return False
@@ -439,16 +450,15 @@ class MemoryStore:
         return True
 
     def getgraphuris(self):
-        """This method returns all URIs of named graphs.
+        """Return all URIs of named graphs.
 
         Returns:
             A dictionary containing all URIs of named graphs.
         """
-
         return self.files.keys()
 
     def getgraphobject(self, graphuri):
-        """This method returns the FileReference object for a named graph URI.
+        """Return the FileReference object for a named graph URI.
 
         Args:
             graphuri: A string containing the URI of a named graph
@@ -480,7 +490,7 @@ class MemoryStore:
             return False
 
     def addFile(self, graphuri, FileReferenceObject):
-        """Adds a file to the store.
+        """Add a file to the store.
 
         This method looks if file is already part of repo.
         If not, test if given path exists, is file, is valid.
@@ -492,7 +502,6 @@ class MemoryStore:
         Raises:
             ValueError if the given file can't be parsed as nquads.
         """
-
         self.files[graphuri] = FileReferenceObject
         content = FileReferenceObject.getcontent()
         data = '\n'.join(content)
@@ -522,11 +531,12 @@ class MemoryStore:
         query+= '}'
         result = self.sysconf.query(query)
 
+        values = {}
+
         for row in result:
             values[str(row['graphuri'])] = str(row['filename'])
-        #return list(self.files.keys())
-        return values
 
+        return values
 
     def getgraphsfromconf(self):
         """Get all URIs of graphs that are configured in config.ttl.
@@ -556,9 +566,9 @@ class MemoryStore:
         Returns:
             A list of filepathes.
         """
-
         path = self.path
-        files = [ f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+
         return files
 
     def getstoresettings(self):
@@ -567,7 +577,6 @@ class MemoryStore:
         Returns:
             A list of all repositories given in configuration.
         """
-
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT ?gitrepo WHERE { '
         query+= '  <http://my.quit.conf/store> <' + nsQuit + '/pathOfGitRepo> ?gitrepo . '
@@ -576,7 +585,7 @@ class MemoryStore:
         settings = {}
         for value in result:
             settings['gitrepo'] = value['gitrepo']
-        #return list(self.files.keys())
+
         return settings
 
     def getstorepath(self):
@@ -585,11 +594,10 @@ class MemoryStore:
         Returns:
             A string containing the path of git repository.
         """
-
         return self.path
 
     def processsparql(self, querystring):
-        """This method takes a string containing a SPARQL query and executes it.
+        """Execute a sparql query after analyzing the query string.
 
         Args:
             querystring: A SPARQL query string.
@@ -600,7 +608,6 @@ class MemoryStore:
             Exception: If query is not a valid SPARQL update or select query
 
         """
-
         try:
             query = QueryCheck(querystring)
         except:
@@ -617,18 +624,17 @@ class MemoryStore:
         return result
 
     def __query(self, querystring):
-        """Private method to execute a SPARQL select query.
+        """Execute a SPARQL select query.
 
         Args:
             querystring: A string containing a SPARQL ask or select query.
         Returns:
             The SPARQL result set
         """
-
         return self.store.query(querystring)
 
     def __update(self, querystring):
-        """Private method to execute a SPARQL update query and update the store.
+        """Execute a SPARQL update query and update the store.
 
         This method executes a SPARQL update query and updates and commits all affected files.
 
@@ -651,7 +657,6 @@ class MemoryStore:
         Args:
             quads: Rdflib.quads that should be added to the MemoryStore.
         """
-
         self.store.addN(quads)
         self.store.commit()
 
@@ -663,7 +668,6 @@ class MemoryStore:
         Args:
             quads: Rdflib.quads that should be removed to the MemoryStore.
         """
-
         self.store.remove((quads))
         self.store.commit()
         return
@@ -674,7 +678,6 @@ class MemoryStore:
         Args:
             graphuri: The URI of a named graph.
         """
-
         self.store.remove((None, None, None, graphuri))
 
         for k, v in self.files.items():
@@ -713,18 +716,52 @@ class MemoryStore:
         return data
 
     def getcommits(self):
+        """Return meta data about exitsting commits.
+
+        Returns:
+            A list containing dictionaries with commit meta data
+        """
         return self.repo.getcommits()
 
     def checkout(self, commitid):
+        """Checkout a commit by a commit id.
+
+        Args:
+            commitid: A string cotaining a commitid.
+        """
         self.repo.checkout(commitid)
         self.__reinit()
         return
 
     def commitexists(self, commitid):
+        """Check if a commit id is part of the repository history.
+
+        Args:
+            commitid: String of a Git commit id.
+        Returns:
+            True, if commitid is part of commit log
+            False, else.
+        """
         return self.repo.commitexist(commitid)
 
+    def exit(self):
+        """Execute actions on API shutdown."""
+        return
+
+
 class QueryCheck:
+    """A class that provides methods for received sparql query strings.
+
+    This class is used to classify a given query string.
+    At the moment the class distinguishes between SPARQL Update and Select queries.
+    """
+
     def __init__(self, querystring):
+        """Initialize a check for a given query string.
+
+        Args:
+            querystring: A string containing a query.
+        """
         self.query = querystring
         self.parsedQuery = None
         self.queryType = None
@@ -746,54 +783,32 @@ class QueryCheck:
         raise Exception
 
     def getType(self):
+        """Return the type of a query.
+
+        Returns:
+            A string containing the query type.
+        """
         return self.queryType
 
     def getParsedQuery(self):
+        """Return the query object (rdflib) of a query string.
+
+        Returns:
+            The query object after a query string was parsed with Rdflib.
+        """
         return self.parsedQuery
 
-    def getResult(self):
-        return
-
-    def getdiff(self):
-        try:
-            delstart = self.query.find('DELETE')
-        except:
-            # no DELETE part
-            pass
-
-        try:
-            insstart = self.query.find('INSERT')
-        except:
-            # no INSERT part
-            pass
-
-        try:
-            insstart = self.query.find('INSERT')
-        except:
-            # no DELETE part
-            pass
-
-        return
-
-    def getquery(self):
-        return self.query
-
-    def __isvalidquery(self):
-        query = str(request.args.get('query'))
-        return
-
-    def __parse(self):
-        return
 
 def sparqlresponse(result):
     """Create a FLASK HTTP response for sparql-result+json."""
-
     return Response(
             result.serialize(format='json').decode('utf-8'),
             content_type='application/sparql-results+json'
             )
 
+
 def splitinformation(quads, GraphObject):
+    """Split quads ."""
     data = []
     graphsInRequest = set()
     for quad in quads:
@@ -801,13 +816,13 @@ def splitinformation(quads, GraphObject):
         if graph.startswith('_:', 0, 2):
             graphsInRequest.add('default')
             data.append({
-                        'graph'  : 'default',
-                        'quad'   : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
+                        'graph': 'default',
+                        'quad': quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
                         })
         else:
             graphsInRequest.add(graph.strip('<>'))
             data.append({
-                        'graph'  : graph.strip('<>'),
-                        'quad'   : quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
+                        'graph': graph.strip('<>'),
+                        'quad': quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
                         })
-    return {'graphs':graphsInRequest, 'data':data, 'GraphObject':GraphObject}
+    return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}

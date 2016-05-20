@@ -1,16 +1,16 @@
-from flask import request, url_for, Response
+from flask import request, Response
 from flask.ext.api.decorators import set_parsers
-from flask.ext.api import FlaskAPI, status, exceptions
+from flask.ext.api import FlaskAPI, status
 from flask.ext.cors import CORS
-from FlaskApiParser import *
-import yaml, json
-from rdflib import Graph
-from rfc3987 import parse
-from quitFiles import *
+from rdflib import ConjunctiveGraph
+from FlaskApiParser import NQuadsParser
+import json
+from quitFiles import MemoryStore, FileReference, sparqlresponse, splitinformation
 import handleexit
 
 app = FlaskAPI(__name__)
 CORS(app)
+
 
 def initializegraphs():
     """Build all needed objects.
@@ -24,12 +24,13 @@ def initializegraphs():
     versioning = True
     graphs = store.getgraphsfromconf()
     for graphuri, filename in graphs.items():
-        if store.graphexists(graphuri) == False:
+        if store.graphexists(graphuri) is False:
             graph = FileReference(filename, versioning)
             store.addFile(graphuri, graph)
             print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
 
     return store
+
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -43,9 +44,9 @@ def checkrequest(request):
 
     """
     data = []
-    graphsInRequest = set()
     reqdata = request.data
-    test = ConjunctiveGraph()
+    graph = ConjunctiveGraph()
+
     try:
         graph.parse(data=reqdata, format='nquads')
     except:
@@ -56,7 +57,15 @@ def checkrequest(request):
 
     return data
 
+
 def addtriples(values):
+    """Add triples to the store.
+
+    Args:
+        values: A dictionary containing quads and a graph object
+    Raises:
+        Exception: If contained data is not valid.
+    """
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -74,11 +83,19 @@ def addtriples(values):
         currentgraph.sortfile()
         currentgraph.savefile()
 
-    store.addquads(values['GraphObject'].quads((None,None,None,None)))
+    store.addquads(values['GraphObject'].quads((None, None, None, None)))
 
     return
 
+
 def deletetriples(values):
+    """Delete triples from the store.
+
+    Args:
+        values: A dictionary containing quads and a graph object
+    Raises:
+        Exception: If contained data is not valid.
+    """
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -92,16 +109,16 @@ def deletetriples(values):
         currentgraph.savefile()
         store.reinitgraph(graph)
 
-    #store.removequads(values['GraphObject'].quads((None,None,None,None)))
+    # store.removequads(values['GraphObject'].quads((None,None,None,None)))
 
     return
 
+
 def savedexit():
-    """This is the method called from exit handler.
+    """Perform actions to be exevuted on API shutdown.
 
     Add methods you want to call on unexpected shutdown.
     """
-
     store.exit()
 
     return
@@ -109,6 +126,7 @@ def savedexit():
 '''
 API
 '''
+
 
 @app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
@@ -119,7 +137,6 @@ def sparql():
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
-
     try:
         if request.method == 'GET':
             if 'query' in request.args:
@@ -138,7 +155,7 @@ def sparql():
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
-    if result != None:
+    if result is not None:
         return sparqlresponse(result)
     else:
         return '', status.HTTP_200_OK
@@ -152,7 +169,6 @@ def checkoutVersion():
         HTTP Response 200: If commit id is valid and store is reinitialized with the data.
         HTTP Response 400: If commit id is not valid.
     """
-
     if 'commitid' in request.form:
         commitid = request.form['commitid']
     else:
@@ -168,6 +184,7 @@ def checkoutVersion():
 
     return '', status.HTTP_200_OK
 
+
 @app.route("/git/log", methods=['GET'])
 def getCommits():
     """Receive a HTTP request and reply with all known commits.
@@ -178,6 +195,7 @@ def getCommits():
     data = store.getcommits()
     resp = Response(json.dumps(data), status=200, mimetype='application/json')
     return resp
+
 
 @app.route("/add", methods=['POST'])
 @set_parsers(NQuadsParser)
@@ -200,11 +218,11 @@ def addTriple():
                 return '', status.HTTP_403_FORBIDDEN
 
         addtriples(data)
-        commitrepo()
 
         return '', status.HTTP_201_CREATED
     else:
         return '', status.HTTP_403_FORBIDDEN
+
 
 @app.route("/delete", methods=['POST', 'GET'])
 @set_parsers(NQuadsParser)
@@ -224,16 +242,17 @@ def deleteTriple():
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 print('Graph ' + graphuri + ' is not part of the store')
-                return [note_repr(idx) for idx in sorted(notes.keys())], status.HTTP_403_FORBIDDEN
+                return '', status.HTTP_403_FORBIDDEN
 
         deletetriples(values)
-        commitrepo()
 
         return '', status.HTTP_201_CREATED
     else:
         return '', status.HTTP_403_FORBIDDEN
 
+
 def main():
+    """Start the app."""
     app.run(debug=True, use_reloader=True)
 
 if __name__ == '__main__':
