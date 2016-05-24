@@ -69,6 +69,12 @@ pip install -r requirements.txt
 ./quit.py
 ```
 
+## Tips and Tricks
+
+If you want to convert an N-Triples file to N-Quads where all data is in the same graph, the following line might help.
+
+    sed "s/.$/<http:\/\/example.org\/> ./g" data.nt > data.nq
+
 ## License
 
 This project is licensed under the terms of the GNU General Public License (GPL), please see [LICENSE](LICENSE) for further information.
