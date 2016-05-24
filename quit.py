@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from flask import request, Response
 from flask.ext.api.decorators import set_parsers
 from flask.ext.api import FlaskAPI, status
