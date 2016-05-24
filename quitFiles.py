@@ -13,7 +13,7 @@ class FileReference:
     able to add and delete triples/quads to that file.
     """
 
-    directory = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
+    directory = '../store/'
 
     def __init__(self, filelocation, versioning=True):
         """Initialize a new FileReference instance.
@@ -356,10 +356,10 @@ class MemoryStore:
 
     def __init__(self):
         """Initialize a new MemoryStore instance."""
-        self.path = '/home/norman/Documents/Arbeit/LEDS/ASPA/Scripts/store/'
         self.sysconf = Graph()
         self.sysconf.parse('config.ttl', format='turtle')
         self.store = ConjunctiveGraph(identifier='default')
+        self.path = self.getstorepath()
         self.repo = GitRepo(self.path)
         self.files = {}
         return
@@ -594,7 +594,16 @@ class MemoryStore:
         Returns:
             A string containing the path of git repository.
         """
-        return self.path
+        if self.path is None:
+            nsQuit = 'http://quit.aksw.org'
+            query = 'SELECT ?gitrepo WHERE { '
+            query+= '  <http://my.quit.conf/store> <' + nsQuit + '/pathOfGitRepo> ?gitrepo . '
+            query+= '}'
+            result = self.sysconf.query(query)
+            for value in result:
+                self.directory = value['gitrepo']
+
+        return self.directory
 
     def processsparql(self, querystring):
         """Execute a sparql query after analyzing the query string.
