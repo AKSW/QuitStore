@@ -6,7 +6,8 @@ This project runs a SPARQL endpoint for Update and Select Queries and enables ve
 
 1. create a directory, which will contain your RDF data
 2. run `git init` in this directory
-3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
+3. put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
+4. add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
 
 ## Run in docker
 
