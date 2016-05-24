@@ -56,41 +56,6 @@ class FileReference:
                 )
                 raise
 
-        graph = ConjunctiveGraph()
-
-        try:
-            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            print('Success: File', self.path, 'parsed')
-        except:
-            # Given file contains non valid rdf data
-            print('Error: Filei', self.path, 'not parsed')
-            raise
-
-        quadstring = graph.serialize(format="nquads").decode('UTF-8')
-        quadlist = quadstring.splitlines()
-        self.__setcontent(quadlist)
-        graph = None
-
-        return
-
-    def reloadcontent(self):
-        """Reload the content from file."""
-        graph = ConjunctiveGraph()
-
-        try:
-            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            print('Success: File', self.path, 'parsed')
-            quadstring = graph.serialize(format="nquads").decode('UTF-8')
-            quadlist = quadstring.splitlines()
-            self.__setcontent(quadlist)
-        except:
-            # Given file contains non valid rdf data
-            print('Error: File', self.path, 'not parsed')
-            self.__setcontent([[None][None][None][None]])
-            pass
-
-        graph = None
-
         return
 
     def __getcontent(self):
@@ -109,6 +74,28 @@ class FileReference:
         """
         self.content = content
         return
+
+    def getgraphfromfile(self):
+        """Return a Conjunctive Graph generated from the referenced file.
+
+        Returns:
+            A ConjunctiveGraph
+        """
+        graph = ConjunctiveGraph()
+
+        try:
+            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
+            print('Success: File', self.path, 'parsed')
+            # quadstring = graph.serialize(format="nquads").decode('UTF-8')
+            # quadlist = quadstring.splitlines()
+            # self.__setcontent(quadlist)
+        except:
+            # Given file contains non valid rdf data
+            # print('Error: File', self.path, 'not parsed')
+            # self.__setcontent([[None][None][None][None]])
+            pass
+
+        return graph
 
     def getcontent(self):
         """Public method that returns the content of a nquad file.
@@ -372,16 +359,16 @@ class MemoryStore:
 
         for graphuri in self.getgraphuris():
             filereference = self.getgraphobject(graphuri)
-            filereference.reloadcontent()
-            content = filereference.getcontent()
-            data = '\n'.join(content)
+            graph = filereference.getgraphfromfile()
 
             try:
-                self.store.parse(data=data, format='nquads')
+                self.store.addN((None, None, None, None))
             except:
                 print('Something went wrong with file for graph: ', graphuri)
                 self.store.__removefile(graphuri)
                 pass
+
+            graph = None
 
         return
 
@@ -505,12 +492,12 @@ class MemoryStore:
             ValueError if the given file can't be parsed as nquads.
         """
         self.files[graphuri] = FileReferenceObject
-        content = FileReferenceObject.getcontent()
-        data = '\n'.join(content)
         try:
-            self.store.parse(data=data, format='nquads')
+            newgraph = FileReferenceObject.getgraphfromfile()
+            self.store.addN(newgraph.quads((None, None, None, None)))
+            newgraph = None
         except:
-            print('Something went wrong with file: ' + self.file)
+            print('Something went wrong with file')
             raise ValueError
 
         return
