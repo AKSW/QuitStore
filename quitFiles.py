@@ -354,6 +354,8 @@ class MemoryStore:
     FileReference object (n-quad) that enables versioning (with git) and persistence.
     """
 
+    path = None
+
     def __init__(self):
         """Initialize a new MemoryStore instance."""
         self.sysconf = Graph()
