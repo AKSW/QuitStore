@@ -2,6 +2,12 @@
 
 This project runs a SPARQL endpoint for Update and Select Queries and enables versioning with Git per named graph.
 
+## Preparation of the Store repository
+
+1. create a directory, which will contain your RDF data
+2. run `git init` in this directory
+3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
+
 ## Run in docker
 
 For tests build a local docker image and run the container
@@ -13,7 +19,7 @@ with "port" being an unused port of your host and a updated config.ttl (see belo
 
 ## Configuaration of config.ttl
 
-Adjust the config.ttl
+Adjust the config.ttl. Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nq"`).
 
 ```
 conf:store a <YourQuitStore> ;
@@ -49,11 +55,15 @@ http://your.host/git/checkout?commitid=12345
 
 ## Local install with python environment
 
-Install [pip](https://pypi.python.org/pypi/pip/) to be able to do the following:
+Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html):
 ```
 pip install virtualenv
 cd /path/to/this/repo
 mkvirtualenv -p /usr/bin/python3.5 quit
+```
+
+Install the required dependencies and run the store:
+```
 pip install -r requirements.txt
 ./quit.py
 ```
