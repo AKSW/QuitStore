@@ -152,7 +152,7 @@ def sparql():
                 query = request.form['query']
             elif 'update' in request.form:
                 query = request.form['update']
-        else :
+        else:
             print("unknown request method:", request.method)
             return '', status.HTTP_400_BAD_REQUEST
     except:
@@ -172,9 +172,9 @@ def sparql():
     else:
         print("empty")
         return Response("",
-                content_type=resultFormat()['mime']
-            )
-        #return '', status.HTTP_200_OK
+                        content_type=resultFormat()['mime']
+                        )
+        # return '', status.HTTP_200_OK
 
 
 @app.route("/git/checkout", methods=['POST'])
@@ -266,25 +266,28 @@ def deleteTriple():
     else:
         return '', status.HTTP_403_FORBIDDEN
 
+
 def resultFormat():
+    """Get the mime type and result format for a Accept Header."""
     formats = {
         'application/sparql-results+json': 'json',
         'application/sparql-results+xml': 'xml',
         'application/rdf+xml': 'xml',
         'text/turtle': 'ttl',
-        'text/plain':'nt',
-        'application/n-triples':'nt',
+        'text/plain': 'nt',
+        'application/n-triples': 'nt',
         'application/nquads': 'nquads',
-        'application/n-quads':'nquads'
+        'application/n-quads': 'nquads'
     }
     best = request.accept_mimetypes.best_match(
         ['application/sparql-results+json', 'application/sparql-results+xml', 'application/rdf+xml', 'text/turtle', 'application/nquads']
     )
     # Return json as default, if no mime type is matching
-    if best == None:
+    if best is None:
         best = 'application/sparql-results+json'
 
     return {"mime": best, "format": formats[best]}
+
 
 def main():
     """Start the app."""
