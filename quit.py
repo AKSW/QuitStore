@@ -139,19 +139,29 @@ def sparql():
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
+    print (request.headers)
     try:
+        # TODO: also handle 'default-graph-uri'
         if request.method == 'GET':
             if 'query' in request.args:
                 query = request.args['query']
+            elif 'update' in request.args:
+                query = request.form['update']
         elif request.method == 'POST':
             if 'query' in request.form:
                 query = request.form['query']
+            elif 'update' in request.form:
+                query = request.form['update']
+        else :
+            print("unknown request method:", request.method)
+            return '', status.HTTP_400_BAD_REQUEST
     except:
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
+    result = store.processsparql(query)
     try:
-        result = store.processsparql(query)
+        True
     except:
         print('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
@@ -160,7 +170,11 @@ def sparql():
     if result is not None:
         return sparqlresponse(result, resultFormat())
     else:
-        return '', status.HTTP_200_OK
+        print("empty")
+        return Response("",
+                content_type=resultFormat()['mime']
+            )
+        #return '', status.HTTP_200_OK
 
 
 @app.route("/git/checkout", methods=['POST'])
@@ -255,10 +269,16 @@ def deleteTriple():
 def resultFormat():
     formats = {
         'application/sparql-results+json': 'json',
-        'application/sparql-results+xml': 'xml'
+        'application/sparql-results+xml': 'xml',
+        'application/rdf+xml': 'xml',
+        'text/turtle': 'ttl',
+        'text/plain':'nt',
+        'application/n-triples':'nt',
+        'application/nquads': 'nquads',
+        'application/n-quads':'nquads'
     }
     best = request.accept_mimetypes.best_match(
-        ['application/sparql-results+json', 'application/sparql-results+xml']
+        ['application/sparql-results+json', 'application/sparql-results+xml', 'application/rdf+xml', 'text/turtle', 'application/nquads']
     )
     # Return json as default, if no mime type is matching
     if best == None:
@@ -268,7 +288,7 @@ def resultFormat():
 
 def main():
     """Start the app."""
-    app.run(debug=True, use_reloader=True)
+    app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
     store = initializegraphs()

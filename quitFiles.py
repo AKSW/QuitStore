@@ -1,7 +1,8 @@
 from flask import Response
 from datetime import datetime
 from rdflib import ConjunctiveGraph, Graph, URIRef
-from rdflib.plugins.sparql import parser
+from rdflib.plugins import sparql
+from rdflib.plugins.sparql import parser, algebra
 import os
 import git
 
@@ -609,15 +610,23 @@ class MemoryStore:
         try:
             query = QueryCheck(querystring)
         except:
-            raise Exception()
+            raise
 
         if query.getType() == 'SELECT':
             print('Execute select query')
-            result = self.__query(querystring)
+            result = self.__query(query.getParsedQuery())
             print('SELECT result', result)
-        else:
+        elif query.getType() == 'DESCRIBE':
+            print('Skip describe query')
+            result = None
+            print('DESCRIBE result', result)
+        elif query.getType() == 'CONSTRUCT':
+            print('Execute construct query')
+            result = self.__query(query.getParsedQuery())
+            print('CONSTRUCT result', result)
+        elif  query.getType() == 'UPDATE':
             print('Execute update query')
-            result = self.__update(querystring)
+            result = self.__update(query.getParsedQuery())
 
         return result
 
@@ -765,20 +774,41 @@ class QueryCheck:
         self.queryType = None
 
         try:
-            self.parsedQuery = parser.parseQuery(querystring)
-            self.queryType = 'SELECT'
+            self.parsedQuery = sparql.prepareQuery(querystring)
+            #print("query:", self.parsedQuery)
+            print("query: name", self.parsedQuery.algebra.name)
+            if self.parsedQuery.algebra.name is "DescribeQuery":
+                self.queryType = 'DESCRIBE'
+            elif self.parsedQuery.algebra.name is "ConstructQuery":
+                self.queryType = 'CONSTRUCT'
+            elif self.parsedQuery.algebra.name is "SelectQuery":
+                self.queryType = 'SELECT'
+            elif self.parsedQuery.algebra.name is "AskQuery":
+                self.queryType = 'ASK'
             return
         except:
+            #print ("might be an update query", querystring)
             pass
 
         try:
-            self.parsedQuery = parser.parseUpdate(querystring)
+            self.parsedQuery = self.prepareUpdate(querystring)
             self.queryType = 'UPDATE'
             return
         except:
-            pass
+            print ("might be an update query", type(str(querystring)))
+            raise
+            #pass
 
         raise Exception
+
+    def prepareUpdate(updateString, initNs={}, base=None):
+        """
+        Parse and translate a SPARQL Query
+        """
+        print("prepareUpdate")
+        parsedUpdate = parser.parseUpdate(str(updateString))
+        print("parsedUpdate", parsedUpdate)
+        return algebra.translateUpdate(parsedUpdate, base, initNs)
 
     def getType(self):
         """Return the type of a query.
@@ -799,6 +829,7 @@ class QueryCheck:
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
+    print("result type", type(result))
     return Response(
             result.serialize(format=format['format']).decode('utf-8'),
             content_type=format['mime']
