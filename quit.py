@@ -158,7 +158,7 @@ def sparql():
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
     if result is not None:
-        return sparqlresponse(result)
+        return sparqlresponse(result, resultFormat())
     else:
         return '', status.HTTP_200_OK
 
@@ -252,6 +252,19 @@ def deleteTriple():
     else:
         return '', status.HTTP_403_FORBIDDEN
 
+def resultFormat():
+    formats = {
+        'application/sparql-results+json': 'json',
+        'application/sparql-results+xml': 'xml'
+    }
+    best = request.accept_mimetypes.best_match(
+        ['application/sparql-results+json', 'application/sparql-results+xml']
+    )
+    # Return json as default, if no mime type is matching
+    if best == None:
+        best = 'application/sparql-results+json'
+
+    return {"mime": best, "format": formats[best]}
 
 def main():
     """Start the app."""

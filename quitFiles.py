@@ -797,13 +797,12 @@ class QueryCheck:
         return self.parsedQuery
 
 
-def sparqlresponse(result):
+def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
     return Response(
-            result.serialize(format='json').decode('utf-8'),
-            content_type='application/sparql-results+json'
+            result.serialize(format=format['format']).decode('utf-8'),
+            content_type=format['mime']
             )
-
 
 def splitinformation(quads, GraphObject):
     """Split quads ."""
