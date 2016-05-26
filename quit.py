@@ -170,7 +170,6 @@ def sparql():
     if result is not None:
         return sparqlresponse(result, resultFormat())
     else:
-        print("empty")
         return Response("",
                         content_type=resultFormat()['mime']
                         )

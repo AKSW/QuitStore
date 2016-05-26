@@ -82,7 +82,10 @@ class MemoryStore:
 
     def __commit(self, message=None):
         """Private method to commit the changes."""
-        self.repo.commit(message)
+        try:
+            self.repo.commit(message)
+        except:
+            pass
 
         return
 

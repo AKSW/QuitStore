@@ -58,9 +58,7 @@ class QueryCheck:
 
     def prepareUpdate(updateString, initNs={}, base=None):
         """Parse and translate a SPARQL Query."""
-        print("prepareUpdate")
         parsedUpdate = parser.parseUpdate(str(updateString))
-        print("parsedUpdate", parsedUpdate)
         return algebra.translateUpdate(parsedUpdate, base, initNs)
 
     def getType(self):
