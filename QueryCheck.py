@@ -1,4 +1,5 @@
-from rdflib import parser, algebra, sparql
+from rdflib.plugins.sparql import parser, algebra
+from rdflib.plugins import sparql
 
 
 class QueryCheck:
