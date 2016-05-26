@@ -41,11 +41,20 @@ class QueryCheck:
             self.queryType = 'UPDATE'
             return
         except:
-            print ("might be an update query", type(str(querystring)))
-            raise
-            # pass
+            # print ("might be an update query", type(str(querystring)))
+            # raise
+            pass
 
-        raise Exception
+        try:
+            parser.parseUpdate(querystring)
+            # print("it is an update query")
+            self.queryType = 'UPDATE'
+            self.parsedQuery = None
+            return
+        except:
+            raise
+
+        # raise Exception
 
     def prepareUpdate(updateString, initNs={}, base=None):
         """Parse and translate a SPARQL Query."""

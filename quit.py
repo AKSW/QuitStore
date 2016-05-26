@@ -10,6 +10,7 @@ import json
 from quitFiles import MemoryStore, sparqlresponse, splitinformation
 from FileReference import FileReference
 import handleexit
+import sys
 
 app = FlaskAPI(__name__)
 CORS(app)
@@ -140,7 +141,6 @@ def sparql():
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
-    print (request.headers)
     try:
         # TODO: also handle 'default-graph-uri'
         if request.method == 'GET':
@@ -160,9 +160,8 @@ def sparql():
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
-    result = store.processsparql(query)
     try:
-        True
+        result = store.processsparql(query)
     except:
         print('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
@@ -274,7 +273,7 @@ def resultFormat():
         'application/sparql-results+json': 'json',
         'application/sparql-results+xml': 'xml',
         'application/rdf+xml': 'xml',
-        'text/turtle': 'ttl',
+        'text/turtle': 'turtle',
         'text/plain': 'nt',
         'application/n-triples': 'nt',
         'application/nquads': 'nquads',
@@ -296,6 +295,7 @@ def main():
 
 if __name__ == '__main__':
     store = initializegraphs()
+    sys.setrecursionlimit(3000)
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit()):
         main()

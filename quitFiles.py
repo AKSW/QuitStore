@@ -278,26 +278,37 @@ class MemoryStore:
             Exception: If query is not a valid SPARQL update or select query
 
         """
+        query = QueryCheck(querystring)
+        '''
         try:
             query = QueryCheck(querystring)
         except:
             raise
+        '''
 
         if query.getType() == 'SELECT':
             print('Execute select query')
             result = self.__query(query.getParsedQuery())
-            print('SELECT result', result)
+            # print('SELECT result', result)
         elif query.getType() == 'DESCRIBE':
             print('Skip describe query')
             result = None
-            print('DESCRIBE result', result)
+            # print('DESCRIBE result', result)
         elif query.getType() == 'CONSTRUCT':
             print('Execute construct query')
             result = self.__query(query.getParsedQuery())
-            print('CONSTRUCT result', result)
-        elif  query.getType() == 'UPDATE':
+            # print('CONSTRUCT result', result)
+        elif query.getType() == 'ASK':
+            print('Execute ask query')
+            result = self.__query(query.getParsedQuery())
+            # print('CONSTRUCT result', result)
+        elif query.getType() == 'UPDATE':
+            if query.getParsedQuery() is None:
+                query = querystring
+            else:
+                query = query.getParsedQuery()
             print('Execute update query')
-            result = self.__update(query.getParsedQuery())
+            result = self.__update(query)
 
         return result
 
@@ -325,7 +336,7 @@ class MemoryStore:
         # methods of MemoryStore to update the file system and git
         self.__updatecontentandsave()
         self.__updategit()
-        self.__commit(querystring)
+        self.__commit()
 
         return
 
