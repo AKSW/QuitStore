@@ -7,7 +7,8 @@ from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph
 from FlaskApiParser import NQuadsParser
 import json
-from quitFiles import MemoryStore, FileReference, sparqlresponse, splitinformation
+from quitFiles import MemoryStore, sparqlresponse, splitinformation
+from FileReference import FileReference
 import handleexit
 
 app = FlaskAPI(__name__)
