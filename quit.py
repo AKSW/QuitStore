@@ -267,6 +267,38 @@ def deleteTriple():
         return '', status.HTTP_403_FORBIDDEN
 
 
+@app.route("/pull", methods=['POST', 'GET'])
+def pull():
+    """Pull from remote.
+
+    Returns:
+        HTTP Response 201: If pull was possible
+        HTTP Response: 403: If pull did not work
+    """
+    if store.pull():
+        return '', status.HTTP_201_CREATED
+    else:
+        return '', status.HTTP_403_FORBIDDEN
+
+    return
+
+
+@app.route("/push", methods=['POST', 'GET'])
+def push():
+    """Pull from remote.
+
+    Returns:
+        HTTP Response 201: If pull was possible
+        HTTP Response: 403: If pull did not work
+    """
+    if store.push():
+        return '', status.HTTP_201_CREATED
+    else:
+        return '', status.HTTP_403_FORBIDDEN
+
+    return
+
+
 def resultFormat():
     """Get the mime type and result format for a Accept Header."""
     formats = {

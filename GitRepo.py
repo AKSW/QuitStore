@@ -112,7 +112,7 @@ class GitRepo:
         else:
             return False
 
-    def update(self):
+    def update(self, push=False):
         """Trie to add all updated files.
 
         Raises:
@@ -127,10 +127,20 @@ class GitRepo:
         try:
             print("Staging file(s)")
             self.git.add([''], '-u')
+            if push:
+                self.git.push()
         except:
             raise
 
         return
+
+    def isstagingareaclean(self):
+        """Check if staging area is clean."""
+        gitstatus = self.git.status('--porcelain')
+
+        if gitstatus == '':
+            return True
+        return False
 
     def commit(self, message=None):
         """Commit staged files.
@@ -140,9 +150,7 @@ class GitRepo:
         Raises:
             Exception: If no files in staging area.
         """
-        gitstatus = self.git.status('--porcelain')
-
-        if gitstatus == '':
+        if self.isstagingareaclean():
             print('Nothing to commit')
             return
 
@@ -161,3 +169,49 @@ class GitRepo:
             raise
 
         return
+
+    def pull(self, remote='origin', branch='master'):
+        """Pull if possible.
+
+        Return:
+            True: If successful.
+            False: If merge not possible or no updates from remote.
+        """
+        if not self.isstagingareaclean():
+            return False
+
+        self.git.fetch('--all')
+        idhead = self.git.rev_parse('HEAD')
+        idfetchhead = self.git.rev_parse('FETCH_HEAD')
+        idbase =self.git.merge_base('HEAD', 'FETCH_HEAD')
+
+        try:
+            if idhead == idbase and idhead != idfetchhead:
+                self.git.merge('FETCH_HEAD')
+                return True
+        except git.exc.GitCommandError:
+            pass
+
+        return False
+
+    def push(self, remote='origin', branch='master'):
+        """Push if possible.
+
+        Return:
+            True: If successful.
+            False: If diverged or nothing to push.
+        """
+        self.git.fetch('--all')
+        idhead = self.git.rev_parse('HEAD')
+        idfetchhead = self.git.rev_parse('FETCH_HEAD')
+        idbase =self.git.merge_base('HEAD', 'FETCH_HEAD')
+
+        if idhead != idfetchhead and idbase == idfetchhead:
+            try:
+                push = self.git.push('--porcelain')
+                if 'error: ' not in push or '[rejected]' not in push:
+                    return True
+            except git.exc.GitCommandError:
+                pass
+
+        return False

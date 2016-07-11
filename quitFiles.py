@@ -440,6 +440,18 @@ class MemoryStore:
         """Execute actions on API shutdown."""
         return
 
+    def pull(self, remote='origin', branch='master'):
+        """Perform a pull (fetch + merge)."""
+        return self.repo.pull(remote, branch)
+
+    def push(self, remote='origin', branch='master'):
+        """Perform a push."""
+        return self.repo.push(remote, branch)
+
+    def exit(self):
+        """Execute actions on API shutdown."""
+        return
+
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
