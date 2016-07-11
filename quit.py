@@ -27,9 +27,10 @@ def initializegraphs():
 
     versioning = True
     graphs = store.getgraphsfromconf()
+    repodir = store.getstorepath()
     for graphuri, filename in graphs.items():
         if store.graphexists(graphuri) is False:
-            graph = FileReference(filename, versioning)
+            graph = FileReference(filename, repodir, versioning)
             store.addFile(graphuri, graph)
             print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
 

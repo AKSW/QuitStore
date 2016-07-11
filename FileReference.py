@@ -10,9 +10,7 @@ class FileReference:
     able to add and delete triples/quads to that file.
     """
 
-    directory = '../store/'
-
-    def __init__(self, filelocation, versioning=True):
+    def __init__(self, filelocation, repodir='../store', versioning=True):
         """Initialize a new FileReference instance.
 
         Args:
@@ -24,6 +22,7 @@ class FileReference:
         """
         self.content = None
         self.modified = False
+        self.directory = repodir
 
         # Try to open file and set the new path if file was not part of the git store, yet
         if os.path.isfile(os.path.join(self.directory, filelocation)):
