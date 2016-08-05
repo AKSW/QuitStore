@@ -1,40 +1,119 @@
 #!/usr/bin/env python3
 
+from quit.core import FileReference, MemoryStore, GitRepo
+from quit.conf import QuitConfiguration
+from quit.helpers import QueryAnalyzer
+from quit.parsers import NQuadsParser
+from quit import handleexit
+from quit.utils import splitinformation, sparqlresponse
 from flask import request, Response
-from flask.ext.api.decorators import set_parsers
 from flask.ext.api import FlaskAPI, status
+from flask.ext.api.decorators import set_parsers
 from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph
-from FlaskApiParser import NQuadsParser
 import json
-from quitFiles import MemoryStore, sparqlresponse, splitinformation
-from FileReference import FileReference
-import handleexit
 import sys
 
 app = FlaskAPI(__name__)
 CORS(app)
 
 
-def initializegraphs():
+def __savefiles():
+    """Update the files after a update query was executed on the store."""
+    for file in config.getfiles():
+        graphs = config.getgraphuriforfile(file)
+        content = []
+        for graph in graphs:
+            content+= store.getgraphcontent(graph)
+        fileobject = FileReference(file)
+        fileobject.setcontent(content)
+        fileobject.savefile()
+
+    return
+
+
+def __updategit():
+    """Private method to add all updated tracked files."""
+    gitrepo.update()
+    gitrepo.commit()
+
+    return
+
+
+def __removefile(self, graphuri):
+    # TODO actions needed to remove file also from
+    # - directory and
+    # - git repository
+    try:
+        del self.files[graphuri]
+    except:
+        return
+
+    try:
+        self.store.remove((None, None, None, graphuri))
+    except:
+        return
+
+    return
+
+
+def __commit(self, message=None):
+    """Private method to commit the changes."""
+    try:
+        self.gitrepo.commit(message)
+    except:
+        pass
+
+    return
+
+
+def reloadstore(self):
+    """Create a new (empty) store and parse all known files into it."""
+    self.store = MemoryStore
+    files = config.getfiles()
+    for filename in files:
+        graphs = self.config.getgraphuriforfile(filename)
+        graphstring = ''
+        for graph in graphs:
+            graphstring+= str(graph)
+        try:
+            self.store.addfile(filename, self.config.getserializationoffile(filename))
+            print('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+        except:
+            pass
+
+    return
+
+
+def initialize():
     """Build all needed objects.
 
     Returns:
         A dictionary containing the store object and git repo object.
 
     """
+    config = QuitConfiguration()
+    print('Known graphs:', config.getgraphs())
+    print('Known files:', config.getfiles())
+    print('Path of Gitrepo:', config.getrepopath())
+    print('RDF files found in Gitepo:', config.getgraphsfromdir())
     store = MemoryStore()
 
-    versioning = True
-    graphs = store.getgraphsfromconf()
-    repodir = store.getstorepath()
-    for graphuri, filename in graphs.items():
-        if store.graphexists(graphuri) is False:
-            graph = FileReference(filename, repodir, versioning)
-            store.addFile(graphuri, graph)
-            print('Success: Graph with URI: ' + graphuri + ' added to my known graphs list')
+    files = config.getfiles()
+    gitrepo = GitRepo(config.getrepopath())
 
-    return store
+    for filename in files:
+        graphs = config.getgraphuriforfile(filename)
+        graphstring = ''
+        for graph in graphs:
+            graphstring+= str(graph)
+        try:
+            store.addfile(filename, config.getserializationoffile(filename))
+            print('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+        except:
+            pass
+
+    return {'store': store, 'config': config, 'gitrepo': gitrepo}
 
 
 def checkrequest(request):
@@ -61,6 +140,55 @@ def checkrequest(request):
     data = splitinformation(quads, graph)
 
     return data
+
+
+def processsparql(querystring):
+    """Execute a sparql query after analyzing the query string.
+
+    Args:
+        querystring: A SPARQL query string.
+    Returns:
+        SPARQL result set if valid select query.
+        None if valid update query.
+    Raises:
+        Exception: If query is not a valid SPARQL update or select query
+
+    """
+    query = QueryAnalyzer(querystring)
+    '''
+    try:
+        query = QueryCheck(querystring)
+    except:
+        raise
+    '''
+
+    if query.getType() == 'SELECT':
+        print('Execute select query')
+        result = store.query(query.getParsedQuery())
+        # print('SELECT result', result)
+    elif query.getType() == 'DESCRIBE':
+        print('Skip describe query')
+        result = None
+        # print('DESCRIBE result', result)
+    elif query.getType() == 'CONSTRUCT':
+        print('Execute construct query')
+        result = store.query(query.getParsedQuery())
+        # print('CONSTRUCT result', result)
+    elif query.getType() == 'ASK':
+        print('Execute ask query')
+        result = store.query(query.getParsedQuery())
+        # print('CONSTRUCT result', result)
+    elif query.getType() == 'UPDATE':
+        if query.getParsedQuery() is None:
+            query = querystring
+        else:
+            query = query.getParsedQuery()
+        print('Execute update query')
+        result = store.update(query)
+        __savefiles()
+        __updategit()
+
+    return result
 
 
 def addtriples(values):
@@ -161,8 +289,10 @@ def sparql():
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
+    result = processsparql(query)
     try:
-        result = store.processsparql(query)
+        # result = processsparql(query)
+        pass
     except:
         print('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
@@ -171,6 +301,7 @@ def sparql():
     if result is not None:
         return sparqlresponse(result, resultFormat())
     else:
+        # resultformat = resultFormat()
         return Response("",
                         content_type=resultFormat()['mime']
                         )
@@ -191,9 +322,12 @@ def checkoutVersion():
         print('Commit id is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
-    print('COmmit-ID', commitid)
-    if store.commitexists(commitid):
-        store.checkout(commitid)
+    print('Commit-ID', commitid)
+    if gitrepo.commitexists(commitid):
+        gitrepo.checkout(commitid)
+        # TODO store has to be reinitialized with old data
+        # Maybe a working copy of quit config, containing file to graph mappings
+        # would do the job
     else:
         print('Not a valid commit id')
         return '', status.HTTP_400_BAD_REQUEST
@@ -326,7 +460,10 @@ def main():
     app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
-    store = initializegraphs()
+    objects = initialize()
+    store = objects['store']
+    config = objects['config']
+    gitrepo = objects['gitrepo']
     sys.setrecursionlimit(3000)
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit()):

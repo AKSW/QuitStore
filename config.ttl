@@ -1,0 +1,48 @@
+@base <http://quit.aksw.org/> .
+@prefix conf: <http://my.quit.conf/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<Graph> a rdfs:Class ;
+  rdfs:label "A named Graph" .
+
+<graphUri> a rdfs:Property ;
+  rdfs:label "The URI of a graph" .
+
+<isVersioned> a rdfs:Property ;
+  rdfs:range xsd:Boolean ;
+  rdfs:label "The Information if a graph should be versioned" .
+
+<hasQuadFile> a rdfs:Property ;
+  rdfs:label "The filename" .
+
+<QuitStore> a rdfs:Class ;
+  rdfs:label "Information about the Git Store" .
+
+<allowNewGraphs> a rdfs:Property ;
+  rdfs:range xsd:Boolean ;
+  rdfs:label "(Dis)allow Quit adding new files for each new named graph." .
+
+<storeFromDir> a rdfs:Property ;
+  rdfs:range xsd:Boolean ;
+  rdfs:label "(Dis)allow Quit building the store from all files found in repository" .
+
+<pathOfGitRepo> a rdfs:Property ;
+  rdfs:label "Path to the local Git Repository" .
+
+<linkToGitRemote> a rdfs:Property ;
+  rdfs:label "Link to the Git Remote" .
+
+conf:store a <QuitStore> ;
+  <allowNewGraphs> 1 ;
+  <pathOfGitRepo> "../store.default" .
+
+conf:dbpedia a <Graph> ;
+  <graphUri> <http://dbpedia.org/> ;
+  <isVersioned> 1 ;
+  <hasQuadFile> "dbpedia.nq" .
+
+conf:default a <Graph> ;
+  <graphUri> <http://my.quit.graph/> ;
+  <isVersioned> 1 ;
+  <hasQuadFile> "default.nq" .
