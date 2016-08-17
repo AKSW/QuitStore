@@ -2,7 +2,7 @@
 from rdflib import Graph, URIRef
 from rdflib.util import guess_format
 from os import listdir
-from os.path import isdir, join, isfile, split
+from os.path import isdir, join, isfile, split, abspath
 
 
 class QuitConfiguration:
@@ -77,6 +77,7 @@ class QuitConfiguration:
             elif isfile(filename) is False:
                 pass
 
+            filename = abspath(filename)
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
             # and furthermore we assume that one file can contain data of more

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from os.path import abspath
 import git
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 from rdflib.util import guess_format
@@ -25,7 +26,7 @@ class FileReference:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
         """
         self.content = None
-        self.path = filelocation
+        self.path = abspath(filelocation)
         self.modified = False
 
         return
