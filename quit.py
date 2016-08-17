@@ -7,6 +7,7 @@ from quit.parsers import NQuadsParser
 from quit import handleexit
 from quit.utils import splitinformation, sparqlresponse
 from flask import request, Response
+from threading import Thread
 from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
 from flask.ext.cors import CORS
@@ -185,10 +186,18 @@ def processsparql(querystring):
             query = query.getParsedQuery()
         print('Execute update query')
         result = store.update(query)
-        __savefiles()
-        __updategit()
+        t = Thread(name='io_actions', target=updatefiles)
+        t.start()
 
     return result
+
+
+def updatefiles():
+    """Write store content to filesystem and update git."""
+    __savefiles()
+    __updategit()
+
+    return
 
 
 def addtriples(values):
