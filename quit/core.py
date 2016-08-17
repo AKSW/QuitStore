@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from os import listdir
-from os.path import isdir, join, isfile, split
 import git
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 from rdflib.util import guess_format
@@ -417,7 +415,7 @@ class GitRepo:
 
     def isstagingareaclean(self):
         """Check if staging area is clean."""
-        gitstatus = self.git.status('--porcelain', '-u', 'no')
+        gitstatus = self.git.diff('HEAD', '--name-only')
 
         if gitstatus == '':
             return True
