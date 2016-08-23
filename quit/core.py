@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-from os.path import abspath
 import git
+from os.path import abspath
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
-from rdflib.util import guess_format
-from quit.helpers import QueryAnalyzer
 from datetime import datetime
 
 
@@ -95,7 +93,6 @@ class FileReference:
         content = self.__getcontent()
         for line in content:
             f.write(line + '\n')
-            print(line + '\n')
         f.close
 
         print('File saved')
@@ -157,7 +154,6 @@ class MemoryStore:
     def __init__(self):
         """Initialize a new MemoryStore instance."""
         self.sysconf = Graph()
-        self.sysconf.parse('config.ttl', format='turtle')
         self.store = ConjunctiveGraph(identifier='default')
         return
 
@@ -415,34 +411,17 @@ class GitRepo:
         return self.commits
 
     def isstagingareaclean(self):
-        """Check if staging area is clean."""
+        """Check if staging area is clean.
+
+        Returns:
+            True, if staginarea is clean
+            False, else.
+        """
         gitstatus = self.git.diff('HEAD', '--name-only')
 
         if gitstatus == '':
             return True
         return False
-
-    def update(self, push=False):
-        """Try to add all updated files.
-
-        Raises:
-            Exception: If no tracked file was changed.
-        """
-        gitstatus = self.git.status('--porcelain')
-
-        if gitstatus == '':
-            print('Nothing to add')
-            return
-
-        try:
-            print("Staging file(s)")
-            self.git.add([''], '-u')
-            if push:
-                self.git.push()
-        except:
-            raise
-
-        return
 
     def pull(self, remote='origin', branch='master'):
         """Pull if possible.
@@ -489,3 +468,25 @@ class GitRepo:
                 pass
 
         return False
+
+    def update(self, push=False):
+        """Try to add all updated files.
+
+        Raises:
+            Exception: If no tracked file was changed.
+        """
+        gitstatus = self.git.status('--porcelain')
+
+        if gitstatus == '':
+            print('Nothing to add')
+            return
+
+        try:
+            print("Staging file(s)")
+            self.git.add([''], '-u')
+            if push:
+                self.git.push()
+        except:
+            raise
+
+        return
