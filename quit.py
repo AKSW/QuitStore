@@ -26,7 +26,8 @@ def __savefiles():
         for graph in graphs:
             content+= store.getgraphcontent(graph)
         fileobject = FileReference(file)
-        fileobject.setcontent(content)
+        # TODO: Quick Fix, add sorting to FileReference
+        fileobject.setcontent(sorted(content))
         fileobject.savefile()
 
     return
