@@ -7,12 +7,13 @@ This project runs a SPARQL endpoint for Update and Select Queries and enables ve
 1. Create a directory, which will contain your RDF data
 2. Run `git init` in this directory
 3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
-4. Create a configureation file named `config.ttl`
-5. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
+4. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
+5. Create a configuration file named `config.ttl` (an example is contained in this directory)
 
 ## Configuaration of config.ttl
 
-Adjust the config.ttl. Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nq"`).
+Adjust the `config.ttl`.
+Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nq"`).
 
 ```
 conf:store a <YourQuitStore> ;
@@ -24,14 +25,7 @@ conf:example a <Graph> ; # Define a Graph resource for a named graph
     <hasQuadFile> "example.nq" . # Set the filename
 ```
 
-## Run in docker
-
-For tests build a local docker image and run the container
-```
-docker build  -t "quit" .
-docker run --name=quit -p port:80 --link config.ttl/config.ttl quit:latest
-```
-with `port` being an unused port of your host and a updated `config.ttl` (see below)
+The `config.ttl` could as well be put under version controll for collaboration, but this is not neccessary.
 
 ## Run from command line
 
