@@ -290,9 +290,8 @@ def sparql():
         print('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
-    result = processsparql(query)
     try:
-        # result = processsparql(query)
+        result = processsparql(query)
         pass
     except:
         print('Something is wrong with received query')
