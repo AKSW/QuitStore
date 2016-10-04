@@ -145,10 +145,20 @@ class QuitConfiguration:
         Returns:
             A string of the path to the file asociated with named graph
         """
-        if graphuri in self.graphs:
-            return self.graphs[graphuri]
+        for uri, filename in self.graphs.items():
+            if uri == graphuri:
+                return filename
 
         return
+
+    def getgraphurifilemap(self):
+        """Get the dictionary of graphuris and their files.
+
+        Returns:
+            A dictionary of graphuris and information about their files.
+        """
+
+        return self.graphs
 
     def getserializationoffile(self, file):
         """Get the file for a given graph uri.
