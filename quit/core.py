@@ -388,7 +388,7 @@ class GitRepo:
 
         return
 
-    def commitexist(self, commitid):
+    def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
 
         Args:

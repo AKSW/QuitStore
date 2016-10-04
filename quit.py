@@ -68,17 +68,17 @@ def __commit(self, message=None):
     return
 
 
-def reloadstore(self):
+def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
-    self.store = MemoryStore
+    store = MemoryStore
     files = config.getfiles()
     for filename in files:
-        graphs = self.config.getgraphuriforfile(filename)
+        graphs = config.getgraphuriforfile(filename)
         graphstring = ''
         for graph in graphs:
             graphstring+= str(graph)
         try:
-            self.store.addfile(filename, self.config.getserializationoffile(filename))
+            store.addfile(filename, config.getserializationoffile(filename))
             print('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
             pass
@@ -320,18 +320,20 @@ def checkoutVersion():
     if 'commitid' in request.form:
         commitid = request.form['commitid']
     else:
-        print('Commit id is missing in request')
-        return '', status.HTTP_400_BAD_REQUEST
+        msg = 'Commit id is missing in request'
+        print(msg)
+        return msg, status.HTTP_400_BAD_REQUEST
 
-    print('Commit-ID', commitid)
-    if gitrepo.commitexists(commitid):
+    if gitrepo.commitexists(commitid) is True:
         gitrepo.checkout(commitid)
         # TODO store has to be reinitialized with old data
         # Maybe a working copy of quit config, containing file to graph mappings
         # would do the job
+        reloadstore()
     else:
-        print('Not a valid commit id')
-        return '', status.HTTP_400_BAD_REQUEST
+        msg = 'Not a valid commit id'
+        print(msg)
+        return msg, status.HTTP_400_BAD_REQUEST
 
     return '', status.HTTP_200_OK
 
@@ -343,7 +345,7 @@ def getCommits():
     Returns:
         HTTP Response: json containing id, committeddate and message.
     """
-    data = store.getcommits()
+    data = gitrepo.getcommits()
     resp = Response(json.dumps(data), status=200, mimetype='application/json')
     return resp
 
