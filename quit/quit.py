@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 from core import FileReference, MemoryStore, GitRepo
 from conf import QuitConfiguration
 from helpers import QueryAnalyzer
@@ -455,6 +456,9 @@ def main():
     app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+
     objects = initialize()
     store = objects['store']
     config = objects['config']
