@@ -247,7 +247,9 @@ def savedexit():
 
     Add methods you want to call on unexpected shutdown.
     """
+    print("Exiting store")
     store.exit()
+    print("Store exited")
 
     return
 
@@ -465,5 +467,5 @@ if __name__ == '__main__':
     gitrepo = objects['gitrepo']
     sys.setrecursionlimit(3000)
     # The app is started with an exit handler
-    with handleexit.handle_exit(savedexit()):
+    with handleexit.handle_exit(savedexit):
         main()
