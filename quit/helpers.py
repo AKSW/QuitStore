@@ -23,8 +23,6 @@ class QueryAnalyzer:
 
         try:
             self.parsedQuery = sparql.prepareQuery(querystring)
-            # print("query:", self.parsedQuery)
-            print("query: name", self.parsedQuery.algebra.name)
             if self.parsedQuery.algebra.name is "DescribeQuery":
                 self.queryType = 'DESCRIBE'
             elif self.parsedQuery.algebra.name is "ConstructQuery":

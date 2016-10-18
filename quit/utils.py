@@ -7,7 +7,6 @@ import sys
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
-    print("result type", type(result))
     return Response(
             result.serialize(format=format['format']).decode('utf-8'),
             content_type=format['mime']

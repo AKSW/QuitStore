@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from quit.core import FileReference, MemoryStore, GitRepo
-from quit.conf import QuitConfiguration
-from quit.helpers import QueryAnalyzer
-from quit.parsers import NQuadsParser
-from quit import handleexit
-from quit.utils import splitinformation, sparqlresponse
+from core import FileReference, MemoryStore, GitRepo
+from conf import QuitConfiguration
+from helpers import QueryAnalyzer
+from parsers import NQuadsParser
+import handleexit
+from utils import splitinformation, sparqlresponse
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
@@ -155,30 +155,23 @@ def processsparql(querystring):
         Exception: If query is not a valid SPARQL update or select query
 
     """
-    query = QueryAnalyzer(querystring)
-    '''
     try:
-        query = QueryCheck(querystring)
+        query = QueryAnalyzer(querystring)
     except:
         raise
-    '''
 
     if query.getType() == 'SELECT':
         print('Execute select query')
         result = store.query(query.getParsedQuery())
-        # print('SELECT result', result)
     elif query.getType() == 'DESCRIBE':
         print('Skip describe query')
         result = None
-        # print('DESCRIBE result', result)
     elif query.getType() == 'CONSTRUCT':
         print('Execute construct query')
         result = store.query(query.getParsedQuery())
-        # print('CONSTRUCT result', result)
     elif query.getType() == 'ASK':
         print('Execute ask query')
         result = store.query(query.getParsedQuery())
-        # print('CONSTRUCT result', result)
     elif query.getType() == 'UPDATE':
         if query.getParsedQuery() is None:
             query = querystring
