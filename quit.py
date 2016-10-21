@@ -227,7 +227,6 @@ def processsparql(querystring):
     """
     try:
         query = QueryAnalyzer(querystring)
-        query = QueryCheck(querystring)
     except:
         raise
 
