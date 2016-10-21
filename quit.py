@@ -225,13 +225,11 @@ def processsparql(querystring):
         Exception: If query is not a valid SPARQL update or select query
 
     """
-    query = QueryAnalyzer(querystring)
-    '''
     try:
+        query = QueryAnalyzer(querystring)
         query = QueryCheck(querystring)
     except:
         raise
-    '''
 
     if query.getType() == 'SELECT':
         print('Execute select query')
@@ -259,7 +257,6 @@ def processsparql(querystring):
         applyupdates(actions)
         result = None
 
-        #__savefiles()
         __updategit()
 
     return result
