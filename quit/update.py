@@ -145,9 +145,9 @@ def evalDeleteWhere(ctx, u):
 
         for g in u.quads:
             cg = ctx.dataset.get_context(c.get(g))
-            filledq = _fillTemplate(u.triples, c)
-            for item in filledq:
-                triple = (item[0], item[1], item[2])
+            filledq = _fillTemplate(u.quads[g], c)
+            for itemq in filledq:
+                triple = (itemq[0], itemq[1], itemq[2])
                 deletedtriples += ({'delete': (triple, cg.identifier)},)
             cg -= filledq
 
