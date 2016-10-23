@@ -381,18 +381,22 @@ def sparql():
                         )
         # return '', status.HTTP_200_OK
 
-
-@app.route("/git/checkout", methods=['POST'])
-def checkoutVersion():
+@app.route("/git/checkout/", methods=['POST', 'GET'], defaults={'commitid': None})
+@app.route('/git/checkout/<string:commitid>')
+def checkoutVersion(commitid):
     """Receive a HTTP request with a commit id and initialize store with data from this commit.
 
     Returns:
         HTTP Response 200: If commit id is valid and store is reinitialized with the data.
         HTTP Response 400: If commit id is not valid.
     """
-    if 'commitid' in request.form:
-        commitid = request.form['commitid']
-    else:
+    if request.method == 'GET':
+        if 'commitid' in request.args:
+            commitid = request.args['commitid']
+    elif request.method == 'POST':
+        if 'commitid' in request.form:
+            commitid = request.form['commitid']
+    if commitid == None:
         msg = 'Commit id is missing in request'
         print(msg)
         return msg, status.HTTP_400_BAD_REQUEST
