@@ -9,6 +9,7 @@ from quit.utils import splitinformation, sparqlresponse
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
+from flask.ext.api.exceptions import NotAcceptable
 from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph, Graph, Literal
 import json
@@ -227,6 +228,9 @@ def processsparql(querystring):
     """
     try:
         query = QueryAnalyzer(querystring)
+    except NotAcceptable as e:
+        print("This is not acceptable:", e)
+        exit(1)
     except:
         raise
 
@@ -362,8 +366,10 @@ def sparql():
     try:
         result = processsparql(query)
         pass
-    except:
-        print('Something is wrong with received query')
+    except Exception as e:
+        print('Something is wrong with received query:', e)
+        import traceback
+        traceback.print_tb(e.__traceback__, limit=20)
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
