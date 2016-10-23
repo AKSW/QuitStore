@@ -3,7 +3,7 @@
 from datetime import datetime
 import git
 from os.path import abspath
-from quit.update import evalUpdate
+from update import evalUpdate
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 import subprocess
 
