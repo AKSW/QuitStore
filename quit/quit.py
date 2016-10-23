@@ -10,8 +10,9 @@ from utils import splitinformation, sparqlresponse
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
+from flask.ext.api.exceptions import NotAcceptable
 from flask.ext.cors import CORS
-from rdflib import ConjunctiveGraph
+from rdflib import ConjunctiveGraph, Graph, Literal
 import json
 import sys
 
@@ -87,6 +88,61 @@ def reloadstore():
     return
 
 
+def applyupdates(actions):
+    """Update files after store was updated."""
+    graphsandfiles = config.getgraphurifilemap()
+    savefiles = {}
+
+    for entry in actions:
+        for action, quad in entry.items():
+            if quad[1] != 'default':
+                g = quad[1]
+
+                if str(g) in graphsandfiles.keys():
+                    s = quad[0][0]
+                    p = quad[0][1]
+                    o = quad[0][2]
+
+                    isliteral = isinstance(o, Literal)
+                    hasnewline = o.n3().endswith('\n')
+                    hasmultiquotes = o.n3().startswith('""')
+
+                    if(isliteral and (hasnewline or hasmultiquotes)):
+                        line = multilineliteralhack(quad)
+                    else:
+                        line = s.n3() + ' ' + p.n3() + ' ' + o.n3() + ' ' + g.n3() + ' .'
+
+                    filename = graphsandfiles[str(g)]
+                    savefiles[filename] = ''
+                    fo = references[filename]
+
+                    if action == 'insert':
+                        fo.addquad(line)
+                    elif action == 'delete':
+                        fo.deletequad(line)
+            else:
+                pass
+                # TODO If default graphs are handled, the updates must be handled here
+
+    # save all files
+    for filename in savefiles.keys():
+        fo = references[filename]
+        fo.sortcontent()
+        fo.savefile()
+
+    return
+
+
+def multilineliteralhack(quad):
+    """Handle multi lined literals with N-Quads."""
+    temp = Graph()
+    temp.add((quad[0][0], quad[0][1], quad[0][2]))
+    line = temp.serialize(format='nt').decode('UTF-8')
+    line = line.rstrip("\n")
+    line = line[:-1] + quad[1].n3() + ' .'
+
+    return line
+
 def initialize():
     """Build all needed objects.
 
@@ -99,11 +155,13 @@ def initialize():
     print('Known files:', config.getfiles())
     print('Path of Gitrepo:', config.getrepopath())
     print('RDF files found in Gitepo:', config.getgraphsfromdir())
+
     store = MemoryStore()
 
     files = config.getfiles()
     gitrepo = GitRepo(config.getrepopath())
 
+    # Load data to store
     for filename in files:
         graphs = config.getgraphuriforfile(filename)
         graphstring = ''
@@ -115,7 +173,20 @@ def initialize():
         except:
             pass
 
-    return {'store': store, 'config': config, 'gitrepo': gitrepo}
+    # Save file objects per file
+    filereferences = {}
+
+    for file in config.getfiles():
+        graphs = config.getgraphuriforfile(file)
+        content = []
+        for graph in graphs:
+            content+= store.getgraphcontent(graph)
+        fileobject = FileReference(file)
+        # TODO: Quick Fix, add sorting to FileReference
+        fileobject.setcontent(sorted(content))
+        filereferences[file] = fileobject
+
+    return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
 
 
 def checkrequest(request):
@@ -158,6 +229,9 @@ def processsparql(querystring):
     """
     try:
         query = QueryAnalyzer(querystring)
+    except NotAcceptable as e:
+        print("This is not acceptable:", e)
+        exit(1)
     except:
         raise
 
@@ -179,8 +253,10 @@ def processsparql(querystring):
         else:
             query = query.getParsedQuery()
         print('Execute update query')
-        result = store.update(query)
-        __savefiles()
+        actions = store.update(query)
+        applyupdates(actions)
+        result = None
+
         __updategit()
 
     return result
@@ -289,8 +365,10 @@ def sparql():
     try:
         result = processsparql(query)
         pass
-    except:
-        print('Something is wrong with received query')
+    except Exception as e:
+        print('Something is wrong with received query:', e)
+        import traceback
+        traceback.print_tb(e.__traceback__, limit=20)
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
@@ -465,6 +543,7 @@ if __name__ == '__main__':
     store = objects['store']
     config = objects['config']
     gitrepo = objects['gitrepo']
+    references = objects['references']
     sys.setrecursionlimit(3000)
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit):
