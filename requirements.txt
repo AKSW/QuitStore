@@ -5,3 +5,4 @@ rfc3987
 dulwich
 GitPython
 flask-cors
+pygit2

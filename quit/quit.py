@@ -5,6 +5,7 @@ from conf import QuitConfiguration
 from helpers import QueryAnalyzer
 from parsers import NQuadsParser
 import handleexit
+import logging
 from utils import splitinformation, sparqlresponse
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
@@ -17,6 +18,20 @@ import sys
 app = FlaskAPI(__name__)
 CORS(app)
 
+logger = logging.getLogger('core')
+logger.setLevel(logging.DEBUG)
+# create file handler which logs even debug messages
+fh = logging.FileHandler('quit.log')
+fh.setLevel(logging.DEBUG)
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+# add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
 
 def __savefiles():
     """Update the files after a update query was executed on the store."""
@@ -79,7 +94,6 @@ def reloadstore():
             graphstring+= str(graph)
         try:
             store.addfile(filename, config.getserializationoffile(filename))
-            print('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
             pass
 
@@ -94,10 +108,10 @@ def initialize():
 
     """
     config = QuitConfiguration()
-    print('Known graphs:', config.getgraphs())
-    print('Known files:', config.getfiles())
-    print('Path of Gitrepo:', config.getrepopath())
-    print('RDF files found in Gitepo:', config.getgraphsfromdir())
+    logger.debug('Known graphs: ' + str(config.getgraphs()))
+    logger.debug('Known files: ' + str(config.getfiles()))
+    logger.debug('Path of Gitrepo: ' + str(config.getrepopath()))
+    logger.debug('RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
     store = MemoryStore()
 
     files = config.getfiles()
@@ -110,7 +124,7 @@ def initialize():
             graphstring+= str(graph)
         try:
             store.addfile(filename, config.getserializationoffile(filename))
-            print('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+            logger.debug('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
             pass
 
@@ -161,23 +175,23 @@ def processsparql(querystring):
         raise
 
     if query.getType() == 'SELECT':
-        print('Execute select query')
+        logger.debug('Execute select query')
         result = store.query(query.getParsedQuery())
     elif query.getType() == 'DESCRIBE':
-        print('Skip describe query')
+        logger.debug('Skip describe query')
         result = None
     elif query.getType() == 'CONSTRUCT':
-        print('Execute construct query')
+        logger.debug('Execute construct query')
         result = store.query(query.getParsedQuery())
     elif query.getType() == 'ASK':
-        print('Execute ask query')
+        logger.debug('Execute ask query')
         result = store.query(query.getParsedQuery())
     elif query.getType() == 'UPDATE':
         if query.getParsedQuery() is None:
             query = querystring
         else:
             query = query.getParsedQuery()
-        print('Execute update query')
+        logger.debug('Execute update query')
         result = store.update(query)
         __savefiles()
         __updategit()
@@ -205,7 +219,7 @@ def addtriples(values):
 
     # sort files that took part and save them
     for graph in values['graphs']:
-        print('Trying to save graph with URI: ' + graph)
+        logger.debug('Trying to save graph with URI: ' + graph)
         currentgraph = store.getgraphobject(graph)
         currentgraph.sortfile()
         currentgraph.savefile()
@@ -230,7 +244,7 @@ def deletetriples(values):
 
     # sort files that took part and save them
     for graph in values['graphs']:
-        print('Trying to save graph with URI: ' + graph)
+        logger.debug('Trying to save graph with URI: ' + graph)
         currentgraph = store.getgraphobject(graph)
         currentgraph.sortfile()
         currentgraph.savefile()
@@ -277,17 +291,17 @@ def sparql():
             elif 'update' in request.form:
                 query = request.form['update']
         else:
-            print("unknown request method:", request.method)
+            logger.debug("unknown request method:", request.method)
             return '', status.HTTP_400_BAD_REQUEST
     except:
-        print('Query is missing in request')
+        logger.debug('Query is missing in request')
         return '', status.HTTP_400_BAD_REQUEST
 
     try:
         result = processsparql(query)
         pass
     except:
-        print('Something is wrong with received query')
+        logger.debug('Something is wrong with received query')
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
@@ -313,7 +327,7 @@ def checkoutVersion():
         commitid = request.form['commitid']
     else:
         msg = 'Commit id is missing in request'
-        print(msg)
+        logger.debug(msg)
         return msg, status.HTTP_400_BAD_REQUEST
 
     if gitrepo.commitexists(commitid) is True:
@@ -324,7 +338,7 @@ def checkoutVersion():
         reloadstore()
     else:
         msg = 'Not a valid commit id'
-        print(msg)
+        logger.debug(msg)
         return msg, status.HTTP_400_BAD_REQUEST
 
     return '', status.HTTP_200_OK
@@ -359,7 +373,7 @@ def addTriple():
 
         for graphuri in data['graphs']:
             if not store.graphexists(graphuri):
-                print('Graph ' + graphuri + ' is not part of the store')
+                logger.debug('Graph ' + graphuri + ' is not part of the store')
                 return '', status.HTTP_403_FORBIDDEN
 
         addtriples(data)
@@ -386,7 +400,7 @@ def deleteTriple():
 
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
-                print('Graph ' + graphuri + ' is not part of the store')
+                logger.debug('Graph ' + graphuri + ' is not part of the store')
                 return '', status.HTTP_403_FORBIDDEN
 
         deletetriples(values)

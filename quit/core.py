@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import git
+import logging
 from os.path import abspath
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 from datetime import datetime
 
+corelogger = logging.getLogger('core.quit')
 
 class FileReference:
     """A class that manages n-quad files.
@@ -23,6 +25,8 @@ class FileReference:
         Raises:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
         """
+        self.logger = logging.getLogger('file_reference_core.quit')
+        self.logger.debug('Create an instance of FileReference')
         self.content = None
         self.path = abspath(filelocation)
         self.modified = False
@@ -56,13 +60,13 @@ class FileReference:
 
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            print('Success: File', self.path, 'parsed')
+            self.logger.debug('Success: File', self.path, 'parsed')
             # quadstring = graph.serialize(format="nquads").decode('UTF-8')
             # quadlist = quadstring.splitlines()
             # self.__setcontent(quadlist)
         except:
             # Given file contains non valid rdf data
-            # print('Error: File', self.path, 'not parsed')
+            # self.logger.debug('Error: File', self.path, 'not parsed')
             # self.__setcontent([[None][None][None][None]])
             pass
 
@@ -89,13 +93,13 @@ class FileReference:
         """Save the file."""
         f = open(self.path, "w")
 
-        print('Saving file:', self.path)
+        self.logger.debug('Saving file:', self.path)
         content = self.__getcontent()
         for line in content:
             f.write(line + '\n')
         f.close
 
-        print('File saved')
+        self.logger.debug('File saved')
 
     def sortcontent(self):
         """Order file content."""
@@ -153,6 +157,8 @@ class MemoryStore:
 
     def __init__(self):
         """Initialize a new MemoryStore instance."""
+        self.logger = logging.getLogger('memory_store.core.quit')
+        self.logger.debug('Create an instance of MemoryStore')
         self.sysconf = Graph()
         self.store = ConjunctiveGraph(identifier='default')
         return
@@ -219,8 +225,8 @@ class MemoryStore:
         try:
             self.store.parse(source=filename, format=serialization)
         except:
-            print('Could not import', filename, '.')
-            print('Make sure the file exists and contains data in', serialization)
+            self.logger.debug('Could not import', filename, '.')
+            self.logger.debug('Make sure the file exists and contains data in', serialization)
             pass
 
         return
@@ -291,6 +297,8 @@ class GitRepo:
         Raises:
             Exception if path is not a git repository.
         """
+        self.logger = logging.getLogger('git_repo.core.quit')
+        self.logger.debug('Create an instance of GitStore')
         self.path = path
 
         try:
@@ -309,15 +317,18 @@ class GitRepo:
         ids = []
         log = self.repo.iter_commits('master')
 
-        for entry in log:
-            # extract timestamp and convert to datetime
-            commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
-            ids.append(str(entry))
-            commits.append({
-                'id': str(entry),
-                'message': str(entry.message),
-                'committeddate': commitdate
-            })
+        try:
+            for entry in log:
+                # extract timestamp and convert to datetime
+                commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
+                ids.append(str(entry))
+                commits.append({
+                    'id': str(entry),
+                    'message': str(entry.message),
+                    'committeddate': commitdate
+                })
+        except:
+            pass
 
         self.commits = commits
         self.ids = ids
@@ -339,11 +350,26 @@ class GitRepo:
             return
 
         try:
-            print("Trying to stage file", filename)
             self.git.add([filename])
         except:
-            print('Couldn\'t stage file', filename)
+            self.logger.debug('Couldn\'t add file', filename)
             raise
+
+    def addremote(self, name, url):
+        """Add a remote.
+
+        Args:
+            name: A string containing the name of the remote.
+            url: A string containing the url to the remote.
+        """
+        try:
+            self.repo.create_remote(name, url)
+            self.logger.debug('Successful added remote', name, url)
+        except:
+            return False
+            self.logger.debug('Could not add remote', name, url)
+
+        return True
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -351,14 +377,14 @@ class GitRepo:
         Args:
             commitid: A string cotaining a commitid.
         """
-        print('Trying to checkout', commitid)
-        self.git.checkout(commitid)
         try:
+            self.logger.debug('Checked out commit:', commitid)
             self.git.checkout(commitid)
         except:
-            raise Exception()
+            self.logger.debug('Commit-ID (' + commitid + ') does not exist')
+            return False
 
-        return
+        return True
 
     def commit(self, message=None):
         """Commit staged files.
@@ -368,10 +394,6 @@ class GitRepo:
         Raises:
             Exception: If no files in staging area.
         """
-        if self.isstagingareaclean():
-            print('Nothing to commit')
-            return
-
         if message is None:
             message = '\"New commit from quit-store\"'
 
@@ -380,13 +402,14 @@ class GitRepo:
         # commitid = self.repo.do_commit(msg, committer)
 
         try:
-            print('Commit updates')
             self.git.commit('-m', message)
             self.__setcommits()
+            self.logger.debug('Updates commited')
         except git.exc.GitCommandError:
-            raise
+            self.logger.debug('Nothing to commit')
+            return False
 
-        return
+        return True
 
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
@@ -417,10 +440,16 @@ class GitRepo:
             True, if staginarea is clean
             False, else.
         """
-        gitstatus = self.git.diff('HEAD', '--name-only')
+        try:
+            self.repo.head.commit.tree
+            gitstatus = self.git.diff('HEAD', '--name-only')
+        except:
+            # A fresh initialized repository
+            return False
 
         if gitstatus == '':
             return True
+
         return False
 
     def pull(self, remote='origin', branch='master'):
@@ -430,18 +459,16 @@ class GitRepo:
             True: If successful.
             False: If merge not possible or no updates from remote.
         """
-        if not self.isstagingareaclean():
-            return False
-
-        self.git.fetch('--all')
+        self.git.fetch(remote, branch)
         idhead = self.git.rev_parse('HEAD')
         idfetchhead = self.git.rev_parse('FETCH_HEAD')
-        idbase =self.git.merge_base('HEAD', 'FETCH_HEAD')
+        idbase = self.git.merge_base('HEAD', 'FETCH_HEAD')
 
         try:
             if idhead == idbase and idhead != idfetchhead:
-                self.git.merge('FETCH_HEAD')
-                return True
+                pull = self.git.merge('FETCH_HEAD')
+                if 'Already up-to-date' not in pull:
+                    return True
         except git.exc.GitCommandError:
             pass
 
@@ -459,13 +486,13 @@ class GitRepo:
         idfetchhead = self.git.rev_parse('FETCH_HEAD')
         idbase =self.git.merge_base('HEAD', 'FETCH_HEAD')
 
-        if idhead != idfetchhead and idbase == idfetchhead:
-            try:
-                push = self.git.push('--porcelain')
+        try:
+            if idhead != idfetchhead and idbase == idfetchhead:
+                push = self.git.push('--porcelain', remote, branch)
                 if 'error: ' not in push or '[rejected]' not in push:
                     return True
-            except git.exc.GitCommandError:
-                pass
+        except git.exc.GitCommandError:
+            pass
 
         return False
 
@@ -478,15 +505,15 @@ class GitRepo:
         gitstatus = self.git.status('--porcelain')
 
         if gitstatus == '':
-            print('Nothing to add')
-            return
+            self.logger.debug('Nothing to add')
+            return False
 
         try:
-            print("Staging file(s)")
+            self.logger.debug('Staging file(s)')
             self.git.add([''], '-u')
             if push:
                 self.git.push()
         except:
-            raise
+            return False
 
-        return
+        return True
