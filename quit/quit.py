@@ -39,6 +39,8 @@ def __updategit():
     """Private method to add all updated tracked files."""
     gitrepo.update()
     gitrepo.commit()
+    if config.isgarbagecollectionon():
+        gitrepo.garbagecollection()
 
     return
 
@@ -143,14 +145,28 @@ def multilineliteralhack(quad):
 
     return line
 
-def initialize():
+
+def initialize(args):
     """Build all needed objects.
 
     Returns:
         A dictionary containing the store object and git repo object.
 
     """
-    config = QuitConfiguration()
+    gc = False
+
+    if args.disableversioning:
+        print('Versioning is disabled')
+        v = False
+    else:
+        print('Versioning is enabled')
+        v = True
+        if args.garbagecollection:
+            gc = True
+            print('Garbage Collection is enabled')
+
+    config = QuitConfiguration(versioning=v, gc=gc)
+
     print('Known graphs:', config.getgraphs())
     print('Known files:', config.getfiles())
     print('Path of Gitrepo:', config.getrepopath())
@@ -253,11 +269,15 @@ def processsparql(querystring):
         else:
             query = query.getParsedQuery()
         print('Execute update query')
-        actions = store.update(query)
-        applyupdates(actions)
-        result = None
 
-        __updategit()
+        if config.isversioningon():
+            actions = store.update(query)
+            applyupdates(actions)
+            __updategit()
+            return
+        else:
+            store.update(query, versioning=False)
+            return
 
     return result
 
@@ -541,9 +561,11 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('-nv', '--disableversioning', action='store_true')
+    parser.add_argument('-gc', '--garbagecollection', action='store_true')
     args = parser.parse_args()
 
-    objects = initialize()
+    objects = initialize(args)
     store = objects['store']
     config = objects['config']
     gitrepo = objects['gitrepo']

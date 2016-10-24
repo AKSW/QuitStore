@@ -273,7 +273,7 @@ class MemoryStore:
         """
         return self.store.query(querystring)
 
-    def update(self, querystring):
+    def update(self, querystring, versioning=True):
         """Execute a SPARQL update query and update the store.
 
         This method executes a SPARQL update query and updates and commits all affected files.
@@ -282,9 +282,15 @@ class MemoryStore:
             querystring: A string containing a SPARQL upate query.
         """
         # methods of rdflib ConjunciveGraph
-        actions = evalUpdate(self.store, querystring)
-        self.store.update(querystring)
-        return actions
+        if versioning:
+            actions = evalUpdate(self.store, querystring)
+            self.store.update(querystring)
+            return actions
+        else:
+            self.store.update(querystring)
+            return
+
+        return
 
     def removequads(self, quads):
         """Remove quads from the MemoryStore.
@@ -430,6 +436,19 @@ class GitRepo:
             return True
         else:
             return False
+
+    def garbagecollection(self):
+        """Start garbage collection.
+
+        Args:
+            commitid: A string cotaining a commitid.
+        """
+        try:
+            self.git.gc('--auto', '--quiet')
+        except:
+            print('Garbage collection failed')
+
+        return
 
     def getcommits(self):
         """Return meta data about exitsting commits.

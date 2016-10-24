@@ -8,7 +8,7 @@ from os.path import isdir, join, isfile, split, abspath
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
 
-    def __init__(self, gitrepo=None, configfile='config.ttl'):
+    def __init__(self, gitrepo=None, configfile='config.ttl', gc=False, versioning=True):
         """The init method.
 
         This method checks if the config file is given and reads the config file.
@@ -17,6 +17,8 @@ class QuitConfiguration:
         """
         self.configchanged = False
         self.confgraph = Graph()
+        self.versioning = versioning
+        self.gc = gc
         self.graphs = {}
         self.files = {}
 
@@ -203,3 +205,9 @@ class QuitConfiguration:
                 graphfiles.append(file)
 
         return graphfiles
+
+    def isgarbagecollectionon(self):
+        return self.gc
+
+    def isversioningon(self):
+        return self.versioning
