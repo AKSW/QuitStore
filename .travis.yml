@@ -23,4 +23,4 @@ before_install:
 install: "pip install -r requirements.txt"
 
 # command to run tests
-script: tests/test_core.py
+script: cd tests && python test_core.py
