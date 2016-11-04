@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 
 import unittest
-from context import GitRepo
+from context import MemoryStore, GitRepo
 from os import path
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+
+class MemoryStoreTests(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = path.abspath('../sample')
+        self.store = MemoryStore()
+        self.store.addfile(path.join(self.dir, 'team.nq'), 'nq')
+
+    def tearDown(self):
+        self.store = None
+        self.dir = None
 
 
 class GitRepoTests(unittest.TestCase):
