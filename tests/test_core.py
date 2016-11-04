@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 
 import unittest
-import logging
 from context import GitRepo
-from os import unlink, path
-from shutil import rmtree
+from os import path
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 
-class GitrepoTests(unittest.TestCase):
+class GitRepoTests(unittest.TestCase):
 
     def setUp(self):
         dir = TemporaryDirectory()
-        remotedir = TemporaryDirectory()
         init_repository(dir.name)
         file = NamedTemporaryFile(dir=dir.name, delete=False)
         self.file = file
         self.dir = dir
-        self.remotedir = remotedir
+        self.remotedir = TemporaryDirectory()
 
     def addfiletorepo(self):
         """
@@ -30,10 +27,10 @@ class GitrepoTests(unittest.TestCase):
         file = self.file
 
         repo = GitRepo(dir.name)
+
         file.write(b'Test\n')
         file.read()
-        testrepo = Repository(dir.name)
-        testrepo = None
+
         repo.addfile(file.name)
 
         self.file = file
@@ -42,13 +39,14 @@ class GitrepoTests(unittest.TestCase):
     def createcommit(self):
         """Prepare a git repository with one existing commit.
 
-            Create a directory, initialize a git Repository, add
-            and commit a file.
+        Create a directory, initialize a git Repository, add
+        and commit a file.
 
-            Returns:
-                A list containing the directory and file
+        Returns:
+            A list containing the directory and file
         """
         self.addfiletorepo()
+
         dir = self.dir
         file = self.file
 
@@ -66,11 +64,11 @@ class GitrepoTests(unittest.TestCase):
     def getGitDirectoryWith2ExistingCommits(self):
         """Prepare a git repository with one existing commit.
 
-            Create a directory, initialize a git Repository, add
-            and commit a file.
+        Create a directory, initialize a git Repository, add
+        and commit a file.
 
-            Returns:
-                A list containing the directory and file
+        Returns:
+            A list containing the directory and file
         """
         self.addfiletorepo()
         dir = self.dir
@@ -88,7 +86,6 @@ class GitrepoTests(unittest.TestCase):
     def testCommitWithoutChanges(self):
         self.addfiletorepo()
         dir = self.dir
-        file = self.file
 
         repo = GitRepo(dir.name)
 
@@ -108,7 +105,6 @@ class GitrepoTests(unittest.TestCase):
     def testSuccessfullCommit(self):
         self.addfiletorepo()
         dir = self.dir
-        file = self.file
 
         repo = GitRepo(dir.name)
 
@@ -119,9 +115,9 @@ class GitrepoTests(unittest.TestCase):
         testrepo = Repository(dir.name)
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 1)
+
         for commit in commits:
             self.assertEqual(commit.message, '\"New commit from quit-store\"')
-        testrepo = None
 
     def testSuccessfullCommitWithMessage(self):
         self.addfiletorepo()
@@ -138,9 +134,9 @@ class GitrepoTests(unittest.TestCase):
         testrepo = Repository(dir.name)
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 1)
+
         for commit in commits:
             self.assertEqual(commit.message, message)
-        testrepo = None
 
     def testAddANewFile(self):
         dir = self.dir
