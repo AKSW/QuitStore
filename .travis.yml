@@ -7,11 +7,15 @@ python:
     - "nightly" # currently points to 3.7-dev
 
 sudo: required
-dist: trusty
+addons:
+  apt:
+    packages:
+      - cmake
+
+env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
 
 # install libgit2
 before_install:
-    - sudo apt-get install cmake
     - pip install cffi
     - "./.travis.sh"
 
