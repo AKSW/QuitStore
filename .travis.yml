@@ -6,10 +6,14 @@ python:
     - "3.6-dev" # 3.6 development branch
     - "nightly" # currently points to 3.7-dev
 
+sudo: required
+
 # install libgit2
 before_install:
     - sudo apt-get install libgit2-dev
+
 # command to install dependencies
 install: "pip install -r requirements.txt"
+
 # command to run tests
 script: tests/test_core.py
