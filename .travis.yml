@@ -6,6 +6,7 @@ python:
     - "3.6-dev" # 3.6 development branch
     - "nightly" # currently points to 3.7-dev
 
+dist: trusty
 sudo: required
 addons:
   apt:
