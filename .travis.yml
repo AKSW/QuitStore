@@ -10,6 +10,7 @@ sudo: required
 addons:
   apt:
     packages:
+      - git
       - cmake
 
 env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
