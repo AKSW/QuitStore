@@ -11,14 +11,13 @@ sudo: required
 addons:
   apt:
     packages:
-      - git-core
+      - git
       - cmake
 
 env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
 
 # install libgit2
 before_install:
-    - pip install cffi
     - "./.travis.sh"
 
 # command to install dependencies
