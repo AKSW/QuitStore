@@ -345,15 +345,12 @@ class GitRepo:
         """
         gitstatus = self.git.status('--porcelain')
 
-        if gitstatus == '':
-            self.modified = False
-            return
-
         try:
             self.git.add([filename])
+            return True
         except:
             self.logger.debug('Couldn\'t add file', filename)
-            raise
+            return False
 
     def addremote(self, name, url):
         """Add a remote.
