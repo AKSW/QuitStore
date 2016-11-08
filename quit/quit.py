@@ -282,13 +282,7 @@ def processsparql(querystring):
             query = querystring
         else:
             query = query.getParsedQuery()
-<<<<<<< HEAD
         logger.debug('Execute update query')
-        result = store.update(query)
-        __savefiles()
-        __updategit()
-=======
-        print('Execute update query')
 
         if config.isversioningon():
             actions = store.update(query)
@@ -298,7 +292,6 @@ def processsparql(querystring):
         else:
             store.update(query, versioning=False)
             return
->>>>>>> master
 
     return result
 
@@ -406,15 +399,10 @@ def sparql():
     try:
         result = processsparql(query)
         pass
-<<<<<<< HEAD
-    except:
-        logger.debug('Something is wrong with received query')
-=======
     except Exception as e:
-        print('Something is wrong with received query:', e)
+        logger.debug('Something is wrong with received query:', e)
         import traceback
         traceback.print_tb(e.__traceback__, limit=20)
->>>>>>> master
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly
