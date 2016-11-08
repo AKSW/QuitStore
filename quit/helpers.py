@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 
@@ -17,6 +19,7 @@ class QueryAnalyzer:
         Args:
             querystring: A string containing a query.
         """
+        self.logger = logging.getLogger('query_analyzer_helpers.quit')
         self.query = querystring
         self.parsedQuery = None
         self.queryType = None
@@ -68,7 +71,7 @@ class QueryAnalyzer:
         """
         try:
             self.parsedQuery = sparql.prepareQuery(querystring)
-            print(str(self.parsedQuery.algebra.name))
+            self.logger.debug(str(self.parsedQuery.algebra.name))
             if str(self.parsedQuery.algebra.name) == 'DescribeQuery':
                 self.queryType = 'DESCRIBE'
             elif str(self.parsedQuery.algebra.name) == 'ConstructQuery':
