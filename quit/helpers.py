@@ -11,7 +11,7 @@ class QueryAnalyzer:
     At the moment the class distinguishes between SPARQL Update and Select queries.
     """
 
-    def __init__(self, querystring):
+    def __init__(self, querystring, graph=None):
         """Initialize a check for a given query string.
 
         Args:
@@ -20,43 +20,17 @@ class QueryAnalyzer:
         self.query = querystring
         self.parsedQuery = None
         self.queryType = None
+        self.actions = None
 
-        try:
-            self.parsedQuery = sparql.prepareQuery(querystring)
-            if self.parsedQuery.algebra.name is "DescribeQuery":
-                self.queryType = 'DESCRIBE'
-            elif self.parsedQuery.algebra.name is "ConstructQuery":
-                self.queryType = 'CONSTRUCT'
-            elif self.parsedQuery.algebra.name is "SelectQuery":
-                self.queryType = 'SELECT'
-            elif self.parsedQuery.algebra.name is "AskQuery":
-                self.queryType = 'ASK'
+        if self.evalQuery(querystring):
             return
-        except:
-            # print ("might be an update query", querystring)
-            pass
 
-        try:
-            self.parsedQuery = self.prepareUpdate(querystring)
-            self.queryType = 'UPDATE'
+        if self.evalUpdate(querystring, graph):
             return
-        except:
-            # print ("might be an update query", type(str(querystring)))
-            # raise
-            pass
 
-        try:
-            parser.parseUpdate(querystring)
-            # print("it is an update query")
-            self.queryType = 'UPDATE'
-            self.parsedQuery = None
-            return
-        except:
-            raise
+        return
 
-        # raise Exception
-
-    def prepareUpdate(updateString, initNs={}, base=None):
+    def prepareUpdate(self, updateString, initNs={}, base=None):
         """Parse and translate a SPARQL Query."""
         parsedUpdate = parser.parseUpdate(str(updateString))
         return algebra.translateUpdate(parsedUpdate, base, initNs)
@@ -69,6 +43,14 @@ class QueryAnalyzer:
         """
         return self.queryType
 
+    def getActions(self):
+        """Return the type of a query.
+
+        Returns:
+            A string containing the query type.
+        """
+        return self.actionsType
+
     def getParsedQuery(self):
         """Return the query object (rdflib) of a query string.
 
@@ -76,3 +58,38 @@ class QueryAnalyzer:
             The query object after a query string was parsed with Rdflib.
         """
         return self.parsedQuery
+
+    def evalQuery(self, querystring):
+        """Check if the given querystring contains valid SPARQL queries.
+
+        Returns:
+            True, if querystring is valid.
+            Else, if not.
+        """
+        try:
+            self.parsedQuery = sparql.prepareQuery(querystring)
+            print(str(self.parsedQuery.algebra.name))
+            if str(self.parsedQuery.algebra.name) == 'DescribeQuery':
+                self.queryType = 'DESCRIBE'
+            elif str(self.parsedQuery.algebra.name) == 'ConstructQuery':
+                self.queryType = 'CONSTRUCT'
+            elif str(self.parsedQuery.algebra.name) == 'SelectQuery':
+                self.queryType = 'SELECT'
+            elif str(self.parsedQuery.algebra.name) == 'AskQuery':
+                self.queryType = 'ASK'
+            return True
+        except:
+            return False
+
+    def evalUpdate(self, querystring, graph):
+        """Check if the given querystring contains (a) valid SPARQL update query(ies).
+
+        Returns:
+            True, if querystring is valid.
+            Else, if not.
+        """
+        self.parsedQuery = self.prepareUpdate(querystring)
+        query = self.parsedQuery
+        self.queryType = 'UPDATE'
+        # self.actions = update2.evalUpdate(graph, query)
+        return

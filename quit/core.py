@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
 import git
 import logging
 from os.path import abspath
+from update import evalUpdate
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
-from datetime import datetime
+import subprocess
 
 corelogger = logging.getLogger('core.quit')
 
@@ -21,6 +23,8 @@ class FileReference:
         Args:
             filelocation: A string of the filepath.
             versioning: Boolean if versioning is enabled or not. (Defaults true)
+            filecontentinmem: Boolean to decide if local filesystem should be used to
+                or if file content should be kept in memory too . (Defaults false)
 
         Raises:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
@@ -110,37 +114,53 @@ class FileReference:
         except AttributeError:
             pass
 
-    def addquads(self, quad):
+    def addquads(self, quads):
         """Add quads to the file content."""
-        self.content.append(quad)
+        self.content.append(quads)
+        self.content = list(set(self.content))
         self.sortcontent()
 
         return
 
-    def searchquad(self, quad):
+    def addquad(self, quad):
+        """Add a quad to the file content."""
+        if(self.quadexists(quad)):
+            return
+
+        self.content.append(quad)
+
+        return
+
+    def quadexists(self, quad):
         """Look if a quad is in the file content.
 
         Returns:
             True if quad was found, False else
         """
-        searchPattern = quad + '\n'
+        searchPattern = quad
 
         if searchPattern in self.content:
             return True
 
         return False
 
+    def deletequads(self, quads):
+        """Remove quads from the file content."""
+        for quad in quads:
+            self.content.remove(quad)
+
+        return True
+
     def deletequad(self, quad):
-        """Add quads to the file content."""
-        searchPattern = quad
+        """Remove a quad from the file content."""
         try:
-            self.content.remove(searchPattern)
+            self.content.remove(quad)
             self.modified = True
         except ValueError:
             # not in list
-            return False
+            pass
 
-        return True
+        return
 
     def isversioned(self):
         """Check if a File is part of version control system."""
@@ -196,9 +216,16 @@ class MemoryStore:
         triplestring = triplestring.replace(' .\n', ' <' + graphuri + '> .\n')
 
         data = triplestring.splitlines()
+        data.remove('')
 
         return data
 
+    def getstoreobject(self):
+        """Get the conjunctive graph object.
+
+        Returns:
+            graph: A list of strings where each string is a quad.
+        """
     def graphexists(self, graphuri):
         """Ask if a named graph FileReference object for a named graph URI.
 
@@ -252,7 +279,7 @@ class MemoryStore:
         """
         return self.store.query(querystring)
 
-    def update(self, querystring):
+    def update(self, querystring, versioning=True):
         """Execute a SPARQL update query and update the store.
 
         This method executes a SPARQL update query and updates and commits all affected files.
@@ -261,7 +288,15 @@ class MemoryStore:
             querystring: A string containing a SPARQL upate query.
         """
         # methods of rdflib ConjunciveGraph
-        self.store.update(querystring)
+        if versioning:
+            actions = evalUpdate(self.store, querystring)
+            self.store.update(querystring)
+            return actions
+        else:
+            self.store.update(querystring)
+            return
+
+        return
 
     def removequads(self, quads):
         """Remove quads from the MemoryStore.
@@ -421,6 +456,19 @@ class GitRepo:
             return True
         else:
             return False
+
+    def garbagecollection(self):
+        """Start garbage collection.
+
+        Args:
+            commitid: A string cotaining a commitid.
+        """
+        try:
+            self.git.gc('--auto', '--quiet')
+        except:
+            print('Garbage collection failed')
+
+        return
 
     def getcommits(self):
         """Return meta data about exitsting commits.
