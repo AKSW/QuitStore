@@ -20,6 +20,9 @@ import sys
 app = FlaskAPI(__name__)
 CORS(app)
 
+werkzeugLogger = logging.getLogger('werkzeug')
+werkzeugLogger.setLevel(logging.INFO)
+
 logger = logging.getLogger('core')
 logger.setLevel(logging.DEBUG)
 # create file handler which logs even debug messages
