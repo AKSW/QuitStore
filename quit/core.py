@@ -4,7 +4,7 @@ from datetime import datetime
 import git
 import logging
 from os.path import abspath
-from update import evalUpdate
+from quit.update import evalUpdate
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 import subprocess
 
