@@ -21,7 +21,13 @@ before_install:
     - "./.travis.sh"
 
 # command to install dependencies
-install: "pip install -r requirements.txt"
+install:
+    - pip install -r requirements.txt
+    - pip install coveralls
 
 # command to run tests
-script: cd tests && python test_core.py
+script:
+    coverage run --source=quit tests/test_core.py
+
+after_success:
+    coveralls
