@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
+
 import argparse
-from core import FileReference, MemoryStore, GitRepo
-from conf import QuitConfiguration
-from helpers import QueryAnalyzer
-from parsers import NQuadsParser
+from quit.core import FileReference, MemoryStore, GitRepo
+from quit.conf import QuitConfiguration
+from quit.helpers import QueryAnalyzer
+from quit.parsers import NQuadsParser
+from quit.utils import splitinformation, sparqlresponse
 import handleexit
 import logging
-from utils import splitinformation, sparqlresponse
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
@@ -15,7 +20,6 @@ from flask.ext.api.exceptions import NotAcceptable
 from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph, Graph, Literal
 import json
-import sys
 
 app = FlaskAPI(__name__)
 CORS(app)
