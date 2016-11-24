@@ -5,7 +5,7 @@ from context import quit
 from quit.core import MemoryStore, GitRepo
 from os import path
 from pygit2 import init_repository, Repository, clone_repository
-from pygit2 import GIT_SORT_TOPOLOGICAL
+from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 class MemoryStoreTests(unittest.TestCase):
@@ -23,32 +23,39 @@ class MemoryStoreTests(unittest.TestCase):
 class GitRepoTests(unittest.TestCase):
 
     def setUp(self):
-        dir = TemporaryDirectory()
-        init_repository(dir.name)
-        file = NamedTemporaryFile(dir=dir.name, delete=False)
-        self.file = file
-        self.dir = dir
+
+        self.dir = TemporaryDirectory()
         self.remotedir = TemporaryDirectory()
+        self.file = NamedTemporaryFile(dir=self.dir.name, delete=False)
+        self.filename = path.basename(self.file.name)
+        self.author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+        self.comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
 
-    def addfiletorepo(self):
-        """
-            Create a directory, initialize a git Repository and add
-            a file to the git index.
-        """
-        dir = self.dir
-        file = self.file
+        # Initialize repository
+        init_repository(self.dir.name, False)
 
-        repo = GitRepo(dir.name)
+    def tearDown(self):
+        self.file = None
+        self.filename = None
+        self.dir.cleanup()
+        self.dir = None
+        self.remotedir.cleanup()
+        self.remotedir = None
 
-        file.write(b'Test\n')
-        file.read()
+    def getrepowithaddedfile(self):
+        """Create a repository and add a file to the git index."""
+        # Write to file
+        self.file.write(b'First Line\n')
+        self.file.read()
 
-        repo.addfile(file.name)
+        # Add file to index
+        repo = Repository(self.dir.name)
+        index = repo.index
+        index.read()
+        index.add(self.filename)
+        index.write()
 
-        self.file = file
-        self.dir = dir
-
-    def createcommit(self):
+    def getrepowithcommit(self):
         """Prepare a git repository with one existing commit.
 
         Create a directory, initialize a git Repository, add
@@ -57,255 +64,212 @@ class GitRepoTests(unittest.TestCase):
         Returns:
             A list containing the directory and file
         """
-        self.addfiletorepo()
-
-        dir = self.dir
-        file = self.file
-
-        repo = GitRepo(dir.name)
-        repo.commit()
-
-        self.file = file
-        self.dir = dir
-
-    def tearDown(self):
-        self.file = None
-        self.dir.cleanup()
-        self.remotedir.cleanup()
+        self.getrepowithaddedfile()
+        # Create commit
+        repo = Repository(self.dir.name)
+        index = repo.index
+        index.read()
+        tree = index.write_tree()
+        message = "First commit of temporary test repo"
+        repo.create_commit('HEAD',
+                           self.author, self.comitter, message,
+                           tree,
+                           [])
 
     def testAddANewFile(self):
-        dir = self.dir
-        file = self.file
+        repo = GitRepo(self.dir.name)
 
-        repo = GitRepo(dir.name)
+        testrepo = Repository(self.dir.name)
 
-        testrepo = Repository(dir.name)
+        self.file.write(b'Test')
 
-        file.write(b'Test')
-
+        testrepo.index.read()
         self.assertEqual(len(testrepo.index), 0)
-        testrepo = None
 
-        self.assertTrue(repo.addfile(file.name))
-
-        testrepo = Repository(dir.name)
+        repo.addfile(self.filename)
 
         index = testrepo.index
         index.read()
 
-        p = index[path.basename(file.name)].path
+        p = index[self.filename].path
 
-        self.assertEqual(path.join(dir.name, p), file.name)
+        self.assertEqual(path.join(self.dir.name, p), self.file.name)
 
     def testAddAExistingFile(self):
-        dir = self.dir
-        file = self.file
+        repo = GitRepo(self.dir.name)
 
-        repo = GitRepo(dir.name)
+        testrepo = Repository(self.dir.name)
 
-        testrepo = Repository(dir.name)
-
-        file.write(b'Test')
+        self.file.write(b'Test')
 
         self.assertEqual(len(testrepo.index), 0)
         testrepo = None
 
         i = 0
         while(i<2):
-            repo.addfile(file.name)
+            repo.addfile(self.filename)
 
-            testrepo = Repository(dir.name)
+            testrepo = Repository(self.dir.name)
 
             index = testrepo.index
             index.read()
 
-            p = index[path.basename(file.name)].path
+            p = index[self.filename].path
 
-            self.assertEqual(path.join(dir.name, p), file.name)
+            self.assertEqual(path.join(self.dir.name, p), self.file.name)
             self.assertEqual(len(testrepo.index), 1)
 
             testrepo = None
             i+=1
 
-        file = None
-        dir = None
-
-    def testCheckoutWithNonExistingCommitID(self):
-        self.createcommit()
-        dir = self.dir
-
-        repo = GitRepo(dir.name)
-        testrepo = Repository(dir.name)
-        log = repo.getcommits()
-        currentid = log[0]['id']
-
-        # Test
-        repo.checkout('foobar')
-
-        for commit in testrepo.walk(testrepo.head.target, GIT_SORT_TOPOLOGICAL):
-            self.assertEqual(currentid, str(commit.oid))
-
     def testCheckoutWithExistingCommitID(self):
         """Test if commits that exist, exist."""
-        self.addfiletorepo()
-        dir = self.dir
-        file = self.file
+        self.getrepowithcommit()
+        repo = GitRepo(self.dir.name)
+        testrepo = Repository(self.dir.name)
 
-        repo = GitRepo(dir.name)
-        testrepo = Repository(dir.name)
+        self.assertEqual(len(repo.getcommits()), 1)
 
-        # We are at HEAD now
-        filecontent = {}
-        lines = []
-        file.seek(0)
+        id = repo.getcommits()[0]['id']
 
-        # save file content
-        for line in file.readlines():
-            lines.append(line.decode('UTF-8'))
+        self.file.seek(0, 0)
+        self.assertEqual(self.file.readlines(), [b'First Line\n'])
 
-        # compare file content
-        self.assertEqual(lines, ['Test\n'])
+        for commit in testrepo.walk(testrepo.head.target, GIT_SORT_REVERSE):
+            self.assertEqual(str(id), str(commit.oid))
 
-        filecontent[1] = lines
+        # Write to file
+        self.file.write(b'Second Line\n')
+        self.file.read()
+        index = testrepo.index
+        index.add(self.filename)
+        index.write()
 
-        # Update file and create the 2nd commit
-        file.write(b'Add a second line to file\n')
-        file.seek(0)
-        lines = []
-        # save file content
-        for line in file.readlines():
-            lines.append(line.decode('UTF-8'))
+        tree = index.write_tree()
 
-        # compare file content
-        self.assertEqual(lines, ['Test\n', 'Add a second line to file\n'])
+        message = "Second commit of temporary test repo"
+        newid = testrepo.create_commit('HEAD',
+                                       self.author, self.comitter, message,
+                                       tree,
+                                       [testrepo.head.get_object().hex])
 
-        filecontent[0] = lines
-        repo.update()
-        repo.commit('Added a line to ' + file.name)
+        self.file.seek(0, 0)
+        self.assertEqual(self.file.readlines(), [b'First Line\n', b'Second Line\n'])
 
-        # Test if file content from above is equal to that we get if we checkout
-        # the correspinding commit
-        i = 0
-        for commit in testrepo.walk(testrepo.head.target, GIT_SORT_TOPOLOGICAL):
-            repo.checkout(str(commit.oid))
-            testfile = open(file.name, 'r')
-            self.assertEqual(filecontent[i], testfile.readlines())
-            testfile.close()
-            i+= 1
+        repo = GitRepo(self.dir.name)
+        repo.checkout(id)
+        self.file.seek(0, 0)
+        self.assertEqual(self.file.readlines(), [b'First Line\n'])
 
-    def testClearStagingArea(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        file.seek(0)
-        line = file.read()
-        self.assertEqual(line, b'Test\n')
-        self.assertTrue(repo.isstagingareaclean())
+        repo.checkout(str(newid))
+        self.file.seek(0, 0)
+        self.assertEqual(self.file.readlines(), [b'First Line\n', b'Second Line\n'])
 
-    def testCommitWithoutChanges(self):
-        self.addfiletorepo()
-        dir = self.dir
+    def testCheckoutWithNonExistingCommitID(self):
+        self.getrepowithcommit()
+        repo = GitRepo(self.dir.name)
 
-        repo = GitRepo(dir.name)
+        testrepo = Repository(self.dir.name)
 
-        i = 0
+        self.assertEqual(len(repo.getcommits()), 1)
+        id = repo.getcommits()[0]['id']
 
-        while i<2:
-            # Commit
-            repo.commit()
+        repo.checkout(id)
 
-            # Test
-            testrepo = Repository(dir.name)
-            commits = testrepo.walk(testrepo.head.target)
-            self.assertEqual(len(list(commits)), 1)
-            testrepo = None
-            i+=1
+        for commit in testrepo.walk(testrepo.head.target, GIT_SORT_REVERSE):
+            self.assertEqual(str(id), str(commit.oid))
 
-    def testIfExistingCommitExists(self):
-        """Test if commits that exist, exist."""
-        self.createcommit()
-        dir = self.dir
+        self.assertNotEqual(str(id), 'committhatdoesnotexist')
 
-        repo = GitRepo(dir.name)
-        testrepo = Repository(dir.name)
+        # Test
+        repo.checkout('commitidthatdoesnotexist')
+
+        for commit in testrepo.walk(testrepo.head.target, GIT_SORT_REVERSE):
+            self.assertEqual(str(id), str(commit.oid))
+
+    def testCommit(self):
+        self.getrepowithaddedfile()
+
+        repo = GitRepo(self.dir.name)
+
+        repo.commit()
+
+        testrepo = Repository(self.dir.name)
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 1)
+
+        # Write to file
+        self.file.write(b'Second Line\n')
+        self.file.read()
+
+        repo.commit('New commit from QuitTest')
+
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 2)
+
+    def testCommitWithoutFileChanges(self):
+        self.getrepowithcommit()
+
+        repo = GitRepo(self.dir.name)
+
+        testrepo = Repository(self.dir.name)
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 1)
+
+        repo.commit()
+
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 1)
+
+    def testGetTheGitLog(self):
+        """Test the log."""
+        repo = GitRepo(self.dir.name)
+        log = repo.getcommits()
+        self.assertTrue(len(log) == 0)
+
+        self.getrepowithcommit()
+        log = repo.getcommits()
+
+        self.assertTrue(len(log) == 1)
+        self.assertIsNotNone(log[0]['id'])
+        self.assertIsNotNone(log[0]['commit_date'])
+        self.assertEqual(log[0]['message'], 'First commit of temporary test repo')
+        self.assertEqual(log[0]['author_email'], 'quit@quit.aksw.org')
+        self.assertEqual(log[0]['parents'], [])
+        self.assertEqual(log[0]['author_name'], 'QuitStoreTest')
+
+    def testCommitExists(self):
+        """Test if a commit exists."""
+        self.getrepowithcommit()
+
+        repo = GitRepo(self.dir.name)
+        testrepo = Repository(self.dir.name)
 
         for commit in testrepo.walk(testrepo.head.target, GIT_SORT_TOPOLOGICAL):
             self.assertTrue(repo.commitexists(str(commit.oid)))
 
-    def testGetTheEmptyGitLog(self):
-        """Test the log if no commit exists."""
-        self.addfiletorepo()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        log = repo.getcommits()
-        self.assertTrue(len(log) == 0)
-
-    def testGetTheGitLog(self):
-        """Test the log with one existing commit."""
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        log = repo.getcommits()
-        self.assertTrue(len(log) == 1)
-
-    def getGitDirectoryWith2ExistingCommits(self):
-        """Prepare a git repository with one existing commit.
-
-        Create a directory, initialize a git Repository, add
-        and commit a file.
-
-        Returns:
-            A list containing the directory and file
-        """
-        self.addfiletorepo()
-        dir = self.dir
-        file = self.file
-
-        repo = GitRepo(dir.name)
-        repo.commit()
-        file.write(b'Add a second line to file\n')
-        file.read()
-        repo.update()
-        repo.commit()
-
-        return(dir, file)
-
-    def testIfNonExistingCommitExists(self):
-        """Test if a commit that doesn't exist, exists."""
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-
-        repo = GitRepo(dir.name)
         self.assertFalse(repo.commitexists('foobar'))
 
-    def testIsNonClearStaginAreaClear(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        file.write(b'Changed file content\n')
-        file.read()
+    def testIsStagingAreaClean(self):
+        self.getrepowithcommit()
+
+        repo = GitRepo(self.dir.name)
+        self.assertTrue(repo.isstagingareaclean())
+        self.file.write(b'Changed file content\n')
+        self.file.read()
         self.assertFalse(repo.isstagingareaclean())
 
     def testPullFromRemoteWhenAhead(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        remotedir = self.remotedir
+        self.getrepowithcommit()
+        repo = GitRepo(self.dir.name)
 
-        remote = clone_repository(url=dir.name, path=remotedir.name, bare=True)
+        clone_repository(url=self.dir.name, path=self.remotedir.name, bare=True)
 
-        repo = GitRepo(dir.name)
-        repo.addremote('test', remotedir.name)
+        repo.addremote('origin', self.remotedir.name)
 
         # Test if repos are equal
-        localtest = Repository(dir.name)
-        remotetest = Repository(remotedir.name)
+        localtest = Repository(self.dir.name)
+        remotetest = Repository(self.remotedir.name)
 
         localids = []
         remoteids = []
@@ -319,15 +283,14 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(len(remoteids), 1)
         self.assertEqual(localids, remoteids)
 
-        self.assertFalse(repo.pull(remote='test'))
-
         # Update local file and commit
-        file.write(b'Add a second line to file\n')
-        file.read()
-        repo.update()
+        localfile = open(self.file.name, 'w')
+        localfile.write('Change content in local file\n')
+        localfile.close()
+        repo.addall()
         repo.commit()
 
-        self.assertFalse(repo.pull(remote='test'))
+        repo.pull()
 
         localids = []
         remoteids = []
@@ -343,22 +306,18 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(localids[1], remoteids[0])
 
     def testPullFromRemoteWhenBehind(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        local = GitRepo(dir.name)
-        remotedir = self.remotedir
-        # Copy repo to add a remote
-        # self.copytree(dir.name, newdir.name, symlinks=True)
+        self.getrepowithcommit()
+        local = GitRepo(self.dir.name)
 
-        clone_repository(url=dir.name, path=remotedir.name)
+        clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.addremote('origin', remotedir.name)
-        remote = GitRepo(remotedir.name)
+        local.addremote('origin', self.remotedir.name)
+        # local.addremote('origin', 'git://github.com/nareike/adhs.git')
+        remote = GitRepo(self.remotedir.name)
 
         # Test before repositories get diverged
-        testlocal = Repository(dir.name)
-        testremote = Repository(remotedir.name)
+        testlocal = Repository(self.dir.name)
+        testremote = Repository(self.remotedir.name)
 
         locallog = []
         remotelog = []
@@ -370,15 +329,13 @@ class GitRepoTests(unittest.TestCase):
             remotelog.append(commit.oid)
 
         self.assertEqual(locallog, remotelog)
+        self.assertEqual(remotelog[0], locallog[0])
 
-        remotefile = open(path.join(remotedir.name, path.basename(file.name)), 'w')
-        remotefile.write('A new line in remote file\n')
+        remotefile = open(path.join(self.remotedir.name, self.filename), 'w')
+        remotefile.write('Changed content in file\n')
         remotefile.close()
-        remote.addfile(path.join(remotedir.name, path.basename(file.name)))
-        remote.update()
-        remote.commit()
-
-        self.assertTrue(local.pull())
+        remote.addall()
+        remote.commit('Second commit in remote')
 
         locallog = []
         remotelog = []
@@ -389,28 +346,35 @@ class GitRepoTests(unittest.TestCase):
         for commit in testremote.walk(testremote.head.target, GIT_SORT_TOPOLOGICAL):
             remotelog.append(commit.oid)
 
-        # Base should be the same
+        self.assertEqual(remotelog[1], locallog[0])
+        self.assertEqual(len(remotelog), 2)
+        self.assertEqual(len(locallog), 1)
+
+        local.pull()
+
+        locallog = []
+        remotelog = []
+
+        for commit in testlocal.walk(testlocal.head.target, GIT_SORT_TOPOLOGICAL):
+            locallog.append(commit.oid)
+
+        for commit in testremote.walk(testremote.head.target, GIT_SORT_TOPOLOGICAL):
+            remotelog.append(commit.oid)
+
         self.assertEqual(remotelog[0], locallog[0])
         self.assertEqual(remotelog[1], locallog[1])
-        # HEAD should not
 
     def testPushToRemoteWhenAhead(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        repo = GitRepo(dir.name)
-        remotedir = self.remotedir
-        # Copy repo to add a remote
-        # self.copytree(dir.name, newdir.name, symlinks=True)
+        self.getrepowithcommit()
+        repo = GitRepo(self.dir.name)
 
-        remote = clone_repository(url=dir.name, path=remotedir.name, bare=True)
+        clone_repository(url=self.dir.name, path=self.remotedir.name, bare=True)
 
-        repo = GitRepo(dir.name)
-        testrepo = Repository(dir.name)
+        repo = GitRepo(self.dir.name)
 
         # Test before file gets changed
-        testlocal = Repository(dir.name)
-        testremote = Repository(remotedir.name)
+        testlocal = Repository(self.dir.name)
+        testremote = Repository(self.remotedir.name)
 
         localids = []
         remoteids = []
@@ -425,14 +389,15 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(remoteids, localids)
 
         # Write file and create commit
-        repo.addremote('test', remotedir.name)
-        file.write(b'Add a second line to file\n')
-        file.read()
-        repo.update()
+        repo.addremote('test', self.remotedir.name)
+        self.file.write(b'Add a second line to file\n')
+        self.file.read()
+        repo.addall()
         repo.commit()
 
         # Test after file got changed and commit was created
-        self.assertTrue(repo.push(remote='test'))
+        repo.setpushurl('test', self.dir.name)
+        repo.push(remote='test')
 
         localids = []
         remoteids = []
@@ -447,20 +412,17 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(localids, remoteids)
 
     def testPushToRemoteWhenDiverged(self):
-        self.createcommit()
-        dir = self.dir
-        file = self.file
-        local = GitRepo(dir.name)
-        remotedir = self.remotedir
+        self.getrepowithcommit()
+        local = GitRepo(self.dir.name)
 
-        clone_repository(url=dir.name, path=remotedir.name)
+        clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.addremote('origin', remotedir.name)
-        remote = GitRepo(remotedir.name)
+        local.addremote('origin', self.remotedir.name)
+        remote = GitRepo(self.remotedir.name)
 
         # Test before repositories will diverge
-        testlocal = Repository(dir.name)
-        testremote = Repository(remotedir.name)
+        testlocal = Repository(self.dir.name)
+        testremote = Repository(self.remotedir.name)
 
         locallog = []
         remotelog = []
@@ -474,20 +436,18 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(locallog, remotelog)
 
         # Update files and repositories
-        remotefile = open(path.join(remotedir.name, path.basename(file.name)), 'w')
-        remotefile.write('A new line in remote file\n')
+        remotefile = open(path.join(self.remotedir.name, path.basename(self.file.name)), 'w')
+        remotefile.write('Add new content in remote file\n')
         remotefile.close()
-        remote.addfile(path.join(remotedir.name, path.basename(file.name)))
-        remote.update()
+        remote.addfile(self.filename)
+        remote.addall()
         remote.commit()
 
-        file.write(b'Change local file\n')
-        file.read()
-        local.update()
+        self.file.write(b'Add new content to local file\n')
+        self.file.read()
+        local.addall()
         local.commit()
 
-        # Test again with diverged repositories
-        # Push should fail
         self.assertFalse(local.push())
 
         locallog = []
@@ -499,22 +459,16 @@ class GitRepoTests(unittest.TestCase):
         for commit in testremote.walk(testremote.head.target, GIT_SORT_TOPOLOGICAL):
             remotelog.append(commit.oid)
 
-        # Base should be the same
         self.assertEqual(remotelog[1], locallog[1])
-        # HEAD shouldn't
         self.assertNotEqual(remotelog[0], locallog[0])
 
     def testSuccessfullCommit(self):
-        self.addfiletorepo()
-        dir = self.dir
+        self.getrepowithaddedfile()
 
-        repo = GitRepo(dir.name)
+        repo = GitRepo(self.dir.name)
+        repo.commit()
 
-        # Commit
-        self.assertTrue(repo.commit())
-
-        # Test
-        testrepo = Repository(dir.name)
+        testrepo = Repository(self.dir.name)
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 1)
 
@@ -522,32 +476,24 @@ class GitRepoTests(unittest.TestCase):
             self.assertEqual(commit.message, '\"New commit from quit-store\"')
 
     def testSuccessfullCommitWithMessage(self):
-        self.addfiletorepo()
-        dir = self.dir
+        self.getrepowithaddedfile()
 
         message = 'Test-Commit'
 
-        repo = GitRepo(dir.name)
+        repo = GitRepo(self.dir.name)
+        repo.commit(message=message)
 
-        # Commit
-        self.assertTrue(repo.commit(message=message))
-
-        # Test
-        testrepo = Repository(dir.name)
+        testrepo = Repository(self.dir.name)
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 1)
 
         for commit in commits:
             self.assertEqual(commit.message, message)
 
-    def testUpdateWithSeveralChangedFiles(self):
-        self.assertTrue(True)
-
-    def testUpdateWithUnchangedStagingArea(self):
-        self.assertTrue(True)
 
 def main():
     unittest.main()
+
 
 if __name__ == '__main__':
     main()

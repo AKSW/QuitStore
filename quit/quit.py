@@ -42,6 +42,7 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+
 def __savefiles():
     """Update the files after a update query was executed on the store."""
     for file in config.getfiles():
@@ -59,7 +60,7 @@ def __savefiles():
 
 def __updategit():
     """Private method to add all updated tracked files."""
-    gitrepo.update()
+    gitrepo.addall()
     gitrepo.commit()
     if config.isgarbagecollectionon():
         gitrepo.garbagecollection()
@@ -374,7 +375,6 @@ def savedexit():
 API
 '''
 
-
 @app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
     """Process a SPARQL query (Select or Update).
@@ -579,6 +579,7 @@ def resultFormat():
 def main():
     """Start the app."""
     app.run(debug=True, use_reloader=False)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

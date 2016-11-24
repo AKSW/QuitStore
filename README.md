@@ -34,6 +34,7 @@ The `config.ttl` could as well be put under version controll for collaboration, 
 
 ## Run from command line
 
+Install [libgit2](https://libgit2.github.com/) needed for pygit2 bindings.
 Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html):
 ```
 pip install virtualenv
