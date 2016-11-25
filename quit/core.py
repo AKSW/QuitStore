@@ -326,10 +326,11 @@ class GitRepo:
     """
 
     path = ''
+    pathspec = []
     author = Signature('QuitStore', 'quit@quit.aksw.org')
     comitter = Signature('QuitStore', 'quit@quit.aksw.org')
 
-    def __init__(self, path):
+    def __init__(self, path, pathspec=[]):
         """Initialize a new repository from an existing directory.
 
         Args:
@@ -337,6 +338,7 @@ class GitRepo:
         """
         self.logger = logging.getLogger('git_repo.core.quit')
         self.logger.debug('GitRepo, init, Create an instance of GitStore')
+        self.pathspec = pathspec
         self.path = path
 
         try:
@@ -351,7 +353,7 @@ class GitRepo:
     def addall(self):
         """Add all (newly created|changed) files to index."""
         self.repo.index.read()
-        self.repo.index.add_all()
+        self.repo.index.add_all(self.pathspec)
         self.repo.index.write()
 
     def addfile(self, filename):

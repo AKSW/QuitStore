@@ -197,7 +197,11 @@ def initialize(args):
     store = MemoryStore()
 
     files = config.getfiles()
-    gitrepo = GitRepo(config.getrepopath())
+
+    if args.pathspec:
+        gitrepo = GitRepo(config.getrepopath(), config.getpathspec())
+    else:
+        gitrepo = GitRepo(config.getrepopath())
 
     # Load data to store
     for filename in files:
@@ -585,6 +589,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
+    parser.add_argument('-ps', '--pathspec', action='store_true')
     args = parser.parse_args()
 
     objects = initialize(args)
