@@ -298,8 +298,9 @@ def processsparql(querystring):
 
         if config.isversioningon():
             actions = store.update(query)
-            applyupdates(actions)
-            __updategit()
+            if len(actions) > 0:
+                applyupdates(actions)
+                __updategit()
             return
         else:
             store.update(query, versioning=False)
