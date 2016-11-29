@@ -21,6 +21,7 @@ class QuitConfiguration:
         self.gc = gc
         self.graphs = {}
         self.files = {}
+        self.pathspec = []
 
         if isfile(configfile):
             try:
@@ -75,6 +76,7 @@ class QuitConfiguration:
             filename = str(row['filename'])
 
             if isfile(join(self.gitrepo, filename)):
+                self.pathspec.append(filename)
                 filename = join(self.gitrepo, filename)
             elif isfile(filename) is False:
                 pass
@@ -161,6 +163,10 @@ class QuitConfiguration:
         """
 
         return self.graphs
+
+    def getpathspec(self):
+        """Get pathspec from config."""
+        return self.pathspec
 
     def getserializationoffile(self, file):
         """Get the file for a given graph uri.

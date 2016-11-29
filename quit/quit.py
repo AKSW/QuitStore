@@ -42,6 +42,7 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+
 def __savefiles():
     """Update the files after a update query was executed on the store."""
     for file in config.getfiles():
@@ -59,7 +60,7 @@ def __savefiles():
 
 def __updategit():
     """Private method to add all updated tracked files."""
-    gitrepo.update()
+    gitrepo.addall()
     gitrepo.commit()
     if config.isgarbagecollectionon():
         gitrepo.garbagecollection()
@@ -196,7 +197,11 @@ def initialize(args):
     store = MemoryStore()
 
     files = config.getfiles()
-    gitrepo = GitRepo(config.getrepopath())
+
+    if args.pathspec:
+        gitrepo = GitRepo(config.getrepopath(), config.getpathspec())
+    else:
+        gitrepo = GitRepo(config.getrepopath())
 
     # Load data to store
     for filename in files:
@@ -293,8 +298,9 @@ def processsparql(querystring):
 
         if config.isversioningon():
             actions = store.update(query)
-            applyupdates(actions)
-            __updategit()
+            if len(actions) > 0:
+                applyupdates(actions)
+                __updategit()
             return
         else:
             store.update(query, versioning=False)
@@ -373,7 +379,6 @@ def savedexit():
 '''
 API
 '''
-
 
 @app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
@@ -580,10 +585,12 @@ def main():
     """Start the app."""
     app.run(debug=True, use_reloader=False)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
+    parser.add_argument('-ps', '--pathspec', action='store_true')
     args = parser.parse_args()
 
     objects = initialize(args)

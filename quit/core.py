@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
-import git
 import logging
 from os.path import abspath
 from quit.update import evalUpdate
+from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
+from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
+from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
+from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT, init_repository
+from pygit2 import Repository, Signature
+from os.path import isdir, join
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
-import subprocess
 
 corelogger = logging.getLogger('core.quit')
+
 
 class FileReference:
     """A class that manages n-quad files.
@@ -320,72 +325,51 @@ class GitRepo:
     You can stage and commit files and checkout different commits of the repository.
     """
 
-    commits = []
-    ids = []
+    path = ''
+    pathspec = []
+    author = Signature('QuitStore', 'quit@quit.aksw.org')
+    comitter = Signature('QuitStore', 'quit@quit.aksw.org')
 
-    def __init__(self, path):
-        """Initialize a new repository.
+    def __init__(self, path, pathspec=[]):
+        """Initialize a new repository from an existing directory.
 
         Args:
             path: A string containing the path to the repository.
-
-        Raises:
-            Exception if path is not a git repository.
         """
         self.logger = logging.getLogger('git_repo.core.quit')
-        self.logger.debug('Create an instance of GitStore')
+        self.logger.debug('GitRepo, init, Create an instance of GitStore')
+        self.pathspec = pathspec
         self.path = path
 
         try:
-            self.repo = git.Repo(self.path)
+            if isdir(join(path, '.git')):
+                repo = Repository(path)
+            else:
+                repo = init_repository(path, False)
+            self.repo = repo
         except:
             raise
 
-        self.git = self.repo.git
-        self.__setcommits()
-
-        return
-
-    def __setcommits(self):
-        """Save a list of all git commits, commit messages and dates."""
-        commits = []
-        ids = []
-        log = self.repo.iter_commits('master')
-
-        try:
-            for entry in log:
-                # extract timestamp and convert to datetime
-                commitdate = datetime.fromtimestamp(float(entry.committed_date)).strftime('%Y-%m-%d %H:%M:%S')
-                ids.append(str(entry))
-                commits.append({
-                    'id': str(entry),
-                    'message': str(entry.message),
-                    'committeddate': commitdate
-                })
-        except:
-            pass
-
-        self.commits = commits
-        self.ids = ids
-
-        return
+    def addall(self):
+        """Add all (newly created|changed) files to index."""
+        self.repo.index.read()
+        self.repo.index.add_all(self.pathspec)
+        self.repo.index.write()
 
     def addfile(self, filename):
-        """Add a file that should be tracked.
+        """Add a file to the index.
 
         Args:
             filename: A string containing the path to the file.
-        Raises:
-            Exception: If file was not found under 'filename' or if file is part of store.
         """
-        gitstatus = self.git.status('--porcelain')
+        index = self.repo.index
+        index.read()
 
         try:
-            self.git.add([filename])
-            return True
+            index.add(filename)
+            index.write()
         except:
-            self.logger.debug('Couldn\'t add file', filename)
-            return False
+            self.logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
 
     def addremote(self, name, url):
         """Add a remote.
@@ -395,13 +379,10 @@ class GitRepo:
             url: A string containing the url to the remote.
         """
         try:
-            self.repo.create_remote(name, url)
-            self.logger.debug('Successful added remote', name, url)
+            self.repo.remotes.create(name, url)
+            self.logger.debug('GitRepo, addremote, Successful added remote', name, url)
         except:
-            return False
-            self.logger.debug('Could not add remote', name, url)
-
-        return True
+            self.logger.debug('GitRepo, addremote, Could not add remote', name, url)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -410,13 +391,12 @@ class GitRepo:
             commitid: A string cotaining a commitid.
         """
         try:
-            self.logger.debug('Checked out commit:', commitid)
-            self.git.checkout(commitid)
+            commit = self.repo.revparse_single(commitid)
+            self.repo.set_head(commit.oid)
+            self.repo.reset(commit.oid, GIT_RESET_HARD)
+            self.logger.debug('GitRepo, checkout, Checked out commit:', commitid)
         except:
-            self.logger.debug('Commit-ID (' + commitid + ') does not exist')
-            return False
-
-        return True
+            self.logger.debug('GitRepo, checkout, Commit-ID (' + commitid + ') does not exist')
 
     def commit(self, message=None):
         """Commit staged files.
@@ -426,22 +406,36 @@ class GitRepo:
         Raises:
             Exception: If no files in staging area.
         """
-        if message is None:
-            message = '\"New commit from quit-store\"'
+        if self.isstagingareaclean():
+            # nothing to commit
+            return
 
-        # TODO Add a meta data
-        # committer = str.encode('Quit-Store <quit.store@aksw.org>')
-        # commitid = self.repo.do_commit(msg, committer)
+        if message is None:
+            message = 'New commit from quit-store'
+
+        # tree = self.repo.TreeBuilder().write()
+
+        index = self.repo.index
+        index.read()
+        tree = index.write_tree()
 
         try:
-            self.git.commit('-m', message)
-            self.__setcommits()
-            self.logger.debug('Updates commited')
-        except git.exc.GitCommandError:
-            self.logger.debug('Nothing to commit')
-            return False
-
-        return True
+            if len(self.repo.listall_reference_objects()) == 0:
+                # Initial Commit
+                message = message + " Initial Commit from QuitStore"
+                self.repo.create_commit('HEAD',
+                                        self.author, self.comitter, message,
+                                        tree,
+                                        [])
+            else:
+                self.repo.create_commit('HEAD',
+                                        self.author, self.comitter, message,
+                                        tree,
+                                        [self.repo.head.get_object().hex]
+                                        )
+            self.logger.debug('GitRepo, commit, Updates commited')
+        except:
+            self.logger.debug('GitRepo, commit, Nothing to commit')
 
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
@@ -452,7 +446,7 @@ class GitRepo:
             True, if commitid is part of commit log
             False, else.
         """
-        if commitid in self.ids:
+        if commitid in self.getids():
             return True
         else:
             return False
@@ -463,12 +457,21 @@ class GitRepo:
         Args:
             commitid: A string cotaining a commitid.
         """
+        '''
         try:
             self.git.gc('--auto', '--quiet')
         except:
             print('Garbage collection failed')
-
+        '''
         return
+
+    def getpath(self):
+        """Return the path of the git repository.
+
+        Returns:
+            A string containing the path to the directory of git repo
+        """
+        return self.path
 
     def getcommits(self):
         """Return meta data about exitsting commits.
@@ -476,7 +479,33 @@ class GitRepo:
         Returns:
             A list containing dictionaries with commit meta data
         """
-        return self.commits
+        commits = []
+        if len(self.repo.listall_reference_objects()) > 0:
+            for commit in self.repo.walk(self.repo.head.target, GIT_SORT_REVERSE):
+                # commitdate = datetime.fromtimestamp(float(commit.date)).strftime('%Y-%m-%d %H:%M:%S')
+                commits.append({
+                    'id': str(commit.oid),
+                    'message': str(commit.message),
+                    'commit_date': datetime.fromtimestamp(
+                        commit.commit_time).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    'author_name': commit.author.name,
+                    'author_email': commit.author.email,
+                    'parents': [c.hex for c in commit.parents],
+                    }
+                )
+        return commits
+
+    def getids(self):
+        """Return meta data about exitsting commits.
+
+        Returns:
+            A list containing dictionaries with commit meta data
+        """
+        ids = []
+        if len(self.repo.listall_reference_objects()) > 0:
+            for commit in self.repo.walk(self.repo.head.target, GIT_SORT_REVERSE):
+                ids.append(str(commit.oid))
+        return ids
 
     def isstagingareaclean(self):
         """Check if staging area is clean.
@@ -485,17 +514,13 @@ class GitRepo:
             True, if staginarea is clean
             False, else.
         """
-        try:
-            self.repo.head.commit.tree
-            gitstatus = self.git.diff('HEAD', '--name-only')
-        except:
-            # A fresh initialized repository
-            return False
+        status = self.repo.status()
 
-        if gitstatus == '':
-            return True
+        for filepath, flags in status.items():
+            if flags != GIT_STATUS_CURRENT:
+                return False
 
-        return False
+        return True
 
     def pull(self, remote='origin', branch='master'):
         """Pull if possible.
@@ -504,20 +529,37 @@ class GitRepo:
             True: If successful.
             False: If merge not possible or no updates from remote.
         """
-        self.git.fetch(remote, branch)
-        idhead = self.git.rev_parse('HEAD')
-        idfetchhead = self.git.rev_parse('FETCH_HEAD')
-        idbase = self.git.merge_base('HEAD', 'FETCH_HEAD')
-
         try:
-            if idhead == idbase and idhead != idfetchhead:
-                pull = self.git.merge('FETCH_HEAD')
-                if 'Already up-to-date' not in pull:
-                    return True
-        except git.exc.GitCommandError:
-            pass
+            self.repo.remotes[remote].fetch()
+        except:
+            self.logger.debug('GitRepo, pull,  No remote', remote)
 
-        return False
+        ref = 'refs/remotes/' + remote + '/' + branch
+        remoteid = self.repo.lookup_reference(ref).target
+        analysis, _ = self.repo.merge_analysis(remoteid)
+
+        if analysis & GIT_MERGE_ANALYSIS_UP_TO_DATE:
+            # Already up-to-date
+            pass
+        elif analysis & GIT_MERGE_ANALYSIS_FASTFORWARD:
+            # fastforward
+            self.repo.checkout_tree(self.repo.get(remoteid))
+            master_ref = self.repo.lookup_reference('refs/heads/master')
+            master_ref.set_target(remoteid)
+            self.repo.head.set_target(remoteid)
+        elif analysis & GIT_MERGE_ANALYSIS_NORMAL:
+            self.repo.merge(remoteid)
+            tree = self.repo.index.write_tree()
+            msg = 'Merge from ' + remote + ' ' + branch
+            self.repo.create_commit('HEAD',
+                                    self.author,
+                                    self.comitter,
+                                    msg,
+                                    tree,
+                                    [self.repo.head.target, remoteid])
+            self.repo.state_cleanup()
+        else:
+            self.logger.debug('GitRepo, pull, Unknown merge analysis result')
 
     def push(self, remote='origin', branch='master'):
         """Push if possible.
@@ -526,39 +568,25 @@ class GitRepo:
             True: If successful.
             False: If diverged or nothing to push.
         """
-        self.git.fetch('--all')
-        idhead = self.git.rev_parse('HEAD')
-        idfetchhead = self.git.rev_parse('FETCH_HEAD')
-        idbase =self.git.merge_base('HEAD', 'FETCH_HEAD')
+        ref = ['refs/heads/' + branch]
 
         try:
-            if idhead != idfetchhead and idbase == idfetchhead:
-                push = self.git.push('--porcelain', remote, branch)
-                if 'error: ' not in push or '[rejected]' not in push:
-                    return True
-        except git.exc.GitCommandError:
-            pass
-
-        return False
-
-    def update(self, push=False):
-        """Try to add all updated files.
-
-        Raises:
-            Exception: If no tracked file was changed.
-        """
-        gitstatus = self.git.status('--porcelain')
-
-        if gitstatus == '':
-            self.logger.debug('Nothing to add')
-            return False
-
-        try:
-            self.logger.debug('Staging file(s)')
-            self.git.add([''], '-u')
-            if push:
-                self.git.push()
+            remo = self.repo.remotes[remote]
         except:
-            return False
+            self.logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
+            return
 
-        return True
+        try:
+            remo.push(ref)
+        except:
+            self.logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
+
+    def setpushurl(self, remote, url):
+        """Set the URL where to push to."""
+        try:
+            remotetest = self.repo.remotes[remote]
+        except:
+            self.logger.debug('GitRepo, setpushurl, Remote:', remote, 'does not exist')
+            return
+
+        remotetest.set_push_url = url
