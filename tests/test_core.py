@@ -520,6 +520,35 @@ class GitRepoTests(unittest.TestCase):
         for commit in commits:
             self.assertEqual(commit.message, message)
 
+    def testRepoGarbageCollectionTrigger(self):
+        self.getrepowithcommit()
+
+        import os
+        import stat
+        import time
+        with TemporaryDirectory() as execDir:
+            execFile = os.path.join(execDir, "git")
+            checkFile = os.path.join(execDir, "check")
+
+            with open(execFile, 'w') as execFilePointer:
+                execFilePointer.write("""#!/bin/sh
+                if [ "$1" = "gc" ] ; then
+                    touch """ + checkFile + """
+                fi
+                """);
+            os.chmod(execFile, stat.S_IXUSR | stat.S_IRUSR )
+
+            # configure PATH for Popen to contain dummy git gc, which should be triggered
+            os.environ['PATH'] = ':'.join([execDir, os.getenv('PATH')])
+
+            repo = GitRepo(self.dir.name)
+            repo.garbagecollection()
+
+            start = time.time()
+            # check if mocked git was executed
+            while not os.path.isfile(checkFile):
+                if (time.time() - start) > 1:
+                    self.fail("Git garbage collection was not triggered")
 
 def main():
     unittest.main()
