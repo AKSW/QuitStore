@@ -517,6 +517,7 @@ class GitRepoTests(unittest.TestCase):
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 1)
 
+        commits = testrepo.walk(testrepo.head.target)
         for commit in commits:
             self.assertEqual(commit.message, message)
 
