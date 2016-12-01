@@ -327,8 +327,8 @@ class GitRepo:
 
     path = ''
     pathspec = []
-    author = Signature('QuitStore', 'quit@quit.aksw.org')
-    comitter = Signature('QuitStore', 'quit@quit.aksw.org')
+    author_name = 'QuitStore'
+    author_email = 'quit@quit.aksw.org'
 
     def __init__(self, path, pathspec=[]):
         """Initialize a new repository from an existing directory.
@@ -420,16 +420,18 @@ class GitRepo:
         tree = index.write_tree()
 
         try:
+            author = Signature(self.author_name, self.author_email)
+            comitter = Signature(self.author_name, self.author_email)
             if len(self.repo.listall_reference_objects()) == 0:
                 # Initial Commit
                 message = message + " Initial Commit from QuitStore"
                 self.repo.create_commit('HEAD',
-                                        self.author, self.comitter, message,
+                                        author, comitter, message,
                                         tree,
                                         [])
             else:
                 self.repo.create_commit('HEAD',
-                                        self.author, self.comitter, message,
+                                        author, comitter, message,
                                         tree,
                                         [self.repo.head.get_object().hex]
                                         )
@@ -551,9 +553,11 @@ class GitRepo:
             self.repo.merge(remoteid)
             tree = self.repo.index.write_tree()
             msg = 'Merge from ' + remote + ' ' + branch
+            author = Signature(self.author_name, self.author_email)
+            comitter = Signature(self.author_name, self.author_email)
             self.repo.create_commit('HEAD',
-                                    self.author,
-                                    self.comitter,
+                                    author,
+                                    comitter,
                                     msg,
                                     tree,
                                     [self.repo.head.target, remoteid])

@@ -475,6 +475,36 @@ class GitRepoTests(unittest.TestCase):
         for commit in commits:
             self.assertEqual(commit.message, '\"New commit from quit-store\"')
 
+    def testSuccessfullCommitWithTime(self):
+        self.getrepowithcommit()
+
+        import time
+        time.sleep(1)
+
+        self.file.write(b'First Line\nSecond Line\n')
+        self.file.read()
+
+        repo = Repository(self.dir.name)
+        index = repo.index
+        index.read()
+        index.add(self.filename)
+        index.write()
+
+        repo = GitRepo(self.dir.name)
+        repo.commit()
+
+        testrepo = Repository(self.dir.name)
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 2)
+
+        commits = testrepo.walk(testrepo.head.target)
+
+        lastCommit = None
+        for commit in commits:
+            if lastCommit:
+                self.assertNotEqual(commit.commit_time, lastCommit.commit_time)
+            lastCommit = commit
+
     def testSuccessfullCommitWithMessage(self):
         self.getrepowithaddedfile()
 
