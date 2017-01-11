@@ -10,6 +10,7 @@ from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT, init_repository
 from pygit2 import Repository, Signature
 from os.path import isdir, join
+from subprocess import Popen
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 
 corelogger = logging.getLogger('core.quit')
@@ -329,6 +330,7 @@ class GitRepo:
     pathspec = []
     author_name = 'QuitStore'
     author_email = 'quit@quit.aksw.org'
+    gcProcess = None
 
     def __init__(self, path, pathspec=[]):
         """Initialize a new repository from an existing directory.
@@ -459,12 +461,17 @@ class GitRepo:
         Args:
             commitid: A string cotaining a commitid.
         """
-        '''
         try:
-            self.git.gc('--auto', '--quiet')
-        except:
-            print('Garbage collection failed')
-        '''
+            """
+            Check if the garbage collection process is still running
+            """
+            if self.gcProcess is None or self.gcProcess.poll() is not None:
+                """
+                Start garbage collection with "--auto" option, which imidietly terminates, if it is not necessary
+                """
+                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
+        except Exception as e:
+            self.logger.debug('Git garbage collection failed to spawn')
         return
 
     def getpath(self):

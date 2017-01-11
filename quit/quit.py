@@ -20,6 +20,7 @@ from flask.ext.api.exceptions import NotAcceptable
 from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph, Graph, Literal
 import json
+import subprocess
 
 app = FlaskAPI(__name__)
 CORS(app)
@@ -184,8 +185,21 @@ def initialize(args):
         logger.info('Versioning is enabled')
         v = True
         if args.garbagecollection:
-            gc = True
-            logger.info('Garbage Collection is enabled')
+            try:
+                gcAutoThreshold = subprocess.check_output(["git", "config", "gc.auto"]).decode("UTF-8").strip()
+                if not gcAutoThreshold:
+                    gcAutoThreshold = 256
+                    subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
+                    logger.info('Set default gc.auto threshold ' + str(gcAutoThreshold))
+                gc = True
+                logger.info('Garbage Collection is enabled with gc.auto threshold ' + str(gcAutoThreshold))
+            except Exception as e:
+                """
+                Disable garbage collection for the rest of the run because it is likely that git is not available
+                """
+                gc = False
+                logger.info('Git garbage collection could not be configured and was disabled')
+                logger.debug(e)
 
     config = QuitConfiguration(versioning=v, gc=gc)
 
