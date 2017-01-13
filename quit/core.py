@@ -412,9 +412,6 @@ class GitRepo:
             # nothing to commit
             return
 
-        if message is None:
-            message = 'New commit from quit-store'
-
         # tree = self.repo.TreeBuilder().write()
 
         index = self.repo.index
@@ -426,12 +423,15 @@ class GitRepo:
             comitter = Signature(self.author_name, self.author_email)
             if len(self.repo.listall_reference_objects()) == 0:
                 # Initial Commit
-                message = message + " Initial Commit from QuitStore"
+                if message is None:
+                    message = 'Initial Commit from QuitStore'
                 self.repo.create_commit('HEAD',
                                         author, comitter, message,
                                         tree,
                                         [])
             else:
+                if message is None:
+                    message = 'New Commit from QuitStore'
                 self.repo.create_commit('HEAD',
                                         author, comitter, message,
                                         tree,

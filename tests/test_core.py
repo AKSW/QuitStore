@@ -207,6 +207,81 @@ class GitRepoTests(unittest.TestCase):
         commits = testrepo.walk(testrepo.head.target)
         self.assertEqual(len(list(commits)), 2)
 
+    def testCommitMessages(self):
+        self.getrepowithaddedfile()
+
+        initialMessage = 'Initial Commit from QuitTest'
+        commitMessage = 'New Commit from QuitTest'
+
+        repo = GitRepo(self.dir.name)
+        repo.commit(initialMessage)
+
+        testrepo = Repository(self.dir.name)
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 1)
+
+        for commit in testrepo.walk(testrepo.head.target):
+            self.assertEqual(commit.message, initialMessage)
+
+        # Write to file
+        self.file.write(b'Second Line\n')
+        self.file.read()
+
+        # Add file to index
+        index = testrepo.index
+        index.read()
+        index.add(self.filename)
+        index.write()
+
+        repo.commit(commitMessage)
+
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 2)
+
+        messages = []
+        for commit in testrepo.walk(testrepo.head.target):
+            messages.append(commit.message)
+
+        self.assertEqual(messages[0], commitMessage)
+        self.assertEqual(messages[1], initialMessage)
+
+    def testCommitDefaultMessages(self):
+        self.getrepowithaddedfile()
+
+        initialMessage = 'Initial Commit from QuitStore'
+        defaultMessage = 'New Commit from QuitStore'
+        repo = GitRepo(self.dir.name)
+        repo.commit()
+
+        testrepo = Repository(self.dir.name)
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 1)
+
+        for commit in testrepo.walk(testrepo.head.target):
+            self.assertEqual(commit.message, 'Initial Commit from QuitStore')
+
+        # Write to file
+        self.file.write(b'Second Line\n')
+        self.file.read()
+
+        # Add file to index
+        index = testrepo.index
+        index.read()
+        index.add(self.filename)
+        index.write()
+
+        repo.commit()
+
+        commits = testrepo.walk(testrepo.head.target)
+        self.assertEqual(len(list(commits)), 2)
+
+        messages = []
+        for commit in testrepo.walk(testrepo.head.target):
+            messages.append(commit.message)
+
+        self.assertEqual(messages[0], defaultMessage)
+        self.assertEqual(messages[1], initialMessage)
+
     def testCommitWithoutFileChanges(self):
         self.getrepowithcommit()
 
@@ -462,18 +537,35 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(remotelog[1], locallog[1])
         self.assertNotEqual(remotelog[0], locallog[0])
 
-    def testSuccessfullCommit(self):
-        self.getrepowithaddedfile()
+    def testRepoGarbageCollectionTrigger(self):
+        self.getrepowithcommit()
 
-        repo = GitRepo(self.dir.name)
-        repo.commit()
+        import os
+        import stat
+        import time
+        with TemporaryDirectory() as execDir:
+            execFile = os.path.join(execDir, "git")
+            checkFile = os.path.join(execDir, "check")
 
-        testrepo = Repository(self.dir.name)
-        commits = testrepo.walk(testrepo.head.target)
-        self.assertEqual(len(list(commits)), 1)
+            with open(execFile, 'w') as execFilePointer:
+                execFilePointer.write("""#!/bin/sh
+                if [ "$1" = "gc" ] ; then
+                    touch """ + checkFile + """
+                fi
+                """)
+            os.chmod(execFile, stat.S_IXUSR | stat.S_IRUSR)
 
-        for commit in commits:
-            self.assertEqual(commit.message, '\"New commit from quit-store\"')
+            # configure PATH for Popen to contain dummy git gc, which should be triggered
+            os.environ['PATH'] = ':'.join([execDir, os.getenv('PATH')])
+
+            repo = GitRepo(self.dir.name)
+            repo.garbagecollection()
+
+            start = time.time()
+            # check if mocked git was executed
+            while not os.path.isfile(checkFile):
+                if (time.time() - start) > 1:
+                    self.fail("Git garbage collection was not triggered")
 
     def testSuccessfullCommitWithTime(self):
         self.getrepowithcommit()
@@ -519,36 +611,6 @@ class GitRepoTests(unittest.TestCase):
 
         for commit in commits:
             self.assertEqual(commit.message, message)
-
-    def testRepoGarbageCollectionTrigger(self):
-        self.getrepowithcommit()
-
-        import os
-        import stat
-        import time
-        with TemporaryDirectory() as execDir:
-            execFile = os.path.join(execDir, "git")
-            checkFile = os.path.join(execDir, "check")
-
-            with open(execFile, 'w') as execFilePointer:
-                execFilePointer.write("""#!/bin/sh
-                if [ "$1" = "gc" ] ; then
-                    touch """ + checkFile + """
-                fi
-                """);
-            os.chmod(execFile, stat.S_IXUSR | stat.S_IRUSR )
-
-            # configure PATH for Popen to contain dummy git gc, which should be triggered
-            os.environ['PATH'] = ':'.join([execDir, os.getenv('PATH')])
-
-            repo = GitRepo(self.dir.name)
-            repo.garbagecollection()
-
-            start = time.time()
-            # check if mocked git was executed
-            while not os.path.isfile(checkFile):
-                if (time.time() - start) > 1:
-                    self.fail("Git garbage collection was not triggered")
 
 def main():
     unittest.main()
