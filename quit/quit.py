@@ -612,7 +612,7 @@ if __name__ == '__main__':
     config = objects['config']
     gitrepo = objects['gitrepo']
     references = objects['references']
-    sys.setrecursionlimit(3000)
+    sys.setrecursionlimit(2 ** 15)
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit):
         main()
