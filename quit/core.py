@@ -170,6 +170,24 @@ class MemoryStore:
 
         return
 
+    def getatomicgraph(self, bnode, graphuri):
+        """Return a List of all quads that built the atomic graph for a given resource.
+        Args:
+            bnode: a reference to a blank node
+            graphuri: The URI of a named graph
+        Returns:
+            A list of quads
+        """
+        cgraph = self.store.get_context(graphuri)
+        foundquads = []
+        # TODO Check for multiline literals, since n3() method causes problems
+        for s, p, o in cgraph.triples((BNode, None, None)):
+            line = s.n3() + ' ' + p.n3() + ' ' + o.n3() + ' ' + graphuri + ' .'
+            foundquads.append(line)
+            if isinstance(o, BNode):
+                foundquads.append(self.getatomicgraph(BNode, graphuri))
+        return list(set(foundquads))
+
     def getgraphuris(self):
         """Method to get all available named graphs.
 

@@ -19,7 +19,7 @@ from flask.ext.api import FlaskAPI, status
 from flask.ext.api.decorators import set_parsers
 from flask.ext.api.exceptions import NotAcceptable
 from flask.ext.cors import CORS
-from rdflib import ConjunctiveGraph, Graph, Literal
+from rdflib import ConjunctiveGraph, Graph, Literal, BNode
 import json
 import subprocess
 
@@ -125,6 +125,7 @@ def applyupdates(actions):
                     o = quad[0][2]
 
                     isliteral = isinstance(o, Literal)
+
                     hasnewline = o.n3().endswith('\n')
                     hasmultiquotes = o.n3().startswith('""')
 
@@ -138,8 +139,20 @@ def applyupdates(actions):
                     fo = references[filename]
 
                     if action == 'insert':
+                        if isinstance(s, BNode):
+                            fo.addquads(store.getatomicgraph(s, g))
+                            fo.deletequads(store.getatomicgraph(s, g))
+                        if isinstance(o, BNode):
+                            fo.addquads(store.getatomicgraph(o, g))
+                            fo.deletequads(store.getatomicgraph(o, g))
                         fo.addquad(line)
                     elif action == 'delete':
+                        if isinstance(s, BNode):
+                            fo.addquads(store.getatomicgraph(s, g))
+                            fo.deletequads(store.getatomicgraph(s, g))
+                        if isinstance(o, BNode):
+                            fo.addquads(store.getatomicgraph(o, g))
+                            fo.deletequads(store.getatomicgraph(o, g))
                         fo.deletequad(line)
             else:
                 pass
