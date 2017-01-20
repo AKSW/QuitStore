@@ -170,24 +170,6 @@ class MemoryStore:
 
         return
 
-    def getatomicgraph(self, bnode, graphuri):
-        """Return a List of all quads that built the atomic graph for a given resource.
-        Args:
-            bnode: a reference to a blank node
-            graphuri: The URI of a named graph
-        Returns:
-            A list of quads
-        """
-        cgraph = self.store.get_context(graphuri)
-        foundquads = []
-        # TODO Check for multiline literals, since n3() method causes problems
-        for s, p, o in cgraph.triples((BNode, None, None)):
-            line = s.n3() + ' ' + p.n3() + ' ' + o.n3() + ' ' + graphuri + ' .'
-            foundquads.append(line)
-            if isinstance(o, BNode):
-                foundquads.append(self.getatomicgraph(BNode, graphuri))
-        return list(set(foundquads))
-
     def getgraphuris(self):
         """Method to get all available named graphs.
 
@@ -313,6 +295,48 @@ class MemoryStore:
         self.store.remove((quads))
         self.store.commit()
         return
+
+    def setatomicgraphs(self):
+        """Set all atomic graphs per named graph."""
+        self.atomicgraphs = {}
+        for graph in self.getgraphuris():
+            self.atomicgraphs[graph] = {}
+            context = self.store.get_context(graph)
+            for s, p, o in context.triples((None, None, None)):
+                if isinstance(s, BNode):
+                    print('Hab einen')
+                    agraph = self.getatomicgraph(s, graph)
+                    self.atomicgraphs[graph][str(agraph['bnodes'])] = agraph['triples']
+        for graph in self.atomicgraphs:
+            print(graph)
+            for atomicgraph in graph:
+                print(atomicgraph)
+                pass
+
+    def getatomicgraph(self, bnode, graphuri):
+        """Return a List of all quads that built the atomic graph for a given resource.
+
+        Args:
+            bnode: a reference to a blank node
+            graphuri: The URI of a named graph
+        Returns:
+            A list of quads
+        """
+        cgraph = self.store.get_context(graphuri)
+        foundtriples = []
+        foundbnodes = []
+        print('Muss', bnode, 'suchen')
+        # TODO Check for multiline literals, since n3() method causes problems
+        for s, p, o in cgraph.triples((bnode, None, None)):
+            print('Hab', bnode, 'gefunden')
+            foundbnodes.append(BNode)
+            foundtriples.append([s, p, o])
+            if isinstance(o, BNode):
+                more = self.getatomicgraph(BNode, graphuri)
+                foundtriples.append(more['triples'])
+                foundbnodes.append(more['bnodes'])
+
+        return {'triples': foundtriples, 'bnodes': foundbnodes}
 
     def exit(self):
         """Execute actions on API shutdown."""
