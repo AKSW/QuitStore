@@ -277,7 +277,7 @@ def initialize(args):
     # Save file objects per file
     filereferences = {}
 
-    store.setatomicgraphs()
+    store.setAtomicGraphs()
 
     for file in config.getfiles():
         graphs = config.getgraphuriforfile(file)

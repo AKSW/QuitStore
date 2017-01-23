@@ -296,43 +296,95 @@ class MemoryStore:
         self.store.commit()
         return
 
-    def setatomicgraphs(self):
+    def setAtomicGraphs(self):
         """Set all atomic graphs per named graph."""
         self.atomicgraphs = {}
         for graph in self.getgraphuris():
-            self.atomicgraphs[graph] = {}
+            self.atomicgraphs[graph.n3()] = {}
+            bnodes = []
             context = self.store.get_context(graph)
             for s, p, o in context.triples((None, None, None)):
-                if isinstance(s, BNode):
-                    print('Hab einen')
-                    agraph = self.getatomicgraph(s, graph)
-                    self.atomicgraphs[graph][str(agraph['bnodes'])] = agraph['triples']
-        for graph in self.atomicgraphs:
-            print(graph)
-            for atomicgraph in graph:
-                print(atomicgraph)
-                pass
+                if isinstance(s, BNode) and s.n3() not in bnodes:
+                    bnodes.append(s.n3())
+                    agraph = self.setAtomicGraph(s, graph)
+                    self.atomicgraphs[graph.n3()].update({''.join(agraph['bnodes']): agraph['triples']})
+                if isinstance(o, BNode) and o.n3() not in bnodes:
+                    bnodes.append(o.n3())
+                    agraph = self.setAtomicGraph(o, graph)
+                    self.atomicgraphs[graph.n3()].update({''.join(agraph['bnodes']): agraph['triples']})
 
-    def getatomicgraph(self, bnode, graphuri):
-        """Return a List of all quads that built the atomic graph for a given resource.
+        bnodes = list(set(bnodes))
+
+    def setAtomicGraph(self, bnode, graphuri):
+        """Return a dictionary of all triples that built the atomic graph for a given resource.
 
         Args:
             bnode: a reference to a blank node
             graphuri: The URI of a named graph
         Returns:
-            A list of quads
+            A dictionary containing a list of bnodes and a list of triples.
         """
-        cgraph = self.store.get_context(graphuri)
+        if isinstance(bnode, BNode) is False:
+            return {'triples': [], 'bnodes': []}
+
         foundtriples = []
         foundbnodes = []
-        print('Muss', bnode, 'suchen')
-        # TODO Check for multiline literals, since n3() method causes problems
+        cgraph = self.store.get_context(graphuri)
+
         for s, p, o in cgraph.triples((bnode, None, None)):
-            print('Hab', bnode, 'gefunden')
-            foundbnodes.append(BNode)
             foundtriples.append([s, p, o])
+            foundbnodes.append(bnode.n3())
+            objectBNodes = self.discoverAtomicGraph(bnode, graphuri, 'object')
             if isinstance(o, BNode):
-                more = self.getatomicgraph(BNode, graphuri)
+                subjectBNodes = self.discoverAtomicGraph(o, graphuri, 'subject')
+                foundtriples.append(subjectBNodes['triples'])
+                foundbnodes.append(subjectBNodes['bnodes'])
+                foundbnodes.append(objectBNodes['triples'])
+                foundbnodes.append(objectBNodes['bnodes'])
+        if len(foundtriples) == 0:
+            for s, p, o in cgraph.triples((None, None, bnode)):
+                foundtriples.append([s, p, o])
+                foundbnodes.append(bnode.n3())
+                if isinstance(s, BNode):
+                    subjectBNodes = self.discoverAtomicGraph(o, graphuri, 'subject')
+                    objectBNodes = self.discoverAtomicGraph(o, graphuri, 'object')
+                    foundtriples.append(subjectBNodes['triples'])
+                    foundbnodes.append(subjectBNodes['bnodes'])
+                    foundbnodes.append(objectBNodes['triples'])
+                    foundbnodes.append(objectBNodes['bnodes'])
+
+        return {'triples': foundtriples, 'bnodes': list(set(foundbnodes))}
+
+    def discoverAtomicGraph(self, bnode, graphuri, mode):
+        """Follow a path in one direction an search for blank nodes.
+
+        Args:
+            bnode: a reference to a blank node
+            graphuri: The URI of a named graph
+            mode: The position (subject or object) where to look for other blank nodes.
+        Returns:
+            A dictionary containing a list of bnodes and a list of triples.
+        """
+        if mode == 'subject':
+            pattern = (bnode, None, None)
+        elif mode == 'object':
+            pattern = (None, None, bnode)
+        else:
+            return {'triples': [], 'bnodes': []}
+
+        foundtriples = []
+        foundbnodes = []
+        cgraph = self.store.get_context(graphuri)
+
+        for s, p, o in cgraph.triples(pattern):
+            foundbnodes.append(bnode.n3())
+            foundtriples.append([s, p, o])
+            if mode == 'object' and isinstance(s, BNode):
+                more = self.getatomicgraph(s, graphuri, mode)
+                foundtriples.append(more['triples'])
+                foundbnodes.append(more['bnodes'])
+            elif mode == 'subject' and isinstance(o, BNode):
+                more = self.getatomicgraph(o, graphuri, mode)
                 foundtriples.append(more['triples'])
                 foundbnodes.append(more['bnodes'])
 
