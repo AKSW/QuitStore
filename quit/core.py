@@ -167,8 +167,10 @@ class MemoryStore:
         logger = logging.getLogger('quit.core.MemoryStore')
         logger.debug('Create an instance of MemoryStore')
         self.store = ConjunctiveGraph(identifier='default')
+        self.atomicgraphs = {}
 
-        return
+    def getAtomicGraphs(self):
+        return self.atomicgraphs
 
     def getgraphuris(self):
         """Method to get all available named graphs.
@@ -306,16 +308,41 @@ class MemoryStore:
             for s, p, o in context.triples((None, None, None)):
                 if isinstance(s, BNode) and s.n3() not in bnodes:
                     bnodes.append(s.n3())
-                    agraph = self.setAtomicGraph(s, graph)
-                    self.atomicgraphs[graph.n3()].update({''.join(agraph['bnodes']): agraph['triples']})
+                    agraph = AtomicGraph(s, context)
+                    self.atomicgraphs[graph.n3()].update({s.n3(): agraph})
                 if isinstance(o, BNode) and o.n3() not in bnodes:
                     bnodes.append(o.n3())
-                    agraph = self.setAtomicGraph(o, graph)
-                    self.atomicgraphs[graph.n3()].update({''.join(agraph['bnodes']): agraph['triples']})
+                    agraph = AtomicGraph(o, context)
+                    self.atomicgraphs[graph.n3()].update({o.n3(): agraph})
+                else:
+                    continue
+                if len(agraph.getBNodes()) > 1:
+                    for bnode in agraph.getBNodes():
+                        if bnode.n3() not in bnodes:
+                            bnodes.append(bnode.n3())
+                            self.atomicgraphs[graph.n3()].update({bnode.n3(): agraph})
 
         bnodes = list(set(bnodes))
 
-    def setAtomicGraph(self, bnode, graphuri):
+    def exit(self):
+        """Execute actions on API shutdown."""
+        return
+
+
+class AtomicGraph:
+    """A Class to store atomic graphs that contain a blank node."""
+    def __init__(self, bnode, context):
+        if isinstance(bnode, BNode) is False:
+            return
+
+        self.triples = []
+        self.hash = ''
+        self.context = context
+        self.startingBNode = bnode
+        self.bNodes = [bnode.n3()]
+        self.discoverAtomicGraph()
+
+    def discoverAtomicGraph(self):
         """Return a dictionary of all triples that built the atomic graph for a given resource.
 
         Args:
@@ -324,38 +351,41 @@ class MemoryStore:
         Returns:
             A dictionary containing a list of bnodes and a list of triples.
         """
-        if isinstance(bnode, BNode) is False:
-            return {'triples': [], 'bnodes': []}
-
         foundtriples = []
         foundbnodes = []
-        cgraph = self.store.get_context(graphuri)
 
-        for s, p, o in cgraph.triples((bnode, None, None)):
-            foundtriples.append([s, p, o])
-            foundbnodes.append(bnode.n3())
-            objectBNodes = self.discoverAtomicGraph(bnode, graphuri, 'object')
+        for s, p, o in self.context.triples((self.startingBNode, None, None)):
+            self.triples.append({'s': s, 'p': p, 'o': o})
+            objectBNodes = self.discoverAtomicGraphDirectional(self.startingBNode, 'object')
             if isinstance(o, BNode):
-                subjectBNodes = self.discoverAtomicGraph(o, graphuri, 'subject')
-                foundtriples.append(subjectBNodes['triples'])
-                foundbnodes.append(subjectBNodes['bnodes'])
-                foundbnodes.append(objectBNodes['triples'])
-                foundbnodes.append(objectBNodes['bnodes'])
+                subjectBNodes = self.discoverAtomicGraphDirectional(o, 'subject')
+                self.triples.append(subjectBNodes['triples'])
+                self.bNodes.append(subjectBNodes['bnodes'])
+                self.triples.append(objectBNodes['triples'])
+                self.bNodes.append(objectBNodes['bnodes'])
         if len(foundtriples) == 0:
-            for s, p, o in cgraph.triples((None, None, bnode)):
-                foundtriples.append([s, p, o])
-                foundbnodes.append(bnode.n3())
+            for s, p, o in self.context.triples((None, None, self.startingBNode)):
+                self.triples.append({'s': s, 'p': p, 'o': o})
                 if isinstance(s, BNode):
-                    subjectBNodes = self.discoverAtomicGraph(o, graphuri, 'subject')
-                    objectBNodes = self.discoverAtomicGraph(o, graphuri, 'object')
-                    foundtriples.append(subjectBNodes['triples'])
-                    foundbnodes.append(subjectBNodes['bnodes'])
-                    foundbnodes.append(objectBNodes['triples'])
-                    foundbnodes.append(objectBNodes['bnodes'])
+                    subjectBNodes = self.discoverAtomicGraphDirectional(o, 'subject')
+                    objectBNodes = self.discoverAtomicGraphDirectional(o, 'object')
+                    self.triples.append(subjectBNodes['triples'])
+                    self.bNodes.append(subjectBNodes['bnodes'])
+                    self.triples.append(objectBNodes['triples'])
+                    self.bNodes.append(objectBNodes['bnodes'])
 
-        return {'triples': foundtriples, 'bnodes': list(set(foundbnodes))}
+    def getAtomicGraphHash(self):
+        if self.hash == '':
+            import hashlib
+            h = hashlib.sha256()
+            self.hash = h.update(self.serialize())
 
-    def discoverAtomicGraph(self, bnode, graphuri, mode):
+        return self.hash
+
+    def getBNodes(self):
+        return self.rNodes
+
+    def discoverAtomicGraphDirectional(self, bnode, mode):
         """Follow a path in one direction an search for blank nodes.
 
         Args:
@@ -374,25 +404,29 @@ class MemoryStore:
 
         foundtriples = []
         foundbnodes = []
-        cgraph = self.store.get_context(graphuri)
 
-        for s, p, o in cgraph.triples(pattern):
+        for s, p, o in self.context.triples(pattern):
             foundbnodes.append(bnode.n3())
-            foundtriples.append([s, p, o])
+            foundtriples.append({'s': s, 'p': p, 'o': o})
             if mode == 'object' and isinstance(s, BNode):
-                more = self.getatomicgraph(s, graphuri, mode)
+                more = self.discoverAtomicGraphDirectional(s, mode)
                 foundtriples.append(more['triples'])
                 foundbnodes.append(more['bnodes'])
             elif mode == 'subject' and isinstance(o, BNode):
-                more = self.getatomicgraph(o, graphuri, mode)
+                more = self.discoverAtomicGraphDirectional(o, mode)
                 foundtriples.append(more['triples'])
                 foundbnodes.append(more['bnodes'])
 
         return {'triples': foundtriples, 'bnodes': foundbnodes}
 
-    def exit(self):
-        """Execute actions on API shutdown."""
-        return
+    def serialize(self):
+        graphString = ''
+        for s, p ,o in self.triples:
+            quad = s.n3() + ' ' + p.n3() + ' ' + o.n3() + ' ' + self.context.identifier
+            print(quad)
+            graphString+= quad
+
+        return graphString
 
 
 class GitRepo:

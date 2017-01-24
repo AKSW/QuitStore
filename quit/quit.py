@@ -278,6 +278,9 @@ def initialize(args):
     filereferences = {}
 
     store.setAtomicGraphs()
+    aGraphs = store.getAtomicGraphs()
+    for graph in aGraphs:
+        print(graph)
 
     for file in config.getfiles():
         graphs = config.getgraphuriforfile(file)
