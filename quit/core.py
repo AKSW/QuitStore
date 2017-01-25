@@ -383,7 +383,7 @@ class AtomicGraph:
         return self.hash
 
     def getBNodes(self):
-        return self.rNodes
+        return self.bNodes
 
     def discoverAtomicGraphDirectional(self, bnode, mode):
         """Follow a path in one direction an search for blank nodes.
