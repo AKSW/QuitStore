@@ -167,6 +167,7 @@ class MemoryStore:
         logger = logging.getLogger('quit.core.MemoryStore')
         logger.debug('Create an instance of MemoryStore')
         self.store = ConjunctiveGraph(identifier='default')
+        self.blanknodessupport = False
         self.atomicgraphs = {}
 
     def getAtomicGraphs(self):
@@ -300,26 +301,28 @@ class MemoryStore:
 
     def setAtomicGraphs(self):
         """Set all atomic graphs per named graph."""
-        self.atomicgraphs = {}
+        self.blanknodessupport = True
         for graph in self.getgraphuris():
             self.atomicgraphs[graph.n3()] = {}
             bnodes = []
             context = self.store.get_context(graph)
             for s, p, o in context.triples((None, None, None)):
-                if isinstance(s, BNode) and s.n3() not in bnodes:
-                    bnodes.append(s.n3())
+                if isinstance(s, BNode) and s not in bnodes:
+                    bnodes.append(s)
                     agraph = AtomicGraph(s, context)
                     self.atomicgraphs[graph.n3()].update({s.n3(): agraph})
+
                 if isinstance(o, BNode) and o.n3() not in bnodes:
                     bnodes.append(o.n3())
                     agraph = AtomicGraph(o, context)
                     self.atomicgraphs[graph.n3()].update({o.n3(): agraph})
                 else:
                     continue
+
                 if len(agraph.getBNodes()) > 1:
                     for bnode in agraph.getBNodes():
                         if bnode.n3() not in bnodes:
-                            bnodes.append(bnode.n3())
+                            bnodes.append(bnode)
                             self.atomicgraphs[graph.n3()].update({bnode.n3(): agraph})
 
         bnodes = list(set(bnodes))
@@ -338,92 +341,59 @@ class AtomicGraph:
         self.triples = []
         self.hash = ''
         self.context = context
-        self.startingBNode = bnode
-        self.bNodes = [bnode.n3()]
-        self.discoverAtomicGraph()
+        self.bNodes = []
+        self.discoverAtomicGraph(bnode)
 
-    def discoverAtomicGraph(self):
-        """Return a dictionary of all triples that built the atomic graph for a given resource.
+    def discoverAtomicGraph(self, bnode):
+        """Find all triples and blank nodes that built the atomic graph for a given blank node.
 
         Args:
-            bnode: a reference to a blank node
-            graphuri: The URI of a named graph
-        Returns:
-            A dictionary containing a list of bnodes and a list of triples.
+            bnode: A reference to a blank node.
         """
-        foundtriples = []
-        foundbnodes = []
+        if bnode in self.bNodes:
+            return
 
-        for s, p, o in self.context.triples((self.startingBNode, None, None)):
+        for s, p, o in self.context.triples((bnode, None, None)):
             self.triples.append({'s': s, 'p': p, 'o': o})
-            objectBNodes = self.discoverAtomicGraphDirectional(self.startingBNode, 'object')
             if isinstance(o, BNode):
-                subjectBNodes = self.discoverAtomicGraphDirectional(o, 'subject')
-                self.triples.append(subjectBNodes['triples'])
-                self.bNodes.append(subjectBNodes['bnodes'])
-                self.triples.append(objectBNodes['triples'])
-                self.bNodes.append(objectBNodes['bnodes'])
-        if len(foundtriples) == 0:
-            for s, p, o in self.context.triples((None, None, self.startingBNode)):
-                self.triples.append({'s': s, 'p': p, 'o': o})
-                if isinstance(s, BNode):
-                    subjectBNodes = self.discoverAtomicGraphDirectional(o, 'subject')
-                    objectBNodes = self.discoverAtomicGraphDirectional(o, 'object')
-                    self.triples.append(subjectBNodes['triples'])
-                    self.bNodes.append(subjectBNodes['bnodes'])
-                    self.triples.append(objectBNodes['triples'])
-                    self.bNodes.append(objectBNodes['bnodes'])
+                self.discoverAtomicGraph(o)
+        for s, p, o in self.context.triples((None, None, bnode)):
+            self.triples.append({'s': s, 'p': p, 'o': o})
+            if isinstance(s, BNode):
+                self.discoverAtomicGraph(s)
+
+        self.bNodes.append(bnode)
 
     def getAtomicGraphHash(self):
+        """Return the Hash of the entire graph.
+
+        Returns:
+            Hash: String of the sha256 hash of the graph serialization.
+        """
         if self.hash == '':
             import hashlib
-            h = hashlib.sha256()
-            self.hash = h.update(self.serialize())
+            self.hash = hashlib.sha256(self.serialize().encode('UTF-8')).hexdigest()
 
         return self.hash
 
     def getBNodes(self):
+        """Return all found blank nodes of the atomic graph.
+
+        Returns:
+            BNodes: A list containing BNode objects
+        """
         return self.bNodes
 
-    def discoverAtomicGraphDirectional(self, bnode, mode):
-        """Follow a path in one direction an search for blank nodes.
-
-        Args:
-            bnode: a reference to a blank node
-            graphuri: The URI of a named graph
-            mode: The position (subject or object) where to look for other blank nodes.
-        Returns:
-            A dictionary containing a list of bnodes and a list of triples.
-        """
-        if mode == 'subject':
-            pattern = (bnode, None, None)
-        elif mode == 'object':
-            pattern = (None, None, bnode)
-        else:
-            return {'triples': [], 'bnodes': []}
-
-        foundtriples = []
-        foundbnodes = []
-
-        for s, p, o in self.context.triples(pattern):
-            foundbnodes.append(bnode.n3())
-            foundtriples.append({'s': s, 'p': p, 'o': o})
-            if mode == 'object' and isinstance(s, BNode):
-                more = self.discoverAtomicGraphDirectional(s, mode)
-                foundtriples.append(more['triples'])
-                foundbnodes.append(more['bnodes'])
-            elif mode == 'subject' and isinstance(o, BNode):
-                more = self.discoverAtomicGraphDirectional(o, mode)
-                foundtriples.append(more['triples'])
-                foundbnodes.append(more['bnodes'])
-
-        return {'triples': foundtriples, 'bnodes': foundbnodes}
-
     def serialize(self):
+        """Return all found blank nodes of the atomic graph.
+
+        Returns:
+            nquads: A nquads serialization of the atomic graph.
+        """
         graphString = ''
-        for s, p ,o in self.triples:
-            quad = s.n3() + ' ' + p.n3() + ' ' + o.n3() + ' ' + self.context.identifier
-            print(quad)
+        for triple in self.triples:
+            quad = triple['s'].n3() + ' ' + triple['p'].n3() + ' ' + triple['o'].n3()
+            quad+= ' <' + str(self.context.identifier) + '> .\n'
             graphString+= quad
 
         return graphString

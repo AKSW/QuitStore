@@ -186,6 +186,10 @@ def initialize(args):
 
     """
     gc = False
+    bn = False
+
+    if args.blanknode:
+        bn = True
 
     if args.verbose:
         ch.setLevel(logging.INFO)
@@ -252,6 +256,7 @@ def initialize(args):
             targetdir=args.targetdir,
             repository=args.repourl,
             configmode=args.configmode,
+            bnSupport=bn
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -277,10 +282,8 @@ def initialize(args):
     # Save file objects per file
     filereferences = {}
 
-    store.setAtomicGraphs()
-    aGraphs = store.getAtomicGraphs()
-    for graph in aGraphs:
-        print(graph)
+    if config.isblanknodesupporton:
+        store.setAtomicGraphs()
 
     for file in config.getfiles():
         graphs = config.getgraphuriforfile(file)
@@ -726,6 +729,7 @@ def parseArgs(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
+    parser.add_argument('-bn', '--blanknode', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-vv', '--verboseverbose', action='store_true')
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)

@@ -22,7 +22,8 @@ class QuitConfiguration:
         repository=None,
         targetdir=None,
         gc=False,
-        versioning=True
+        versioning=True,
+        bnSupport=False
     ):
         """The init method.
 
@@ -38,6 +39,7 @@ class QuitConfiguration:
         self.versioning = versioning
         self.gc = gc
         self.origin = None
+        self.blanknodes = bnSupport
         self.graphs = {}
         self.files = {}
 
@@ -444,6 +446,9 @@ class QuitConfiguration:
                 graphfiles[file] = format
 
         return graphfiles
+
+    def isblanknodesupporton(self):
+        return self.blanknodes
 
     def isgarbagecollectionon(self):
         return self.gc
