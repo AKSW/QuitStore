@@ -307,23 +307,29 @@ class MemoryStore:
             bnodes = []
             context = self.store.get_context(graph)
             for s, p, o in context.triples((None, None, None)):
-                if isinstance(s, BNode) and s not in bnodes:
-                    bnodes.append(s)
+                bnfound = False
+                if isinstance(s, BNode) and s.n3() not in bnodes:
+                    bnfound = True
+                    bnodes.append(s.n3())
                     agraph = AtomicGraph(s, context)
                     self.atomicgraphs[graph.n3()].update({s.n3(): agraph})
+                    if len(agraph.getBNodes()) > 1:
+                        for node in agraph.getBNodes():
+                            if node not in bnodes:
+                                bnodes.append(node)
+                                self.atomicgraphs[graph.n3()].update({node: agraph})
 
-                if isinstance(o, BNode) and o.n3() not in bnodes:
+                if isinstance(o, BNode) and o.n3() not in bnodes and bnfound is False:
                     bnodes.append(o.n3())
                     agraph = AtomicGraph(o, context)
                     self.atomicgraphs[graph.n3()].update({o.n3(): agraph})
+                    if len(agraph.getBNodes()) > 1:
+                        for node in agraph.getBNodes():
+                            if node not in bnodes:
+                                bnodes.append(node)
+                                self.atomicgraphs[graph.n3()].update({node: agraph})
                 else:
                     continue
-
-                if len(agraph.getBNodes()) > 1:
-                    for bnode in agraph.getBNodes():
-                        if bnode.n3() not in bnodes:
-                            bnodes.append(bnode)
-                            self.atomicgraphs[graph.n3()].update({bnode.n3(): agraph})
 
         bnodes = list(set(bnodes))
 
@@ -342,7 +348,10 @@ class AtomicGraph:
         self.hash = ''
         self.context = context
         self.bNodes = []
+        self.subjects = []
+
         self.discoverAtomicGraph(bnode)
+        print(self.getAtomicGraphHash())
 
     def discoverAtomicGraph(self, bnode):
         """Find all triples and blank nodes that built the atomic graph for a given blank node.
@@ -350,8 +359,9 @@ class AtomicGraph:
         Args:
             bnode: A reference to a blank node.
         """
-        if bnode in self.bNodes:
+        if bnode.n3() in self.bNodes:
             return
+        self.bNodes.append(bnode.n3())
 
         for s, p, o in self.context.triples((bnode, None, None)):
             self.triples.append({'s': s, 'p': p, 'o': o})
@@ -362,19 +372,100 @@ class AtomicGraph:
             if isinstance(s, BNode):
                 self.discoverAtomicGraph(s)
 
-        self.bNodes.append(bnode)
-
     def getAtomicGraphHash(self):
         """Return the Hash of the entire graph.
 
         Returns:
             Hash: String of the sha256 hash of the graph serialization.
         """
-        if self.hash == '':
-            import hashlib
-            self.hash = hashlib.sha256(self.serialize().encode('UTF-8')).hexdigest()
+        self.graph = Graph()
+        subjects = []
 
-        return self.hash
+        for triple in self.triples:
+            self.graph.add((triple['s'], triple['p'], triple['o']))
+
+        for s in self.graph.subjects():
+            self.visited = []
+            encodedSubject = self._encodeSubject(s)
+            if encodedSubject != '':
+                subjects.append(encodedSubject)
+            subjects.append(encodedSubject)
+
+        subjects = sorted(subjects)
+        subjectString = '{' + '}{'.join(subjects) + '}'
+
+        import hashlib
+        hash = hashlib.sha256(subjectString.encode('UTF-8')).hexdigest()
+
+        return hash
+
+    def _encodeSubject(self, subject):
+        """Encode a subject node.
+
+        As described in 3.2 of "Hashing of RDF Graphs and a Solution to the Blank Node Problem"
+        Args:
+            subject: A rdflib URIRef or BNode
+        Returns:
+            hash:
+        """
+        if isinstance(subject, BNode):
+            if subject in self.visited:
+                return ''
+            else:
+                value = '*'
+                self.visited.append(subject)
+        else:
+            value = subject.n3()
+
+        properties = self._encodeProperties(subject)
+
+        if properties != '':
+            return value + self._encodeProperties(subject)
+        else:
+            return ''
+
+    def _encodeProperties(self, subject):
+        """Encode properties of a subject node.
+
+        As described in 3.3 of "Hashing of RDF Graphs and a Solution to the Blank Node Problem"
+        Args:
+            subject: A rdflib URIRef or BNode
+        Returns:
+            hash:
+        """
+        predicates = []
+
+        for p in self.graph.predicates(subject):
+            objects = []
+            for o in self.graph.objects(subject, p):
+                encodedObject = self._encodeObject(o)
+                if encodedObject != '':
+                    objects.append(encodedObject)
+
+            objects = sorted(objects)
+
+            if len(objects) > 0:
+                objectstring = '[' + ']['.join(objects) + ']'
+                predicates.append('(' + p.n3() + objectstring + ')')
+
+        predicates = sorted(predicates)
+        return ''.join(predicates)
+
+    def _encodeObject(self, object):
+        """Encode object.
+
+        As described in 3.4 of "Hashing of RDF Graphs and a Solution to the Blank Node Problem"
+        Args:
+            subject: A rdflib URIRef or BNode
+        Returns:
+            hash:
+        """
+        if isinstance(object, BNode):
+            value = self._encodeSubject(object)
+        else:
+            value = object.n3()
+
+        return value
 
     def getBNodes(self):
         """Return all found blank nodes of the atomic graph.
