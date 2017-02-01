@@ -381,10 +381,13 @@ class AtomicGraph:
         self.graph = Graph()
         subjects = []
 
+        print()
+
         for triple in self.triples:
             self.graph.add((triple['s'], triple['p'], triple['o']))
 
         for s in set(self.graph.subjects()):
+            print(s)
             self.visited = []
             encodedSubject = self._encodeSubject(s)
             subjects.append(encodedSubject)
@@ -392,7 +395,7 @@ class AtomicGraph:
         subjects = sorted(subjects)
         subjectString = '{' + '}{'.join(subjects) + '}'
 
-        print(self.graph.serialize(format="nt"))
+        print(self.graph.serialize(format="nt").decode("utf-8").strip())
         print(subjectString)
 
         import hashlib
