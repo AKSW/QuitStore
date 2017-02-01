@@ -384,7 +384,7 @@ class AtomicGraph:
         for triple in self.triples:
             self.graph.add((triple['s'], triple['p'], triple['o']))
 
-        for s in self.graph.subjects():
+        for s in set(self.graph.subjects()):
             self.visited = []
             encodedSubject = self._encodeSubject(s)
             subjects.append(encodedSubject)
@@ -431,7 +431,7 @@ class AtomicGraph:
         """
         predicates = ''
 
-        for p in sorted(self.graph.predicates(subject)):
+        for p in sorted(set(self.graph.predicates(subject))):
             objects = []
             for o in self.graph.objects(subject, p):
                 objects.append(self._encodeObject(o))
