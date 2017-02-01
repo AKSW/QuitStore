@@ -414,7 +414,7 @@ class AtomicGraph:
         """
         if isinstance(subject, BNode):
             if subject in self.visited:
-                return '#'
+                return ''
             else:
                 self.visited.append(subject)
                 value = '*'
