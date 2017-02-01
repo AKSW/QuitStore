@@ -436,7 +436,7 @@ class AtomicGraph:
 
         for p in sorted(set(self.graph.predicates(subject))):
             objects = []
-            for o in self.graph.objects(subject, p):
+            for o in set(self.graph.objects(subject, p)):
                 objects.append(self._encodeObject(o))
             objects = sorted(objects)
             predicates += '(' + p.n3() + '[' + ']['.join(objects) + ']' + ')'
