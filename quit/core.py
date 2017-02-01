@@ -387,12 +387,13 @@ class AtomicGraph:
         for s in self.graph.subjects():
             self.visited = []
             encodedSubject = self._encodeSubject(s)
-            if encodedSubject != '':
-                subjects.append(encodedSubject)
             subjects.append(encodedSubject)
 
         subjects = sorted(subjects)
         subjectString = '{' + '}{'.join(subjects) + '}'
+
+        print(self.graph.serialize(format="nt"))
+        print(subjectString)
 
         import hashlib
         hash = hashlib.sha256(subjectString.encode('UTF-8')).hexdigest()
@@ -410,19 +411,14 @@ class AtomicGraph:
         """
         if isinstance(subject, BNode):
             if subject in self.visited:
-                return ''
+                return '#'
             else:
-                value = '*'
                 self.visited.append(subject)
+                value = '*'
         else:
             value = subject.n3()
 
-        properties = self._encodeProperties(subject)
-
-        if properties != '':
-            return value + self._encodeProperties(subject)
-        else:
-            return ''
+        return value + self._encodeProperties(subject)
 
     def _encodeProperties(self, subject):
         """Encode properties of a subject node.
@@ -433,23 +429,16 @@ class AtomicGraph:
         Returns:
             hash:
         """
-        predicates = []
+        predicates = ''
 
-        for p in self.graph.predicates(subject):
+        for p in sorted(self.graph.predicates(subject)):
             objects = []
             for o in self.graph.objects(subject, p):
-                encodedObject = self._encodeObject(o)
-                if encodedObject != '':
-                    objects.append(encodedObject)
-
+                objects.append(self._encodeObject(o))
             objects = sorted(objects)
+            predicates += '(' + p.n3() + '[' + ']['.join(objects) + ']' + ')'
 
-            if len(objects) > 0:
-                objectstring = '[' + ']['.join(objects) + ']'
-                predicates.append('(' + p.n3() + objectstring + ')')
-
-        predicates = sorted(predicates)
-        return ''.join(predicates)
+        return predicates
 
     def _encodeObject(self, object):
         """Encode object.
@@ -461,11 +450,9 @@ class AtomicGraph:
             hash:
         """
         if isinstance(object, BNode):
-            value = self._encodeSubject(object)
+            return self._encodeSubject(object)
         else:
-            value = object.n3()
-
-        return value
+            return object.n3()
 
     def getBNodes(self):
         """Return all found blank nodes of the atomic graph.
