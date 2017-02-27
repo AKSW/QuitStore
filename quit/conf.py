@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from pygit2 import Repository
 from rdflib import Graph, URIRef
 from rdflib.util import guess_format
 from os import listdir
@@ -16,23 +17,25 @@ class QuitConfiguration:
         file structure.
         """
         self.configchanged = False
-        self.confgraph = Graph()
+        self.sysconf = Graph()
         self.versioning = versioning
         self.gc = gc
+        self.origin = ''
         self.graphs = {}
         self.files = {}
         self.pathspec = []
+        self.configfile = configfile
 
-        if isfile(configfile):
+        if isfile(self.configfile):
             try:
-                self.confgraph.parse('config.ttl', format='turtle')
-                self.configfile = configfile
+                self.sysconf.parse(self.configfile, format='turtle')
                 autodiscover = False
             except:
                 # no configuration found
                 autodiscover = True
         else:
             # no configuration found
+            raise Exception('No store configuration found', self.configfile)
             autodiscover = True
 
         if autodiscover:
@@ -44,10 +47,14 @@ class QuitConfiguration:
 
     def __initfromconf(self, gitrepo=None):
         """Read configuration from config file."""
-        self.sysconf = Graph()
-        self.sysconf.parse('config.ttl', format='turtle')
         self.__setstoresettings()
-        self.__setgraphsfromstore()
+        from os.path import exists
+        try:
+            repo = Repository(self.gitrepo)
+            self.storeinitialized = True
+            self.setgraphs()
+        except:
+            self.storeinitialized = False
 
         return
 
@@ -55,7 +62,7 @@ class QuitConfiguration:
         """Read configuration from config file."""
         return
 
-    def __setgraphsfromstore(self):
+    def setgraphs(self):
         """Get all URIs of graphs that are configured in config.ttl.
 
         This method returns all graphs and their corroesponding quad files.
@@ -105,6 +112,10 @@ class QuitConfiguration:
         property = URIRef(nsQuit + '/pathOfGitRepo')
         for s, p, o in self.sysconf.triples((storeuri, property, None)):
             self.gitrepo = str(o)
+
+        property = URIRef(nsQuit + '/setorigin')
+        for s, p, o in self.sysconf.triples((storeuri, property, None)):
+            self.origin = str(o)
 
         return
 
@@ -163,6 +174,14 @@ class QuitConfiguration:
         """
 
         return self.graphs
+
+    def getOrigin(self):
+        """Get origin of store.
+
+        Returns:
+            A string containing the URL of the remote's origin
+        """
+        return self.origin
 
     def getpathspec(self):
         """Get pathspec from config."""

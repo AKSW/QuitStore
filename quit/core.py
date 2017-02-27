@@ -2,16 +2,17 @@
 
 from datetime import datetime
 import logging
-from os.path import abspath
+from os import makedirs
+from os.path import abspath, exists, isdir, join
 from quit.update import evalUpdate
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
-from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT, init_repository
-from pygit2 import Repository, Signature
-from os.path import isdir, join
-from subprocess import Popen
+from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
+from pygit2 import init_repository, clone_repository
+from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
+from subprocess import Popen
 
 corelogger = logging.getLogger('core.quit')
 
@@ -185,8 +186,8 @@ class MemoryStore:
         """Initialize a new MemoryStore instance."""
         self.logger = logging.getLogger('memory_store.core.quit')
         self.logger.debug('Create an instance of MemoryStore')
-        self.sysconf = Graph()
         self.store = ConjunctiveGraph(identifier='default')
+
         return
 
     def getgraphuris(self):
@@ -328,11 +329,13 @@ class GitRepo:
 
     path = ''
     pathspec = []
+    repo = None
+    callback = None
     author_name = 'QuitStore'
     author_email = 'quit@quit.aksw.org'
     gcProcess = None
 
-    def __init__(self, path, pathspec=[]):
+    def __init__(self, path, pathspec=[], origin=None):
         """Initialize a new repository from an existing directory.
 
         Args:
@@ -342,15 +345,53 @@ class GitRepo:
         self.logger.debug('GitRepo, init, Create an instance of GitStore')
         self.pathspec = pathspec
         self.path = path
+        self.origin = origin
+
+        if not exists(path):
+            try:
+                makedirs(path)
+            except:
+                raise Exception('Can\'t create path in filesystem:', path)
 
         try:
-            if isdir(join(path, '.git')):
-                repo = Repository(path)
-            else:
-                repo = init_repository(path, False)
-            self.repo = repo
+            self.repo = Repository(path)
+            if self.repo.is_bare():
+                raise Exception('Bare repositories not supported, yet')
         except:
-            raise
+            pass
+
+        if self.origin is not None:
+            from re import search
+
+            # regex to match username in web git adresses
+            regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
+            p = search(regex, self.origin)
+            username = p.group(3)
+            username = 'git'
+
+            self.callback = self.setCallback(username=username)
+
+            self.repo = clone_repository(
+                url=self.origin,
+                path=path,
+                bare=False,
+                callbacks=self.callback
+            )
+            if self.repo is None:
+                try:
+                    self.repo = clone_repository(
+                        url=self.origin,
+                        path=path,
+                        bare=False,
+                        callbacks=self.callback
+                    )
+                except:
+                    raise Exception('Could not clone from', self.origin)
+
+            self.setremote('origin', self.origin)
+        else:
+            if self.repo is None:
+                self.repo = init_repository(path=path, bare=self.bare)
 
     def addall(self):
         """Add all (newly created|changed) files to index."""
@@ -373,7 +414,7 @@ class GitRepo:
         except:
             self.logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
 
-    def addremote(self, name, url):
+    def setremote(self, name, url):
         """Add a remote.
 
         Args:
@@ -382,9 +423,14 @@ class GitRepo:
         """
         try:
             self.repo.remotes.create(name, url)
-            self.logger.debug('GitRepo, addremote, Successful added remote', name, url)
+            self.logger.debug('GitRepo, setremote, Successful added remote', name, url)
         except:
-            self.logger.debug('GitRepo, addremote, Could not add remote', name, url)
+            self.logger.debug('GitRepo, setremote, Could not add remote', name, url)
+        try:
+            self.repo.remotes.set_push_url(name, url)
+            self.repo.remotes.set_url(name, url)
+        except:
+            self.logger.debug('GitRepo, setremote, Could not set urls', name, url)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -421,6 +467,7 @@ class GitRepo:
         try:
             author = Signature(self.author_name, self.author_email)
             comitter = Signature(self.author_name, self.author_email)
+
             if len(self.repo.listall_reference_objects()) == 0:
                 # Initial Commit
                 if message is None:
@@ -516,6 +563,12 @@ class GitRepo:
                 ids.append(str(commit.oid))
         return ids
 
+    def isCallbackSet(self):
+        if self.callback is None:
+            return False
+
+        return True
+
     def isstagingareaclean(self):
         """Check if staging area is clean.
 
@@ -577,7 +630,7 @@ class GitRepo:
 
         Return:
             True: If successful.
-            False: If diverged or nothing to push.
+            False: If diverged  or nothing to push.
         """
         ref = ['refs/heads/' + branch]
 
@@ -585,19 +638,43 @@ class GitRepo:
             remo = self.repo.remotes[remote]
         except:
             self.logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
-            return
 
         try:
-            remo.push(ref)
+            remo.push(ref, callbacks=self.callback)
         except:
             self.logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
 
-    def setpushurl(self, remote, url):
-        """Set the URL where to push to."""
+    def getRemotes(self):
+        remotes = {}
+
         try:
-            remotetest = self.repo.remotes[remote]
+            for remote in remotes:
+                remotes[remote.name] = [remote.url, remote.push_url]
+            return remotes
         except:
-            self.logger.debug('GitRepo, setpushurl, Remote:', remote, 'does not exist')
+            return {}
+
+    def setCallback(self, username='git', passphrase=''):
+        """Set a pygit callback for user authentication when acting with remotes.
+
+        This method uses the private-public-keypair of the ssh host configuration.
+        The keys are expected to be found at ~/.ssh/
+        Warning: Create a keypair that will be used only in QuitStore and do not use
+        existing keypairs.
+
+        Args:
+            username: The git username (mostly) given in the adress.
+            passphrase: The passphrase of the private key.
+        """
+        from os.path import expanduser
+        ssh = join(expanduser('~'), '.ssh')
+        pubkey = join(ssh, 'id_quit.pub')
+        privkey = join(ssh, 'id_quit')
+
+        try:
+            credentials = Keypair(username, pubkey, privkey, passphrase)
+        except:
+            self.logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
             return
 
-        remotetest.set_push_url = url
+        return RemoteCallbacks(credentials=credentials)
