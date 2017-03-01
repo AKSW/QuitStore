@@ -345,7 +345,6 @@ class GitRepo:
         self.logger.debug('GitRepo, init, Create an instance of GitStore')
         self.pathspec = pathspec
         self.path = path
-        self.origin = origin
 
         if not exists(path):
             try:
@@ -355,43 +354,39 @@ class GitRepo:
 
         try:
             self.repo = Repository(path)
-            if self.repo.is_bare():
-                raise Exception('Bare repositories not supported, yet')
         except:
             pass
 
-        if self.origin is not None:
-            from re import search
+        if origin:
+            self.callback = self.setCallback(origin)
 
-            # regex to match username in web git adresses
-            regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
-            p = search(regex, self.origin)
-            username = p.group(3)
-            username = 'git'
+        if self.repo:
+            if self.repo.is_bare():
+                raise Exception('Bare repositories not supported, yet')
 
-            self.callback = self.setCallback(username=username)
+            if origin:
+                # set remote
+                self.addRremote('origin', origin)
+        else:
+            if origin:
+                # clone
+                cloneRepository(origin, path, self.callback)
+            else:
+                raise Exception('Can\'t init new repo from existing dir, when no origin is given (to be implemented):', path)
+                self.repo = init_repository(path=path, bare=self.bare)
 
-            self.repo = clone_repository(
-                url=self.origin,
+    def cloneRepository(self, origin, path, callback):
+        try:
+            repo = clone_repository(
+                url=origin,
                 path=path,
                 bare=False,
-                callbacks=self.callback
+                callbacks=callback
             )
-            if self.repo is None:
-                try:
-                    self.repo = clone_repository(
-                        url=self.origin,
-                        path=path,
-                        bare=False,
-                        callbacks=self.callback
-                    )
-                except:
-                    raise Exception('Could not clone from', self.origin)
-
-            self.setremote('origin', self.origin)
-        else:
-            if self.repo is None:
-                self.repo = init_repository(path=path, bare=self.bare)
+            self.addRemote('origin', origin)
+            return repo
+        except:
+            raise Exception('Could not clone from', origin)
 
     def addall(self):
         """Add all (newly created|changed) files to index."""
@@ -414,7 +409,7 @@ class GitRepo:
         except:
             self.logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
 
-    def setremote(self, name, url):
+    def addRemote(self, name, url):
         """Add a remote.
 
         Args:
@@ -423,14 +418,15 @@ class GitRepo:
         """
         try:
             self.repo.remotes.create(name, url)
-            self.logger.debug('GitRepo, setremote, Successful added remote', name, url)
+            self.logger.debug('GitRepo, addRemote, successfully added remote', name, url)
         except:
-            self.logger.debug('GitRepo, setremote, Could not add remote', name, url)
+            self.logger.debug('GitRepo, addRemote, could not add remote', name, url)
+
         try:
             self.repo.remotes.set_push_url(name, url)
             self.repo.remotes.set_url(name, url)
         except:
-            self.logger.debug('GitRepo, setremote, Could not set urls', name, url)
+            self.logger.debug('GitRepo, addRemote, could not set urls', name, url)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -564,6 +560,11 @@ class GitRepo:
         return ids
 
     def isCallbackSet(self):
+        """ Checks if an authentication callback is already defined in the current GitRepo object.
+
+        Returns:
+            True if callback is set, else False
+        """
         if self.callback is None:
             return False
 
@@ -630,7 +631,7 @@ class GitRepo:
 
         Return:
             True: If successful.
-            False: If diverged  or nothing to push.
+            False: If diverged or nothing to push.
         """
         ref = ['refs/heads/' + branch]
 
@@ -638,6 +639,7 @@ class GitRepo:
             remo = self.repo.remotes[remote]
         except:
             self.logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
+            return
 
         try:
             remo.push(ref, callbacks=self.callback)
@@ -654,7 +656,7 @@ class GitRepo:
         except:
             return {}
 
-    def setCallback(self, username='git', passphrase=''):
+    def setCallback(self, origin):
         """Set a pygit callback for user authentication when acting with remotes.
 
         This method uses the private-public-keypair of the ssh host configuration.
@@ -670,6 +672,14 @@ class GitRepo:
         ssh = join(expanduser('~'), '.ssh')
         pubkey = join(ssh, 'id_quit.pub')
         privkey = join(ssh, 'id_quit')
+
+        from re import search
+        # regex to match username in web git adresses
+        regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
+        p = search(regex, origin)
+        username = p.group(3)
+
+        passphrase = ''
 
         try:
             credentials = Keypair(username, pubkey, privkey, passphrase)

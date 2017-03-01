@@ -190,8 +190,6 @@ class GitRepoTests(unittest.TestCase):
     def testCloneRepo(self):
         REMOTE_NAME = 'origin'
         REMOTE_URL = 'git://github.com/aksw/QuitStore.git'
-        REMOTE_FETCHSPEC_SRC = 'refs/heads/*'
-        REMOTE_FETCHSPEC_DST = 'refs/remotes/origin/*'
 
         dir = TemporaryDirectory()
         repo = GitRepo(dir.name, origin=REMOTE_URL)
@@ -351,7 +349,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name, bare=True)
 
-        repo.setremote('origin', self.remotedir.name)
+        repo.addRemote('origin', self.remotedir.name)
 
         # Test if repos are equal
         localtest = Repository(self.dir.name)
@@ -397,7 +395,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.setremote('origin', self.remotedir.name)
+        local.addRemote('origin', self.remotedir.name)
         remote = GitRepo(self.remotedir.name)
 
         # Test before repositories get diverged
@@ -474,7 +472,7 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(remoteids, localids)
 
         # Write file and create commit
-        repo.setremote('test', self.remotedir.name)
+        repo.addRemote('test', self.remotedir.name)
         self.file.write(b'Add a second line to file\n')
         self.file.read()
         repo.addall()
@@ -501,7 +499,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.setremote('origin', self.remotedir.name)
+        local.addRemote('origin', self.remotedir.name)
         remote = GitRepo(self.remotedir.name)
 
         # Test before repositories will diverge

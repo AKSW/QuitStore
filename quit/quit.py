@@ -215,7 +215,7 @@ def initialize(args):
         gitrepo = GitRepo(
             config.getrepopath(),
             origin=config.getOrigin()
-            )
+        )
 
     # since store is initialized, we can add graphs to config
     config.setgraphs()

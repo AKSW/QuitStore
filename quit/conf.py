@@ -29,26 +29,18 @@ class QuitConfiguration:
         if isfile(self.configfile):
             try:
                 self.sysconf.parse(self.configfile, format='turtle')
-                autodiscover = False
             except:
-                # no configuration found
-                autodiscover = True
+                raise Exception('Configuration could not be parsed', self.configfile)
         else:
-            # no configuration found
             raise Exception('No store configuration found', self.configfile)
-            autodiscover = True
 
-        if autodiscover:
-            self.__initfromdir(gitrepo)
-        else:
-            self.__initfromconf(gitrepo)
+        self.__initfromconf()
 
         return
 
-    def __initfromconf(self, gitrepo=None):
+    def __initfromconf(self):
         """Read configuration from config file."""
         self.__setstoresettings()
-        from os.path import exists
         try:
             repo = Repository(self.gitrepo)
             self.storeinitialized = True
@@ -56,10 +48,6 @@ class QuitConfiguration:
         except:
             self.storeinitialized = False
 
-        return
-
-    def __initfromdir(self, git_repo=None):
-        """Read configuration from config file."""
         return
 
     def setgraphs(self):
@@ -107,13 +95,13 @@ class QuitConfiguration:
 
     def __setstoresettings(self):
         """Set the path of Git repository from configuration."""
-        nsQuit = 'http://quit.aksw.org'
+        nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
-        property = URIRef(nsQuit + '/pathOfGitRepo')
+        property = URIRef(nsQuit + 'pathOfGitRepo')
         for s, p, o in self.sysconf.triples((storeuri, property, None)):
             self.gitrepo = str(o)
 
-        property = URIRef(nsQuit + '/setorigin')
+        property = URIRef(nsQuit + 'origin')
         for s, p, o in self.sysconf.triples((storeuri, property, None)):
             self.origin = str(o)
 
