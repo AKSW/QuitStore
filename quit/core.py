@@ -361,7 +361,7 @@ class GitRepo:
             self.callback = self.setCallback(origin)
 
         if self.repo:
-            if self.repo.is_bare():
+            if self.repo.is_bare:
                 raise Exception('Bare repositories not supported, yet')
 
             if origin:
@@ -370,7 +370,7 @@ class GitRepo:
         else:
             if origin:
                 # clone
-                cloneRepository(origin, path, self.callback)
+                self.cloneRepository(origin, path, self.callback)
             else:
                 raise Exception('Can\'t init new repo from existing dir, when no origin is given (to be implemented):', path)
                 self.repo = init_repository(path=path, bare=self.bare)
