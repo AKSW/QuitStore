@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
+from os import listdir
+from os.path import isdir, join, isfile, split, abspath, relpath
 from pygit2 import Repository
+from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
+from quit.exceptions import MissingFileError
 from rdflib import Graph, URIRef
 from rdflib.util import guess_format
-from os import listdir
-from os.path import isdir, join, isfile, split, abspath
 
 
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
 
-    def __init__(self, gitrepo=None, configfile='config.ttl', gc=False, versioning=True):
+    def __init__(self, configfile='config.ttl', gc=False, versioning=True):
         """The init method.
 
         This method checks if the config file is given and reads the config file.
@@ -30,9 +32,9 @@ class QuitConfiguration:
             try:
                 self.sysconf.parse(self.configfile, format='turtle')
             except:
-                raise Exception('Configuration could not be parsed', self.configfile)
+                raise InvalidConfigurationError('Configuration could not be parsed', self.configfile)
         else:
-            raise Exception('No store configuration found', self.configfile)
+            raise MissingConfigurationError('No store configuration found', self.configfile)
 
         self.__initfromconf()
 
@@ -41,23 +43,20 @@ class QuitConfiguration:
     def __initfromconf(self):
         """Read configuration from config file."""
         self.__setstoresettings()
+
         try:
             repo = Repository(self.gitrepo)
             self.storeinitialized = True
             self.setgraphs()
+        except MissingFileError as e:
+            raise MissingFileError(e)
         except:
             self.storeinitialized = False
 
         return
 
-    def setgraphs(self):
-        """Get all URIs of graphs that are configured in config.ttl.
-
-        This method returns all graphs and their corroesponding quad files.
-
-        Returns:
-            A dictionary of URIs of named graphs their quad files.
-        """
+    def setgraphs(self, init=False):
+        """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
         query+= '  ?graph a <' + nsQuit + '/Graph> . '
@@ -66,17 +65,42 @@ class QuitConfiguration:
         query+= '}'
         result = self.sysconf.query(query)
 
+        changedfiles = {}
         for row in result:
             graphuri = str(row['graphuri'])
             filename = str(row['filename'])
 
-            if isfile(join(self.gitrepo, filename)):
-                self.pathspec.append(filename)
-                filename = join(self.gitrepo, filename)
-            elif isfile(filename) is False:
-                pass
+            found = False
 
-            filename = abspath(filename)
+            absfile = abspath(filename)
+
+            # Analyze and check files
+            if absfile.startswith(self.gitrepo):
+                # file is part of git repo
+                if isfile(absfile):
+                    # everything is fine
+                    pass
+                else:
+                    try:
+                        open(absfile, 'a').close()
+                    except:
+                        self.logger.debug('Can\'t create file in repo')
+                        raise('Can\'t create file in repo')
+                filename = relpath(self.gitrepo, absfile)
+            else:
+                joinedabsfile = abspath(join(self.gitrepo, filename))
+                if joinedabsfile.startswith(self.gitrepo):
+                    if isfile(joinedabsfile):
+                        # everything is fine
+                        pass
+                    else:
+                        try:
+                            open(absfile, 'a').close()
+                        except:
+                            self.logger.debug('Cannot create file in repo')
+                            raise MissingFileError('Cannot create file in repo')
+                    filename = relpath(joinedabsfile, self.gitrepo)
+
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
             # and furthermore we assume that one file can contain data of more
@@ -98,6 +122,7 @@ class QuitConfiguration:
         nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'pathOfGitRepo')
+
         for s, p, o in self.sysconf.triples((storeuri, property, None)):
             self.gitrepo = str(o)
 
