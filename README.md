@@ -22,7 +22,9 @@ Make sure you put the correct path to your git repository (`"../store"`) and the
 
 ```
 conf:store a <YourQuitStore> ;
-    <pathOfGitRepo> "../store" . # Set the path to the repository that contains the files .
+    <pathOfGitRepo> "../store" ; # Set the path to the repository that contains the files .
+    <origin> "git:github.com/your/repository.git" . # Optional a git repo that will be cloned into dir given in line above on startup.
+
 
 conf:example a <Graph> ; # Define a Graph resource for a named graph
     <graphUri> <http://example.org/> ; # Set the URI of named graph

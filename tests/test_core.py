@@ -187,6 +187,15 @@ class GitRepoTests(unittest.TestCase):
         for commit in testrepo.walk(testrepo.head.target, GIT_SORT_REVERSE):
             self.assertEqual(str(id), str(commit.oid))
 
+    def testCloneRepo(self):
+        REMOTE_NAME = 'origin'
+        REMOTE_URL = 'git://github.com/aksw/QuitStore.git'
+
+        dir = TemporaryDirectory()
+        repo = GitRepo(dir.name, origin=REMOTE_URL)
+        self.assertTrue(path.exists(path.join(dir.name, 'quit', 'core.py')))
+        dir.cleanup()
+
     def testCommit(self):
         self.getrepowithaddedfile()
 
@@ -340,7 +349,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name, bare=True)
 
-        repo.addremote('origin', self.remotedir.name)
+        repo.addRemote('origin', self.remotedir.name)
 
         # Test if repos are equal
         localtest = Repository(self.dir.name)
@@ -386,8 +395,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.addremote('origin', self.remotedir.name)
-        # local.addremote('origin', 'git://github.com/nareike/adhs.git')
+        local.addRemote('origin', self.remotedir.name)
         remote = GitRepo(self.remotedir.name)
 
         # Test before repositories get diverged
@@ -464,14 +472,13 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(remoteids, localids)
 
         # Write file and create commit
-        repo.addremote('test', self.remotedir.name)
+        repo.addRemote('test', self.remotedir.name)
         self.file.write(b'Add a second line to file\n')
         self.file.read()
         repo.addall()
         repo.commit()
 
         # Test after file got changed and commit was created
-        repo.setpushurl('test', self.dir.name)
         repo.push(remote='test')
 
         localids = []
@@ -492,7 +499,7 @@ class GitRepoTests(unittest.TestCase):
 
         clone_repository(url=self.dir.name, path=self.remotedir.name)
 
-        local.addremote('origin', self.remotedir.name)
+        local.addRemote('origin', self.remotedir.name)
         remote = GitRepo(self.remotedir.name)
 
         # Test before repositories will diverge

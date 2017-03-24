@@ -201,23 +201,27 @@ def initialize(args):
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
 
-    config = QuitConfiguration(versioning=v, gc=gc)
-
-    logger.debug('Known graphs: ' + str(config.getgraphs()))
-    logger.debug('Known files: ' + str(config.getfiles()))
-    logger.debug('Path of Gitrepo: ' + str(config.getrepopath()))
-    logger.debug('RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
+    config = QuitConfiguration(versioning=v, gc=gc, configfile=args.configfile)
 
     store = MemoryStore()
 
-    files = config.getfiles()
-
     if args.pathspec:
-        gitrepo = GitRepo(config.getrepopath(), config.getpathspec())
+        gitrepo = GitRepo(
+            config.getrepopath(),
+            pathspec=config.getpathspec(),
+            origin=config.getOrigin()
+        )
     else:
-        gitrepo = GitRepo(config.getrepopath())
+        gitrepo = GitRepo(
+            config.getrepopath(),
+            origin=config.getOrigin()
+        )
+
+    # since store is initialized, we can add graphs to config
+    config.setgraphs()
 
     # Load data to store
+    files = config.getfiles()
     for filename in files:
         graphs = config.getgraphuriforfile(filename)
         graphstring = ''
@@ -228,6 +232,11 @@ def initialize(args):
             logger.debug('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
             pass
+
+    logger.debug('Known graphs: ' + str(config.getgraphs()))
+    logger.debug('Known files: ' + str(config.getfiles()))
+    logger.debug('Path of Gitrepo: ' + str(config.getrepopath()))
+    logger.debug('RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     # Save file objects per file
     filereferences = {}
@@ -565,7 +574,7 @@ def push():
         HTTP Response 201: If pull was possible
         HTTP Response: 403: If pull did not work
     """
-    if store.push():
+    if gitrepo.push():
         return '', status.HTTP_201_CREATED
     else:
         return '', status.HTTP_403_FORBIDDEN
@@ -605,6 +614,7 @@ if __name__ == '__main__':
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-ps', '--pathspec', action='store_true')
+    parser.add_argument('-c', '--configfile', type=str, default='config.ttl')
     args = parser.parse_args()
 
     objects = initialize(args)

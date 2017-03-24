@@ -31,7 +31,8 @@ install:
 
 # command to run tests
 script:
-    coverage run --source=quit tests/test_core.py
+    - coverage run -a --source=quit tests/test_core.py
+    - coverage run -a --source=quit tests/test_conf.py
 
 after_success:
     coveralls
