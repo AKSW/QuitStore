@@ -366,7 +366,7 @@ class GitRepo:
 
             if origin:
                 # set remote
-                self.addRremote('origin', origin)
+                self.addRemote('origin', origin)
         else:
             if origin:
                 # clone
