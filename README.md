@@ -50,6 +50,36 @@ pip install -r requirements.txt
 ./quit.py
 ```
 
+### Command line options
+`-cm`, `--configmode`
+
+Quit-Store can be started in three different modes.
+These modes differ in how the store choses the named graphs and the corresponding files that will be part of the store.
+
+1. localconfig - Use the graphs specified in a local config file (e.g. `config.ttl`).
+2. repoconfig - Search for a `config.ttl` file in the specified repository.
+3. graphfiles - Use `*.graph` files for each RDF file or analyze found N-Quads files to get the URI of named graphs.
+
+`-t`, `--targetdir`
+
+Specifiy a target directory where the repository can be found or will be cloned (if remote is given) to.
+
+`-r`, `-repourl`
+
+Specifiy a link/URI to a remote repository.
+
+`-c`, `--configfile`
+
+Specify a path to a configuration file. (Defaults to ./config.ttl)
+
+`-nv`, `--disableversioning`
+
+Run Quit-Store without versioning activated
+
+`-gc`, `--garbagecollection`
+
+Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
+
 ## API
 
 Execute a query with curl

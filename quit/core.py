@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from datetime import datetime
 import logging
 from os import makedirs
@@ -335,7 +333,7 @@ class GitRepo:
     author_email = 'quit@quit.aksw.org'
     gcProcess = None
 
-    def __init__(self, path, pathspec=[], origin=None):
+    def __init__(self, path, origin=None):
         """Initialize a new repository from an existing directory.
 
         Args:
@@ -343,14 +341,13 @@ class GitRepo:
         """
         self.logger = logging.getLogger('git_repo.core.quit')
         self.logger.debug('GitRepo, init, Create an instance of GitStore')
-        self.pathspec = pathspec
         self.path = path
 
         if not exists(path):
             try:
                 makedirs(path)
-            except:
-                raise Exception('Can\'t create path in filesystem:', path)
+            except OSError as e:
+                raise Exception('Can\'t create path in filesystem:', path, e)
 
         try:
             self.repo = Repository(path)
@@ -372,8 +369,7 @@ class GitRepo:
                 # clone
                 self.cloneRepository(origin, path, self.callback)
             else:
-                raise Exception('Can\'t init new repo from existing dir, when no origin is given (to be implemented):', path)
-                self.repo = init_repository(path=path, bare=self.bare)
+                self.repo = init_repository(path=path, bare=False)
 
     def cloneRepository(self, origin, path, callback):
         try:
@@ -560,7 +556,7 @@ class GitRepo:
         return ids
 
     def isCallbackSet(self):
-        """ Checks if an authentication callback is already defined in the current GitRepo object.
+        """Checks if an authentication callback is already defined in the current GitRepo object.
 
         Returns:
             True if callback is set, else False
@@ -650,11 +646,12 @@ class GitRepo:
         remotes = {}
 
         try:
-            for remote in remotes:
+            for remote in self.repo.remotes:
                 remotes[remote.name] = [remote.url, remote.push_url]
-            return remotes
         except:
             return {}
+
+        return remotes
 
     def setCallback(self, origin):
         """Set a pygit callback for user authentication when acting with remotes.

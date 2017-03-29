@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath
 import argparse
 from quit.core import FileReference, MemoryStore, GitRepo
 from quit.conf import QuitConfiguration
+from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
 from quit.parsers import NQuadsParser
 from quit.utils import splitinformation, sparqlresponse
@@ -184,6 +185,7 @@ def initialize(args):
     else:
         logger.info('Versioning is enabled')
         v = True
+
         if args.garbagecollection:
             try:
                 gcAutoThreshold = subprocess.check_output(["git", "config", "gc.auto"]).decode("UTF-8").strip()
@@ -201,42 +203,43 @@ def initialize(args):
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
 
-    config = QuitConfiguration(versioning=v, gc=gc, configfile=args.configfile)
+    config = QuitConfiguration(
+        versioning=v,
+        gc=gc,
+        configfile=args.configfile,
+        targetdir=args.targetdir,
+        repository=args.repourl,
+        configmode=args.configmode,
+    )
+
+    try:
+        gitrepo = GitRepo(
+            path=config.getRepoPath(),
+            origin=config.getOrigin()
+        )
+    except Exception as e:
+        raise InvalidConfigurationError(e)
+
+    # since repo is handled, we can add graphs to config
+    config.initgraphconfig()
 
     store = MemoryStore()
-
-    if args.pathspec:
-        gitrepo = GitRepo(
-            config.getrepopath(),
-            pathspec=config.getpathspec(),
-            origin=config.getOrigin()
-        )
-    else:
-        gitrepo = GitRepo(
-            config.getrepopath(),
-            origin=config.getOrigin()
-        )
-
-    # since store is initialized, we can add graphs to config
-    config.setgraphs()
 
     # Load data to store
     files = config.getfiles()
     for filename in files:
         graphs = config.getgraphuriforfile(filename)
         graphstring = ''
+
         for graph in graphs:
             graphstring+= str(graph)
+
         try:
             store.addfile(filename, config.getserializationoffile(filename))
-            logger.debug('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
+            logger.info('Error: Graph with URI: ' + graphstring + ' not added')
             pass
-
-    logger.debug('Known graphs: ' + str(config.getgraphs()))
-    logger.debug('Known files: ' + str(config.getfiles()))
-    logger.debug('Path of Gitrepo: ' + str(config.getrepopath()))
-    logger.debug('RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     # Save file objects per file
     filereferences = {}
@@ -251,8 +254,13 @@ def initialize(args):
         fileobject.setcontent(sorted(content))
         filereferences[file] = fileobject
 
-    return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
+    logger.info('QuitStore successfully running.')
+    logger.info('Known graphs: ' + str(config.getgraphs()))
+    logger.info('Known files: ' + str(config.getfiles()))
+    logger.info('Path of Gitrepo: ' + str(config.getRepoPath()))
+    logger.info('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
+    return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -295,7 +303,7 @@ def processsparql(querystring):
     try:
         query = QueryAnalyzer(querystring)
     except NotAcceptable as e:
-        print("This is not acceptable:", e)
+        logger.error("This is not acceptable:", e)
         exit(1)
     except:
         raise
@@ -393,15 +401,17 @@ def savedexit():
 
     Add methods you want to call on unexpected shutdown.
     """
-    print("Exiting store")
+    logger.info("Exiting store")
     store.exit()
-    print("Store exited")
+    logger.info("Store exited")
 
     return
+
 
 '''
 API
 '''
+
 
 @app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
@@ -465,7 +475,8 @@ def checkoutVersion(commitid):
     elif request.method == 'POST':
         if 'commitid' in request.form:
             commitid = request.form['commitid']
-    if commitid == None:
+
+    if commitid is None:
         msg = 'Commit id is missing in request'
         logger.debug(msg)
         return msg, status.HTTP_400_BAD_REQUEST
@@ -610,11 +621,23 @@ def main():
 
 
 if __name__ == '__main__':
+    graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
+                "localconfig" - Use the given local file for graph settings.
+                "repoconfig" - Use the configuration of the git repository for graphs settings.
+                "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
+    confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
-    parser.add_argument('-ps', '--pathspec', action='store_true')
-    parser.add_argument('-c', '--configfile', type=str, default='config.ttl')
+    parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
+    parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
+    parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
+    parser.add_argument('-cm', '--configmode', type=str, default='localconfig', choices=[
+        'graphfiles',
+        'localconfig',
+        'repoconfig'
+    ], help=graphhelp)
     args = parser.parse_args()
 
     objects = initialize(args)
@@ -623,6 +646,7 @@ if __name__ == '__main__':
     gitrepo = objects['gitrepo']
     references = objects['references']
     sys.setrecursionlimit(2 ** 15)
+
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit):
         main()
