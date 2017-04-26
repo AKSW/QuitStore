@@ -1,81 +1,204 @@
-#!/usr/bin/env python3
+import logging
 from os import listdir
-from os.path import isdir, join, isfile, split, abspath, relpath
-from pygit2 import Repository
+from os.path import join, isfile, abspath, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
-from quit.exceptions import MissingFileError
-from rdflib import Graph, URIRef
+from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
+from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
+from urllib.parse import quote, urlparse
+
+conflogger = logging.getLogger('conf.quit')
+# create file handler which logs even debug messages
+fh = logging.FileHandler('quit.log')
+fh.setLevel(logging.DEBUG)
+conflogger.addHandler(fh)
 
 
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
 
-    def __init__(self, configfile='config.ttl', gc=False, versioning=True):
+    def __init__(
+        self,
+        configmode='localconfig',
+        configfile='config.ttl',
+        repository=None,
+        targetdir=None,
+        gc=False,
+        versioning=True
+    ):
         """The init method.
 
         This method checks if the config file is given and reads the config file.
         If the config file is missing, it will be generated after analyzing the
         file structure.
         """
+        self.configmode=configmode
         self.configchanged = False
         self.sysconf = Graph()
+        self.graphconf = None
         self.versioning = versioning
         self.gc = gc
-        self.origin = ''
+        self.origin = None
         self.graphs = {}
         self.files = {}
-        self.pathspec = []
-        self.configfile = configfile
 
-        if isfile(self.configfile):
+        self.quit = Namespace('http://quit.aksw.org/')
+        self.nsMngrSysconf = NamespaceManager(self.sysconf)
+        self.nsMngrSysconf.bind('', 'http://quit.aksw.org/', override=False)
+        self.nsMngrGraphconf = NamespaceManager(self.sysconf)
+        self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/', override=False)
+
+        self.__initstoreconfig(repository=repository, targetdir=targetdir, configfile=configfile)
+
+        return
+
+    def __initstoreconfig(self, repository=None, targetdir=None, configfile=None):
+        """Initialize store settings."""
+        if isfile(configfile):
             try:
-                self.sysconf.parse(self.configfile, format='turtle')
+                self.sysconf.parse(configfile, format='turtle')
             except:
                 raise InvalidConfigurationError('Configuration could not be parsed', self.configfile)
-        else:
-            raise MissingConfigurationError('No store configuration found', self.configfile)
 
-        self.__initfromconf()
+            self.configfile = configfile
+        else:
+            if not targetdir:
+                raise InvalidConfigurationError('No target directory for git repo given')
+
+        if targetdir:
+            self.setRepoPath(targetdir)
+
+        if repository:
+            self.setGitOrigin(repository)
 
         return
 
-    def __initfromconf(self):
-        """Read configuration from config file."""
-        self.__setstoresettings()
+    def initgraphconfig(self):
+        """Initialize graph settings.
+
+        Public method to initalize graph settings. This method will be run only once.
+        """
+        if self.graphconf is None:
+            self.__initgraphconfig()
+
+    def __initgraphconfig(self, repository=None, targetdir=None):
+        """Initialize graph settings."""
+        self.graphconf = Graph()
+
+        if self.configmode == 'localconfig':
+            self.__initgraphsfromconf(self.configfile)
+        elif self.configmode == 'remoteconfig':
+            remConfigFile = join(self.getRepoPath(), 'config.ttl')
+            self.__initgraphsfromconf(remConfigFile)
+        elif self.configmode == 'graphfiles':
+            self.__initgraphsfromdir(self.getRepoPath())
+        else:
+            raise InvalidConfigurationError('This mode is not supported.', self.configmode)
+        return
+
+    def __initgraphsfromdir(self, repodir):
+        """Init a repository by analyzing all existing files."""
+        graphs = self.getgraphsfromdir(repodir)
+
+        for file, format in graphs.items():
+            absfile = join(self.getRepoPath(), file)
+            absgraphfile = absfile + '.graph'
+            graphuri = self.__readGraphIriFile(absgraphfile)
+
+            if graphuri and format == 'nquads':
+                self.addgraph(file=file, graphuri=graphuri, format=format)
+            elif graphuri is None and format == 'nquads':
+                tmpgraph = ConjunctiveGraph(identifier='default')
+
+                try:
+                    tmpgraph.parse(source=absfile, format=format)
+                except:
+                    conflogger.warning('Could not parse graphfile ' + absfile + ' skipped.')
+                    break
+
+                namedgraphs = tmpgraph.contexts()
+                founduris = []
+
+                for graph in namedgraphs:
+                    if not isinstance(graph, BNode) and str(graph.identifier) != 'default':
+                        graphuri = graph.identifier
+                        founduris.append(graphuri)
+
+                if len(founduris) == 1:
+                    self.addgraph(file=file, graphuri=graphuri, format=format)
+                elif len(founduris) > 1:
+                    conflogger.warning('No named graph found. ' + absfile + ' skipped.')
+                elif len(founduris) < 1:
+                    conflogger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
+
+            elif format == 'n-triples':
+                if graphuri:
+                    self.addgraph(file=file, graphuri=graphuri, format=format)
+                else:
+                    conflogger.warning('No .graph file found. ' + absfile + ' skipped.')
+
+        self.__setgraphsfromconf()
+
+    def __initgraphsfromconf(self, configfile):
+        """Init graphs with setting from config.ttl."""
+        if not isfile(configfile):
+            raise MissingConfigurationError('Configfile is missing', configfile)
 
         try:
-            repo = Repository(self.gitrepo)
-            self.storeinitialized = True
-            self.setgraphs()
-        except MissingFileError as e:
-            raise MissingFileError(e)
-        except:
-            self.storeinitialized = False
+            self.graphconf.parse(configfile, format='turtle')
+        except Exception as e:
+            raise InvalidConfigurationError('Configfile could not be parsed', configfile, e)
 
-        return
+        # Get Graphs
+        self.__setgraphsfromconf()
 
-    def setgraphs(self, init=False):
+    def __readGraphIriFile(self, graphfile):
+        """Search for a graph uri in graph file and return it.
+
+        Args:
+            graphfile: String containing the path of a graph file
+
+        Returns:
+            graphuri: String with the graph URI
+        """
+        if isfile(graphfile):
+            f = open(graphfile, 'r')
+            graphuri = f.readline()
+            try:
+                urlparse(graphuri)
+            except:
+                graphuri=None
+
+            return graphuri
+
+    def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
-        nsQuit = 'http://quit.aksw.org'
+        nsQuit = 'http://quit.aksw.org/'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
-        query+= '  ?graph a <' + nsQuit + '/Graph> . '
-        query+= '  ?graph <' + nsQuit + '/graphUri> ?graphuri . '
-        query+= '  ?graph <' + nsQuit + '/hasQuadFile> ?filename . '
+        query+= '  ?graph a <' + nsQuit + 'Graph> . '
+        query+= '  ?graph <' + nsQuit + 'graphUri> ?graphuri . '
+        query+= '  ?graph <' + nsQuit + 'graphFile> ?filename . '
         query+= '}'
-        result = self.sysconf.query(query)
+        result = self.graphconf.query(query)
+
+        repopath = self.getRepoPath()
 
         changedfiles = {}
         for row in result:
-            graphuri = str(row['graphuri'])
             filename = str(row['filename'])
+            format = guess_format(filename)
+            if format not in ['nt', 'nquads']:
+                break
+
+            graphuri = str(row['graphuri'])
 
             found = False
 
             absfile = abspath(filename)
+            joinedabsfile = abspath(join(repopath, filename))
 
             # Analyze and check files
-            if absfile.startswith(self.gitrepo):
+            if absfile.startswith(repopath):
                 # file is part of git repo
                 if isfile(absfile):
                     # everything is fine
@@ -84,22 +207,18 @@ class QuitConfiguration:
                     try:
                         open(absfile, 'a').close()
                     except:
-                        self.logger.debug('Can\'t create file in repo')
-                        raise('Can\'t create file in repo')
-                filename = relpath(self.gitrepo, absfile)
+                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                filename = relpath(repopath, absfile)
             else:
-                joinedabsfile = abspath(join(self.gitrepo, filename))
-                if joinedabsfile.startswith(self.gitrepo):
-                    if isfile(joinedabsfile):
-                        # everything is fine
-                        pass
-                    else:
-                        try:
-                            open(absfile, 'a').close()
-                        except:
-                            self.logger.debug('Cannot create file in repo')
-                            raise MissingFileError('Cannot create file in repo')
-                    filename = relpath(joinedabsfile, self.gitrepo)
+                if isfile(joinedabsfile):
+                    # everything is fine
+                    pass
+                else:
+                    try:
+                        open(joinedabsfile, 'a').close()
+                    except:
+                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                filename = relpath(joinedabsfile, repopath)
 
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
@@ -108,37 +227,48 @@ class QuitConfiguration:
             if filename in self.files:
                 self.files[filename]['graphs'].add(graphuri)
             else:
-                fo = guess_format(filename)
-                if fo is not None:
-                    self.files[filename] = {
-                        'serialization': fo,
-                        'graphs': {graphuri}
-                        }
+                self.files[filename] = {
+                    'serialization': format,
+                    'graphs': {graphuri}
+                    }
 
         return
 
-    def __setstoresettings(self):
-        """Set the path of Git repository from configuration."""
+    def addgraph(self, graphuri, file, format=None):
+        self.graphconf.add((self.quit[quote(graphuri)], RDF.type, self.quit.Graph))
+        self.graphconf.add((self.quit[quote(graphuri)], self.quit.graphUri, URIRef(graphuri)))
+        self.graphconf.add((self.quit[quote(graphuri)], self.quit.graphFile, Literal(file)))
+        if format is not None:
+            self.graphconf.add((self.quit[quote(graphuri)], self.quit.hasFormat, Literal(format)))
+
+        return
+
+    def removegraph(self, graphuri):
+        self.graphconf.remove((self.quit[urlencode(graphuri)], None, None))
+
+        return
+
+    def getRepoPath(self):
+        """Get the path of Git repository from configuration.
+
+        Returns:
+            A string containig the path of the git repo.
+        """
         nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'pathOfGitRepo')
 
-        for s, p, o in self.sysconf.triples((storeuri, property, None)):
-            self.gitrepo = str(o)
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
 
+    def getOrigin(self):
+        """Get the URI of Git remote from configuration."""
+        nsQuit = 'http://quit.aksw.org/'
+        storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'origin')
+
         for s, p, o in self.sysconf.triples((storeuri, property, None)):
-            self.origin = str(o)
-
-        return
-
-    def getrepopath(self):
-        """Get the path of the git repo.
-
-        Returns:
-            A string containig the path of the git repo,
-        """
-        return self.gitrepo
+            return str(o)
 
     def getgraphs(self):
         """Get all graphs known to conf.
@@ -188,18 +318,6 @@ class QuitConfiguration:
 
         return self.graphs
 
-    def getOrigin(self):
-        """Get origin of store.
-
-        Returns:
-            A string containing the URL of the remote's origin
-        """
-        return self.origin
-
-    def getpathspec(self):
-        """Get pathspec from config."""
-        return self.pathspec
-
     def getserializationoffile(self, file):
         """Get the file for a given graph uri.
 
@@ -235,12 +353,13 @@ class QuitConfiguration:
             A list of filepathes.
         """
         if path is None:
-            path = self.gitrepo
+            path = self.getRepoPath()
         files = [f for f in listdir(path) if isfile(join(path, f))]
-        graphfiles = []
+        graphfiles = {}
         for file in files:
-            if guess_format(file) is not None:
-                graphfiles.append(file)
+            format = guess_format(file)
+            if format is not None:
+                graphfiles[file] = format
 
         return graphfiles
 
@@ -249,3 +368,15 @@ class QuitConfiguration:
 
     def isversioningon(self):
         return self.versioning
+
+    def setRepoPath(self, path):
+        self.sysconf.remove((None, self.quit.pathOfGitRepo, None))
+        self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
+
+        return
+
+    def setGitOrigin(self, origin):
+        self.sysconf.remove((None, self.quit.origin, None))
+        self.sysconf.add((self.quit.Store, self.quit.origin, Literal(origin)))
+
+        return

@@ -1,119 +1,193 @@
 #!/usr/bin/env python3
 import unittest
 from context import quit
+from glob import glob
+from os import remove
+from os.path import join, isdir
+from pygit2 import init_repository, Repository, clone_repository
+from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from quit.conf import QuitConfiguration
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import MissingFileError
-from os import path
-from pygit2 import init_repository, Repository, clone_repository
-from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
+from distutils.dir_util import copy_tree, remove_tree
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 
 class TestConfiguration(unittest.TestCase):
 
     def setUp(self):
-        self.dir = TemporaryDirectory()
-        self.config = NamedTemporaryFile(suffix='.ttl', delete=False)
-        self.file = NamedTemporaryFile(dir=self.dir.name, suffix='.nq')
-        self.filename = path.basename(self.file.name)
-        self.untrackedFile = NamedTemporaryFile(dir=self.dir.name, suffix='.nq')
-        self.untrackedFilename = path.basename(self.untrackedFile.name)
-        self.configContent = """
-                    @base <http://quit.aksw.org/> .
-                    @prefix conf: <http://my.quit.conf/> .
-                    conf:store a <QuitStore> ;
-                      <origin> "git://github.com/aksw/QuitStore.git" ;
-                      <pathOfGitRepo> \"""" + self.dir.name + """\" .
-                    conf:graph a <Graph> ;
-                      <graphUri> <http://example.org/> ;
-                      <hasQuadFile> \"""" + self.filename + '" . '
+        self.testData = './tests/samples/configuration_test'
+        self.local = './tests/samples/local'
+        self.remote = '.tests/samples/remote'
+        copy_tree(self.testData, self.local)
+        copy_tree(self.testData, self.remote)
+        self.localConfigFile = join(self.local, 'config.ttl')
+        self.remoteConfigFile = join(self.local, 'config.ttl')
+        tempRepoLine = '  <pathOfGitRepo>  "' + self.local + '" .'
 
-        self.config.write(bytes(self.configContent.encode('UTF-8')))
-        self.config.seek(0)
+        with open(self.localConfigFile) as f:
+            content = f.readlines()
+
+        remove(self.localConfigFile)
+
+        with open(self.localConfigFile, 'w+') as f:
+            for line in content:
+                if line.startswith('  <pathOfGitRepo'):
+                    f.write(tempRepoLine)
+                else:
+                    f.write(line)
 
     def tearDown(self):
-        self.config = None
-        self.file = None
-        self.filename = None
-        self.untrackedFile = None
-        self.dir.cleanup()
-        self.dir = None
+        def __deleteFiles(directory):
+            files = glob(join(directory, '*'))
+            for file in files:
+                remove(file)
+
+        __deleteFiles(self.local)
+        __deleteFiles(self.remote)
+
+        localGit = join(self.local, '.git')
+        remoteGit = join(self.remote, '.git')
+
+        if isdir(localGit):
+            remove_tree(localGit)
+        if isdir(remoteGit):
+            remove_tree(remoteGit)
+
+        return
 
     def testConfigParams(self):
-        init_repository(self.dir.name, False)
+        init_repository(self.local, False)
         # no params given
-        conf = QuitConfiguration(configfile=self.config.name)
+        conf = QuitConfiguration(configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
         self.assertTrue(conf.isgarbagecollectionon)
 
         # all params set
-        conf = QuitConfiguration(gc=True, versioning=True, configfile=self.config.name)
+        conf = QuitConfiguration(gc=True, versioning=True, configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
         self.assertTrue(conf.isgarbagecollectionon)
 
         # all params unset
-        conf = QuitConfiguration(gc=False, versioning=False, configfile=self.config.name)
+        conf = QuitConfiguration(gc=False, versioning=False, configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
         self.assertTrue(conf.isgarbagecollectionon)
 
     def testInitExistingFolder(self):
-        conf = QuitConfiguration(configfile=self.config.name)
-        self.assertEqual(conf.getrepopath(), self.dir.name)
+        conf = QuitConfiguration(configfile=self.localConfigFile)
+        self.assertEqual(conf.getRepoPath(), self.local)
 
     def testInitExistingRepo(self):
-        init_repository(self.dir.name, False)
-        conf = QuitConfiguration(configfile=self.config.name)
-        self.assertEqual(conf.getrepopath(), self.dir.name)
+        init_repository(self.local, False)
+
+        conf = QuitConfiguration(
+            configfile=self.localConfigFile
+        )
+
+        conf.initgraphconfig()
+
+        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
+
+        conf = QuitConfiguration(
+            repository='assests/configuration_test',
+            configfile=self.localConfigFile,
+            configmode='remoteconfig'
+        )
+
+        conf.initgraphconfig()
+
+        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
+
+        conf = QuitConfiguration(
+            configfile=self.localConfigFile,
+            configmode='localconfig'
+        )
+        conf.initgraphconfig()
+
+        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
 
     def testInitMissingConfiguration(self):
-        init_repository(self.dir.name, False)
+        init_repository(self.local, False)
 
-        with self.assertRaises(MissingConfigurationError):
+        with self.assertRaises(InvalidConfigurationError):
             QuitConfiguration(configfile='no.config')
 
-    def testInitGraphWithMissingFile(self):
-        config = NamedTemporaryFile(suffix='.ttl', delete=False)
-        configContent= self.configContent + """
-                    conf:graph2 a <Graph> ;
-                      <graphUri> <http://example2.org/> ;
-                      <hasQuadFile> "nonexistingfile.nq" . """
-        config.write(bytes(configContent.encode('UTF-8')))
-        config.seek(0)
+    def testInitWithMissingGraphFiles(self):
+        # Mode: local config file
+        remove(join(self.local, 'example1.nq'))
+        remove(join(self.local, 'example2.nt'))
 
-        init_repository(self.dir.name, False)
-
-        conf = QuitConfiguration(configfile=config.name)
+        conf = QuitConfiguration(configfile=self.remoteConfigFile)
+        conf.initgraphconfig()
 
         files = conf.getfiles()
-        self.assertEqual(sorted(files), sorted([self.filename, 'nonexistingfile.nq']))
+        # deleted files should be created
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
 
-    def testSysconfigValues(self):
-        init_repository(self.dir.name, False)
-        conf = QuitConfiguration(configfile=self.config.name)
+        # Mode: remote config file
+        remove(join(self.local, 'example1.nq'))
+        remove(join(self.local, 'example2.nt'))
 
-        path = conf.getrepopath()
-        self.assertEqual(path, self.dir.name)
+        conf = QuitConfiguration(repository='assests/configuration_test', configfile=self.localConfigFile, configmode='remoteconfig')
+        conf.initgraphconfig()
 
+        files = conf.getfiles()
+        # deleted files should be created
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+
+        # Mode: file discovery
+        remove(join(self.local, 'example1.nq'))
+        remove(join(self.local, 'example2.nt'))
+
+        conf = QuitConfiguration(configfile=self.localConfigFile, configmode='graphfiles')
+        conf.initgraphconfig()
+
+        files = conf.getfiles()
+        # no files to use
+        self.assertEqual(sorted(files), [])
+
+    def testStoreConfig(self):
+        init_repository(self.local, False)
+        conf = QuitConfiguration(configfile=self.localConfigFile)
+
+        self.assertEqual(conf.getRepoPath(), self.local)
+        self.assertEqual(conf.getOrigin(), 'git://github.com/aksw/QuitStore.git')
+
+        allFiles = conf.getgraphsfromdir()
+        self.assertEqual(sorted(allFiles), sorted(['config.ttl', 'example1.nq', 'example2.nt', 'example3.nq']))
+
+
+    def testGraphConfig(self):
+        conf = QuitConfiguration(
+                    configmode='localconfig',
+                    configfile=self.localConfigFile
+                )
+
+        conf.initgraphconfig()
         graphs = conf.getgraphs()
-        self.assertEqual(graphs, ['http://example.org/'])
+        self.assertEqual(sorted(graphs), ['http://example.org/1/', 'http://example.org/2/'])
 
         files = conf.getfiles()
-        self.assertEqual(files, [self.filename])
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
 
-        serialization = conf.getserializationoffile(self.filename)
+        serialization = conf.getserializationoffile('example1.nq')
         self.assertEqual(serialization, 'nquads')
 
         gfMap = conf.getgraphurifilemap()
-        self.assertEqual(gfMap, {'http://example.org/': self.filename})
+        self.assertEqual(gfMap, {
+                'http://example.org/1/': 'example1.nq',
+                'http://example.org/2/': 'example2.nt'
+            })
 
-        allFiles = conf.getgraphsfromdir()
-        self.assertEqual(sorted(allFiles), sorted([self.filename, self.untrackedFilename]))
+        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/1/'])
+        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
-        self.assertEqual(conf.getOrigin(), 'git://github.com/aksw/QuitStore.git')
-        self.assertEqual(conf.getgraphuriforfile(self.filename), ['http://example.org/'])
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/'), self.filename)
-
+        conf = QuitConfiguration(
+                    configmode='graphfiles',
+                    configfile=self.localConfigFile
+                )
 
 def main():
     unittest.main()
