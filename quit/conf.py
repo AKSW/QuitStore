@@ -19,7 +19,7 @@ class QuitConfiguration:
 
     def __init__(
         self,
-        configmode='localconfig',
+        configmode=None,
         configfile='config.ttl',
         repository=None,
         targetdir=None,
@@ -32,7 +32,6 @@ class QuitConfiguration:
         If the config file is missing, it will be generated after analyzing the
         file structure.
         """
-        self.configmode=configmode
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -48,11 +47,11 @@ class QuitConfiguration:
         self.nsMngrGraphconf = NamespaceManager(self.sysconf)
         self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/', override=False)
 
-        self.__initstoreconfig(repository=repository, targetdir=targetdir, configfile=configfile)
+        self.__initstoreconfig(repository=repository, targetdir=targetdir, configfile=configfile, configmode=configmode)
 
         return
 
-    def __initstoreconfig(self, repository=None, targetdir=None, configfile=None):
+    def __initstoreconfig(self, repository=None, targetdir=None, configfile=None, configmode=None):
         """Initialize store settings."""
         if isfile(configfile):
             try:
@@ -64,6 +63,9 @@ class QuitConfiguration:
         else:
             if not targetdir:
                 raise InvalidConfigurationError('No target directory for git repo given')
+
+        if configmode:
+            self.setConfigMode(configmode)
 
         if targetdir:
             self.setRepoPath(targetdir)
@@ -84,13 +86,14 @@ class QuitConfiguration:
     def __initgraphconfig(self, repository=None, targetdir=None):
         """Initialize graph settings."""
         self.graphconf = Graph()
+        configmode = self.getConfigMode()
 
-        if self.configmode == 'localconfig':
+        if configmode == 'localconfig':
             self.__initgraphsfromconf(self.configfile)
-        elif self.configmode == 'remoteconfig':
+        elif configmode == 'remoteconfig':
             remConfigFile = join(self.getRepoPath(), 'config.ttl')
             self.__initgraphsfromconf(remConfigFile)
-        elif self.configmode == 'graphfiles':
+        elif configmode == 'graphfiles':
             self.__initgraphsfromdir(self.getRepoPath())
         else:
             raise InvalidConfigurationError('This mode is not supported.', self.configmode)
@@ -114,7 +117,7 @@ class QuitConfiguration:
                     tmpgraph.parse(source=absfile, format=format)
                 except:
                     conflogger.warning('Could not parse graphfile ' + absfile + ' skipped.')
-                    break
+                    continue
 
                 namedgraphs = tmpgraph.contexts()
                 founduris = []
@@ -131,7 +134,7 @@ class QuitConfiguration:
                 elif len(founduris) < 1:
                     conflogger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
 
-            elif format == 'n-triples':
+            elif format == 'nt':
                 if graphuri:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 else:
@@ -247,6 +250,20 @@ class QuitConfiguration:
         self.graphconf.remove((self.quit[urlencode(graphuri)], None, None))
 
         return
+
+    def getConfigMode(self):
+        """Get the mode how Quit-Store detects RDF files and named graphs.
+
+        Returns:
+            A string containig the mode.
+        """
+        nsQuit = 'http://quit.aksw.org/'
+        property = URIRef(nsQuit + 'configMode')
+
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
+
+        return 'graphfiles'
 
     def getRepoPath(self):
         """Get the path of Git repository from configuration.
@@ -369,14 +386,20 @@ class QuitConfiguration:
     def isversioningon(self):
         return self.versioning
 
-    def setRepoPath(self, path):
-        self.sysconf.remove((None, self.quit.pathOfGitRepo, None))
-        self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
+    def setConfigMode(self, mode):
+        self.sysconf.remove((None, self.quit.configMode, None))
+        self.sysconf.add((self.quit.Store, self.quit.configMode, Literal(mode)))
 
         return
 
     def setGitOrigin(self, origin):
         self.sysconf.remove((None, self.quit.origin, None))
         self.sysconf.add((self.quit.Store, self.quit.origin, Literal(origin)))
+
+        return
+
+    def setRepoPath(self, path):
+        self.sysconf.remove((None, self.quit.pathOfGitRepo, None))
+        self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
 
         return

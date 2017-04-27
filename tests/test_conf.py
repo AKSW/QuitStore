@@ -113,11 +113,33 @@ class TestConfiguration(unittest.TestCase):
             QuitConfiguration(configfile='no.config')
 
     def testInitWithMissingGraphFiles(self):
-        # Mode: local config file
+        # Mode: fallback to graphfiles
         remove(join(self.local, 'example1.nq'))
         remove(join(self.local, 'example2.nt'))
 
         conf = QuitConfiguration(configfile=self.remoteConfigFile)
+        conf.initgraphconfig()
+
+        files = conf.getfiles()
+        # no files to use
+        self.assertEqual(sorted(files), [])
+
+        # Mode: graphfiles
+        conf = QuitConfiguration(
+            configfile=self.localConfigFile,
+            configmode='graphfiles'
+        )
+        conf.initgraphconfig()
+
+        files = conf.getfiles()
+        # no files to use
+        self.assertEqual(sorted(files), [])
+
+        # Mode: local config file
+        conf = QuitConfiguration(
+            configfile=self.remoteConfigFile,
+            configmode='localconfig'
+        )
         conf.initgraphconfig()
 
         files = conf.getfiles()
@@ -128,23 +150,17 @@ class TestConfiguration(unittest.TestCase):
         remove(join(self.local, 'example1.nq'))
         remove(join(self.local, 'example2.nt'))
 
-        conf = QuitConfiguration(repository='assests/configuration_test', configfile=self.localConfigFile, configmode='remoteconfig')
+        conf = QuitConfiguration(
+            repository='assests/configuration_test',
+            configfile=self.localConfigFile,
+            configmode='remoteconfig'
+        )
         conf.initgraphconfig()
 
         files = conf.getfiles()
         # deleted files should be created
         self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
 
-        # Mode: file discovery
-        remove(join(self.local, 'example1.nq'))
-        remove(join(self.local, 'example2.nt'))
-
-        conf = QuitConfiguration(configfile=self.localConfigFile, configmode='graphfiles')
-        conf.initgraphconfig()
-
-        files = conf.getfiles()
-        # no files to use
-        self.assertEqual(sorted(files), [])
 
     def testStoreConfig(self):
         init_repository(self.local, False)
