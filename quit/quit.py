@@ -633,7 +633,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
     parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
-    parser.add_argument('-cm', '--configmode', type=str, default='localconfig', choices=[
+    parser.add_argument('-cm', '--configmode', type=str, choices=[
         'graphfiles',
         'localconfig',
         'repoconfig'
