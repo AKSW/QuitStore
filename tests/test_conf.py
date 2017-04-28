@@ -172,8 +172,33 @@ class TestConfiguration(unittest.TestCase):
         allFiles = conf.getgraphsfromdir()
         self.assertEqual(sorted(allFiles), sorted(['config.ttl', 'example1.nq', 'example2.nt', 'example3.nq']))
 
+    def testGraphConfigDefaultMode(self):
+        conf = QuitConfiguration(
+                    configfile=self.localConfigFile
+                )
 
-    def testGraphConfig(self):
+        conf.initgraphconfig()
+        graphs = conf.getgraphs()
+        self.assertEqual(sorted(graphs), ['http://example.org/2/', 'http://example.org/discovered/'])
+
+        files = conf.getfiles()
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+
+        serialization = conf.getserializationoffile('example1.nq')
+        self.assertEqual(serialization, 'nquads')
+
+        gfMap = conf.getgraphurifilemap()
+        self.assertEqual(gfMap, {
+                'http://example.org/discovered/': 'example1.nq',
+                'http://example.org/2/': 'example2.nt'
+            })
+
+        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/discovered/'])
+        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
+
+    def testGraphConfigLocalConfig(self):
         conf = QuitConfiguration(
                     configmode='localconfig',
                     configfile=self.localConfigFile
@@ -200,10 +225,59 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
         self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
+    def testGraphConfigRemoteConfig(self):
+        conf = QuitConfiguration(
+                    configmode='remoteconfig',
+                    configfile=self.localConfigFile
+                )
+
+        conf.initgraphconfig()
+        graphs = conf.getgraphs()
+        self.assertEqual(sorted(graphs), ['http://example.org/1/', 'http://example.org/2/'])
+
+        files = conf.getfiles()
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+
+        serialization = conf.getserializationoffile('example1.nq')
+        self.assertEqual(serialization, 'nquads')
+
+        gfMap = conf.getgraphurifilemap()
+        self.assertEqual(gfMap, {
+                'http://example.org/1/': 'example1.nq',
+                'http://example.org/2/': 'example2.nt'
+            })
+
+        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/1/'])
+        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
+
+    def testGraphConfigGraphFiles(self):
         conf = QuitConfiguration(
                     configmode='graphfiles',
                     configfile=self.localConfigFile
                 )
+
+        conf.initgraphconfig()
+        graphs = conf.getgraphs()
+        self.assertEqual(sorted(graphs), ['http://example.org/2/', 'http://example.org/discovered/'])
+
+        files = conf.getfiles()
+        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+
+        serialization = conf.getserializationoffile('example1.nq')
+        self.assertEqual(serialization, 'nquads')
+
+        gfMap = conf.getgraphurifilemap()
+        self.assertEqual(gfMap, {
+                'http://example.org/discovered/': 'example1.nq',
+                'http://example.org/2/': 'example2.nt'
+            })
+
+        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/discovered/'])
+        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
+        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
 def main():
     unittest.main()

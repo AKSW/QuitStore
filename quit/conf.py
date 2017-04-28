@@ -166,7 +166,7 @@ class QuitConfiguration:
         """
         if isfile(graphfile):
             f = open(graphfile, 'r')
-            graphuri = f.readline()
+            graphuri = f.readline().strip()
             try:
                 urlparse(graphuri)
             except:
