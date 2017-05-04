@@ -6,6 +6,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
 
 import argparse
+from os.path import join
 from quit.core import FileReference, MemoryStore, GitRepo
 from quit.conf import QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
@@ -102,12 +103,13 @@ def reloadstore():
     store = MemoryStore
     files = config.getfiles()
     for filename in files:
+        filepath = join(config.getRepoPath(), filename)
         graphs = config.getgraphuriforfile(filename)
         graphstring = ''
         for graph in graphs:
             graphstring+= str(graph)
         try:
-            store.addfile(filename, config.getserializationoffile(filename))
+            store.addfile(filepath, config.getserializationoffile(filename))
         except:
             pass
 
@@ -228,6 +230,7 @@ def initialize(args):
     # Load data to store
     files = config.getfiles()
     for filename in files:
+        filepath = join(config.getRepoPath(), filename)
         graphs = config.getgraphuriforfile(filename)
         graphstring = ''
 
@@ -235,7 +238,7 @@ def initialize(args):
             graphstring+= str(graph)
 
         try:
-            store.addfile(filename, config.getserializationoffile(filename))
+            store.addfile(filepath, config.getserializationoffile(filename))
             logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
         except:
             logger.info('Error: Graph with URI: ' + graphstring + ' not added')
@@ -249,7 +252,7 @@ def initialize(args):
         content = []
         for graph in graphs:
             content+= store.getgraphcontent(graph)
-        fileobject = FileReference(file)
+        fileobject = FileReference(join(config.getRepoPath(), file))
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
         filereferences[file] = fileobject
@@ -257,8 +260,9 @@ def initialize(args):
     logger.info('QuitStore successfully running.')
     logger.info('Known graphs: ' + str(config.getgraphs()))
     logger.info('Known files: ' + str(config.getfiles()))
-    logger.info('Path of Gitrepo: ' + str(config.getRepoPath()))
-    logger.info('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
+    logger.debug('Path of Gitrepo: ' + config.getRepoPath())
+    logger.debug('Config mode: ' + str(config.getConfigMode()))
+    logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
 
