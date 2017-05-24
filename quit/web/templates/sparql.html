@@ -1,0 +1,20 @@
+{% extends "default.html" %}
+
+{% block quit_content %}
+<div id="yasgui"></div>
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<script src='//cdn.jsdelivr.net/yasgui/2.6.1/yasgui.min.js'></script>
+<script>
+    var yasgui = YASGUI(document.getElementById("yasgui"), {
+        yasqe: { sparql: { endpoint: '{{ request.base_url }}' } }
+    });
+</script>
+{% endblock %}
+
+{% block styles %}
+{{super()}}
+<link href='//cdn.jsdelivr.net/yasgui/2.6.1/yasgui.min.css' rel='stylesheet' type='text/css' />
+{% endblock %}

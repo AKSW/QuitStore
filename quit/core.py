@@ -1,19 +1,28 @@
+import pygit2
+
+import quit.deprecated as deprecated
+
+
 from datetime import datetime
 import logging
 from os import makedirs
 from os.path import abspath, exists, isdir, join
-from quit.update import evalUpdate
-from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
-from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
-from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
+from subprocess import Popen
+
+from pygit2 import GIT_MERGE_ANALYSIS_NORMAL, GIT_MERGE_ANALYSIS_UP_TO_DATE, GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
-from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
-from subprocess import Popen
+import pygit2
+
+from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal, BNode, Namespace
+
+from quit.update import evalUpdate
+from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
+from quit.graphs import RevisionGraph, InstanceGraph
+from quit.utils import graphdiff
 
 corelogger = logging.getLogger('core.quit')
-
 
 class FileReference:
     """A class that manages n-quad files.
@@ -171,8 +180,34 @@ class FileReference:
         """Check if a File is part of version control system."""
         return(self.versioning)
 
+class Queryable:
+    """
+    A class that represents a querable graph-like object.
+    """
+    def __init__(self, **kwargs):
+        self.store = ConjunctiveGraph(identifier='default')
 
-class MemoryStore:
+    def query(self, querystring):
+        """Execute a SPARQL select query.
+
+        Args:
+            querystring: A string containing a SPARQL ask or select query.
+        Returns:
+            The SPARQL result set
+        """
+        pass
+
+    def update(self, querystring, versioning=True):
+        """Execute a SPARQL update query and update the store.
+
+        This method executes a SPARQL update query and updates and commits all affected files.
+
+        Args:
+            querystring: A string containing a SPARQL upate query.
+        """
+        pass
+
+class Store(Queryable):
     """A class that combines and syncronieses n-quad files and an in-memory quad store.
 
     This class contains information about all graphs, their corresponding URIs and
@@ -180,11 +215,11 @@ class MemoryStore:
     FileReference object (n-quad) that enables versioning (with git) and persistence.
     """
 
-    def __init__(self):
+    def __init__(self, store):
         """Initialize a new MemoryStore instance."""
         self.logger = logging.getLogger('memory_store.core.quit')
         self.logger.debug('Create an instance of MemoryStore')
-        self.store = ConjunctiveGraph(identifier='default')
+        self.store = store
 
         return
 
@@ -317,6 +352,246 @@ class MemoryStore:
         """Execute actions on API shutdown."""
         return
 
+class MemoryStore(Store):
+    def __init__(self):
+        store = ConjunctiveGraph(identifier='default')
+        super().__init__(store=store)
+
+class VirtualGraph(Queryable):
+    def __init__(self, rewrites):
+        self.store = InstanceGraph(rewrites)
+
+    def query(self, querystring):
+        return self.store.query(querystring)
+
+    def update(self, querystring, versioning=True):
+        return self.store.update(querystring)
+
+class Quit(object):
+    def __init__(self, config, repository, store):
+        self.config = config
+        self.repository = repository
+        self.store = store
+
+    def sync(self, rebuild = False):
+        """ 
+        Synchronizes store with repository data.
+        """
+        if rebuild:
+            for c in self.store.contexts():
+                self.store.remove((None,None,None), c) 
+
+        def exists(id):
+            uri = QUIT['version-' + id]
+            for _ in self.store.store.quads((uri, None, None, QUIT.default)):
+                return True
+            return False
+
+        def traverse(commit, seen):
+            commits = []
+            merges = []
+
+            while True:
+                id = commit.id
+                if id in seen:
+                    break
+                seen.add(id)
+                if exists(id):
+                    break
+                commits.append(commit)
+                parents = commit.parents
+                if not parents:
+                    break
+                commit = parents[0]
+                if len(parents) > 1:
+                    merges.append((len(commits), parents[1:]))
+            for idx, parents in reversed(merges):
+                for parent in parents:
+                    commits[idx:idx] = traverse(parent, seen)
+            return commits
+
+        seen = set()
+
+        for name in self.repository.tags_or_branches:
+            initial_commit = self.repository.revision(name);            
+            commits = traverse(initial_commit, seen)
+
+            prov = self.changesets(commits)                          
+            self.store.addquads((s, p, o, c) for s, p, o, c in prov.quads())
+
+            #for commit in commits:
+                #(_, g) = commit.__prov__()
+                #self.store += g
+            
+
+    def instance(self, id, from_git=False):
+        commit = self.repository.revision(id)
+
+        target_files = self.config.getgraphurifilemap().values()
+        mapping = {}
+
+        for entry in commit.node().entries(recursive=True):
+            if not entry.is_file:
+                continue
+
+            if entry not in target_files:
+                continue
+            
+            public = QUIT[prefix]
+            private = QUIT[prefix + '-' + entry.blob.id]
+            
+            if not from_git:
+                g = RevisionGraph(entry.blob.id, store=self.store.store.store, identifier=private)               
+            else: 
+                g = RevisionGraph(entry.blob.id, identifier=private)
+                g.parse(data=entry.content, format='nquads')
+
+            mapping[public] = g 
+
+        return VirtualGraph(mapping) 
+
+    def changesets(self, commits=None):
+        if not commits:
+            return
+
+        g = ConjunctiveGraph(identifier=QUIT.default)
+
+        last = None
+
+        role_author_uri = QUIT['author']
+        role_committer_uri = QUIT['committer']
+        
+        if commits:            
+            g.add((role_author_uri, is_a, PROV['Role']))
+            g.add((role_committer_uri, is_a, PROV['Role']))
+
+        while commits:
+            commit = commits.pop()
+            rev = commit.id
+
+            # Create the commit            
+            commit_graph = self.instance(commit.id, True)            
+            commit_uri = QUIT['commit-' + commit.id]
+
+            g.add((commit_uri, is_a, PROV['Activity']))
+
+            if 'import' in commit.properties.keys(): 
+                g.add((commit_uri, is_a, QUIT['Import']))
+                g.add((commit_uri, QUIT['dataSource'], URIRef(commit.properties['import'].strip())))
+
+            g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
+            g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
+            g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
+
+            # Author
+            hash = pygit2.hash(commit.author.email).hex
+            author_uri = QUIT['user-' + hash]
+            g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
+            
+            g.add((author_uri, is_a, PROV['Agent']))
+            g.add((author_uri, RDFS.label, Literal(commit.author.name)))
+            g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
+
+            q_author_uri = BNode()
+            g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
+            g.add((q_author_uri, is_a, PROV['Association']))
+            g.add((q_author_uri, PROV['agent'], author_uri))
+            g.add((q_author_uri, PROV['role'], role_author_uri))
+
+            if commit.author.name != commit.committer.name:
+                # Committer
+                hash = pygit2.hash(commit.committer.email).hex
+                committer_uri = QUIT['user-' + hash]
+                g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
+
+                g.add((committer_uri, is_a, PROV['Agent']))
+                g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
+                g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
+
+                q_committer_uri = BNode()
+                g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
+                g.add((q_committer_uri, is_a, PROV['Association']))
+                g.add((q_committer_uri, PROV['agent'], author_uri))
+                g.add((q_committer_uri, PROV['role'], role_committer_uri))
+            else:
+                g.add((q_author_uri, PROV['role'], role_committer_uri))
+
+            # Parents
+            parent = None
+            parent_graph = None
+
+            if commit.parents:
+                parent = commit.parents[0]
+                parent_graph = self.instance(parent.id, True)
+
+                for parent in commit.parents:
+                    parent_uri = QUIT['commit-' + parent.id]
+                    g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))            
+
+            # Diff
+            diff = graphdiff(parent_graph, commit_graph)
+            for ((resource_uri, hex), changesets) in diff.items():
+                for (op, update_graph) in changesets:
+                    update_uri = QUIT['update-' + hex]
+                    op_uri = QUIT[op + ':' + hex]
+                    g.add((commit_uri, QUIT['updates'], update_uri))
+                    g.add((update_uri, QUIT['graph'], resource_uri))
+                    g.add((update_uri, QUIT[op], op_uri))                    
+                    g.addN((s, p, o, op_uri) for s, p, o in update_graph)
+
+            # Entities
+            _m = self.config.getgraphurifilemap()
+            
+            for entity in commit.node().entries(recursive=True):
+                # todo check if file was changed
+                if entity.is_file:
+                    if entity.name not in _m.values():
+                        continue
+
+                    tmp = ConjunctiveGraph()
+                    tmp.parse(data=entity.content, format='nquads')  
+                    
+                    for context in tmp.contexts():
+                        if context not in _m.keys():
+                            continue
+
+                        public_uri = QUIT[context]
+                        private_uri = QUIT[context + '-' + entity.blob.hex]
+
+                        g.add((private_uri, PROV['specializationOf'], public_uri))
+                        g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
+                        g.addN((s, p, o, entity_uri) for s, p, o in tmp.quads((None, None, None, context)))
+                                                                       
+        return g
+   
+    def commit(self, graph, message, ref='refs/heads/master'):
+        if not isinstance(graph, VirtualGraph):
+            raise Exception()
+        
+        if not graph.is_dirty:
+            return
+                                        
+        index = self.repository.index(branch)        
+        for context in graph.contexts():
+            if context.id:
+                continue
+
+            identifier = context.identifier
+            path = self.config.getfileforgraphuri(identifier)
+
+            if len(context) > 0:                
+                content = context.serialize(format='nt').decode('UTF-8')
+                index.add(path, content)
+            else:
+                index.remove(path)
+
+        author = self.repository.git_repository.default_signature
+        id = index.commit(str(message), author.name, author.email, ref=ref)
+        
+        if id:
+            self.repository.git_repository.set_head(id)
+            if not self.repository.is_bare:            
+                self.repository.git_repository.reset(id, pygit2.GIT_RESET_HARD)      
 
 class GitRepo:
     """A class that manages a git repository.

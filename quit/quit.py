@@ -13,6 +13,8 @@ from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
 from quit.parsers import NQuadsParser
 from quit.utils import splitinformation, sparqlresponse
+from quit.deprecated import deprecated
+from quit.web.app import create_app
 import handleexit
 import logging
 from flask import request, Response
@@ -45,7 +47,6 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
-
 def __savefiles():
     """Update the files after a update query was executed on the store."""
     for file in config.getfiles():
@@ -60,7 +61,6 @@ def __savefiles():
 
     return
 
-
 def __updategit():
     """Private method to add all updated tracked files."""
     gitrepo.addall()
@@ -69,7 +69,6 @@ def __updategit():
         gitrepo.garbagecollection()
 
     return
-
 
 def __removefile(self, graphuri):
     # TODO actions needed to remove file also from
@@ -87,7 +86,6 @@ def __removefile(self, graphuri):
 
     return
 
-
 def __commit(self, message=None):
     """Private method to commit the changes."""
     try:
@@ -96,7 +94,6 @@ def __commit(self, message=None):
         pass
 
     return
-
 
 def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
@@ -114,7 +111,6 @@ def reloadstore():
             pass
 
     return
-
 
 def applyupdates(actions):
     """Update files after store was updated."""
@@ -573,7 +569,7 @@ def pull():
         HTTP Response 201: If pull was possible
         HTTP Response: 403: If pull did not work
     """
-    if store.pull():
+    if gitrepo.pull():
         return '', status.HTTP_201_CREATED
     else:
         return '', status.HTTP_403_FORBIDDEN
@@ -619,8 +615,9 @@ def resultFormat():
     return {"mime": best, "format": formats[best]}
 
 
-def main():
+def main(config):
     """Start the app."""
+    app = create_app(config)
     app.run(debug=True, use_reloader=False)
 
 
@@ -653,4 +650,4 @@ if __name__ == '__main__':
 
     # The app is started with an exit handler
     with handleexit.handle_exit(savedexit):
-        main()
+        main(config)
