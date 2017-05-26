@@ -52,7 +52,7 @@ class Blame(object):
         print(values_string)
         
         q = """
-            SELECT ?s ?p ?o ?context ?commit ?name ?date WHERE {                
+            SELECT ?s ?p ?o ?context ?y ?name ?date WHERE {                
                 ?commit quit:preceedingCommit* ?y .
                 ?y      prov:endedAtTime ?date ;
                         prov:qualifiedAssociation ?qa ;

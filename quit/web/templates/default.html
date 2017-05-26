@@ -3,8 +3,14 @@
 {% block title %}Quit{% endblock %}
 
 {% block navbar %}
-<div class="navbar navbar-fixed-top">
-    <!-- ... -->
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <a class="navbar-brand" href="https://github.com/AKSW/QuitStore/">Quit Store</a>
+    </div>
+    <ul class="nav navbar-nav">
+        <li><a href="{{ url_for('endpoint.sparql') }}">Endpoint</a></li>
+        <li><a href="{{ url_for('debug.blame') }}">Blame</a></li>
+    </ul>
 </div>
 {% endblock %}
 

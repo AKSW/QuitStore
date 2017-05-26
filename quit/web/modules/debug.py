@@ -8,9 +8,12 @@ __all__ = [ 'debug' ]
 
 debug = Blueprint('debug', __name__)
 
-@debug.route("/blame", defaults={'branch_or_ref': 'master'}, methods=['GET'])
+@debug.route("/blame", defaults={'branch_or_ref': None}, methods=['GET'])
 @debug.route("/blame/<branch_or_ref>", methods=['GET'])
 def blame(branch_or_ref):
+
+    if not branch_or_ref:
+        branch_or_ref = 'master'
 
     quit = current_app.config['quit']
     blame = current_app.config['blame']
@@ -25,8 +28,7 @@ def blame(branch_or_ref):
     #mimetype = 'application/sparql-results+json'    
 
     try:
-        graph = quit.instance(branch_or_ref)
-        res = blame.run(graph)
+        res = blame.run(branch_or_ref = branch_or_ref)
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             results = res.serialize(format='html')
