@@ -1,5 +1,5 @@
 from rdflib.plugin import register
-from rdflib.query import Processor, UpdateProcessor
+from rdflib.query import Processor, UpdateProcessor, ResultSerializer
 
 register(
     'sparql', Processor,
@@ -8,3 +8,7 @@ register(
 register(
     'sparql', UpdateProcessor,
     'quit.processor', 'SPARQLUpdateProcessor')
+
+register(
+    'html', ResultSerializer,
+    'quit.htmlresults', 'HTMLResultSerializer')

@@ -22,7 +22,7 @@ def blame(branch_or_ref):
 
     print(mimetype)
     #Todo html results instead of force
-    mimetype = 'application/sparql-results+json'    
+    #mimetype = 'application/sparql-results+json'    
 
     try:
         graph = quit.instance(branch_or_ref)
@@ -30,7 +30,7 @@ def blame(branch_or_ref):
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             results = res.serialize(format='html')
-            response=make_response(render_template("blame.html", results = Markup(results)))
+            response=make_response(render_template("blame.html", results = Markup(results.decode())))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:
@@ -41,9 +41,9 @@ def blame(branch_or_ref):
             response = make_response(res.serialize(format='xml'),200)
             response.headers['Content-Type'] = 'application/rdf+xml'
             return response
-        elif mimetype in ['application/x-turtle','text/turtle']:
-            response = make_response(res.serialize(format='turtle'),200)
-            response.headers['Content-Type'] = 'text/turtle'
+        elif mimetype in ['application/csv','text/csv']:
+            response = make_response(res.serialize(format='csv'),200)
+            response.headers['Content-Type'] = 'text/csv'
             return response     
     except Exception as e:
         current_app.logger.error(e)

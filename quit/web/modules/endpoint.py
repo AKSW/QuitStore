@@ -23,7 +23,7 @@ def parse_query_type(query):
     
     return query_type
 
-@endpoint.route("/sparql", defaults={'branch_or_ref': 'master'}, methods=['POST', 'GET'])
+@endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
 @endpoint.route("/sparql/<branch_or_ref>", methods=['POST', 'GET'])
 def sparql(branch_or_ref):
     """Process a SPARQL query (Select or Update).
@@ -33,7 +33,8 @@ def sparql(branch_or_ref):
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
-    print(branch_or_ref)
+    if not branch_or_ref:
+        branch_or_ref= 'master'
 
     quit = current_app.config['quit']
 
@@ -69,7 +70,7 @@ def sparql(branch_or_ref):
             
             if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
                 results = res.serialize(format='html')
-                response=make_response(render_template("sparql.html", results = Markup(results)))
+                response=make_response(render_template("results.html", results = Markup(results.decode())))
                 response.headers['Content-Type'] = 'text/html'
                 return response
             elif mimetype in ['application/json', 'application/sparql-results+json']:
@@ -80,9 +81,9 @@ def sparql(branch_or_ref):
                 response = make_response(res.serialize(format='xml'),200)
                 response.headers['Content-Type'] = 'application/rdf+xml'
                 return response
-            elif mimetype in ['application/x-turtle','text/turtle']:
-                response = make_response(res.serialize(format='turtle'),200)
-                response.headers['Content-Type'] = 'text/turtle'
+            elif mimetype in ['application/csv','text/csv']:
+                response = make_response(res.serialize(format='csv'),200)
+                response.headers['Content-Type'] = 'text/csv'
                 return response     
         except Exception as e:
             current_app.logger.error(e)
