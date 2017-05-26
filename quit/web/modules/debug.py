@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, request, url_for, current_app
+from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
 from quit.web.app import render_template
 
 from werkzeug.http import parse_accept_header
@@ -12,15 +12,39 @@ debug = Blueprint('debug', __name__)
 @debug.route("/blame/<branch_or_ref>", methods=['GET'])
 def blame(branch_or_ref):
 
+    quit = current_app.config['quit']
+    blame = current_app.config['blame']
+
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
-        mimetype = 'text/html'
+        mimetype = 'application/sparql-results+json'    
+
+    print(mimetype)
+    #Todo html results instead of force
+    mimetype = 'application/sparql-results+json'    
 
     try:
+        graph = quit.instance(branch_or_ref)
+        res = blame.run(graph)
+
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-            results = current_app['blame'].run(branch_or_ref)
-            return render_template('blame.html', results=results)
+            results = res.serialize(format='html')
+            response=make_response(render_template("blame.html", results = Markup(results)))
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        elif mimetype in ['application/json', 'application/sparql-results+json']:
+            response = make_response(res.serialize(format='json'),200)
+            response.headers['Content-Type'] = 'application/json'
+            return response
+        elif mimetype in ['application/rdf+xml','application/xml', 'application/sparql-results+xml']:
+            response = make_response(res.serialize(format='xml'),200)
+            response.headers['Content-Type'] = 'application/rdf+xml'
+            return response
+        elif mimetype in ['application/x-turtle','text/turtle']:
+            response = make_response(res.serialize(format='turtle'),200)
+            response.headers['Content-Type'] = 'text/turtle'
+            return response     
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())

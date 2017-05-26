@@ -27,7 +27,7 @@ class Blame(object):
             result.append((_s, _p, _o, _c))
         return result
 
-    def run(self, quads=None, commit='master'):
+    def run(self, quads=None, branch_or_ref='master'):
         """
         Annotated every quad with the respective author
 
@@ -38,13 +38,19 @@ class Blame(object):
         """
 
 
-        commit = self.quit.repository.revision(id)
-        g = self.instance(id)        
+        commit = self.quit.repository.revision(branch_or_ref)
+        g = self.quit.instance(branch_or_ref)    
 
-        self.quit.quit.instance(commit)
-        values = self._generate_values()
+        #if not quads:
+        quads = [x for x in g.store.quads((None, None, None, None))]
+
+        print(quads)
+
+        values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 
                           
+        print(values_string)
+        
         q = """
             SELECT ?s ?p ?o ?context ?commit ?name ?date WHERE {                
                 ?commit quit:preceedingCommit* ?y .
@@ -75,4 +81,4 @@ class Blame(object):
             }                
             """ % values_string
 
-        return self.store.query(q, initNs = { 'foaf': FOAF, 'prov': PROV, 'quit': QUIT }, initBindings = { 'commit': QUIT['commit-' + id] })
+        return self.quit.store.store.query(q, initNs = { 'foaf': FOAF, 'prov': PROV, 'quit': QUIT }, initBindings = { 'commit': QUIT['commit-' + commit.id] })

@@ -24,7 +24,7 @@ def create_app(config):
     register_extensions(app)
     register_logging(app)
     register_errorhandlers(app)
-    print("test4:" + app.template_folder)
+  
     return app
 
 
@@ -33,15 +33,15 @@ def register_app(app, config):
 
     repository = Repository(config.getRepoPath(), create=True)
     
-    print("test")
     quit = Quit(config, repository, MemoryStore())
     quit.sync()
-    print("test2:" + str(len(quit.store.store)))
+    
+    content = quit.store.store.serialize(format='trig').decode()
+    for line in (content.splitlines()):
+        print(line)
+
     app.config['quit'] = quit
-    app.config['tools'] = {
-        'blame': Blame(quit.store)
-    }
-    print("test3")
+    app.config['blame'] = Blame(quit)
     register(QUIT.service, quit.store)
 
 def register_extensions(app):

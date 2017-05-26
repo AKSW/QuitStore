@@ -6,6 +6,7 @@ import sys
 from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InstanceGraph
 
+
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
 
@@ -59,6 +60,8 @@ def graphdiff(g1, g2):
     """
     Diff between graph instances, should be replaced/included in quit diff
     """
+    from rdflib.compare import to_isomorphic, graph_diff
+
     diffs = {}
     uris = set()
 
@@ -68,7 +71,7 @@ def graphdiff(g1, g2):
         uris |= set(g2.graphs.keys())
         
     for uri in uris:
-        id = g2.graphs[uri].hex
+        id = g2.graphs[uri].id
         changes = diffs.get((uri, id), [])
 
         if (g1 is not None and uri in g1.graphs.keys()) and (g2 is not None and uri in g2.graphs.keys()):
@@ -80,13 +83,12 @@ def graphdiff(g1, g2):
                 changes.append(('removals', in_first))
         elif g1 is not None and uri in g1.graphs.keys():
             changes.append(('removals', g1.graphs[uri]))
-        elif g2 is not None and uri in g2.graphs.keys():
+        elif g2 is not None and uri in g2.graphs.keys():            
             changes.append(('additions', g2.graphs[uri]))
         else: 
             continue
                         
         diffs[(uri, id)] = changes
-
     return diffs
 
 def _sigterm_handler(signum, frame):

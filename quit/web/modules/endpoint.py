@@ -1,8 +1,10 @@
 import re
 
-from flask import Blueprint, flash, redirect, request, url_for, current_app
+from rdflib.serializer import Serializer
+from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
 from quit.web.app import render_template
 
+from werkzeug.http import parse_accept_header
 import sys, traceback
 
 __all__ = [ 'endpoint' ]
@@ -31,35 +33,63 @@ def sparql(branch_or_ref):
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
+    print(branch_or_ref)
+
     quit = current_app.config['quit']
 
-    try:
-        q = request.values.get('query', None)
-        if not q:
-            q = request.values.get('update', None)
+    q = request.values.get('query', None)
+    if not q:
+        q = request.values.get('update', None)
 
-        ref = request.values.get('ref', None) or 'refs/heads/master'
+    if 'Accept' in request.headers:
+        mimetype = parse_accept_header(request.headers['Accept']).best
+    else:
+        mimetype = 'text/html'
+        
+    ref = request.values.get('ref', None)
+    if not ref:
+        ref = 'refs/heads/master'
 
-        res = ""
-        if q:
+    if q:
+        try:
             query_type = parse_query_type(q)
             graph = quit.instance(branch_or_ref)
+
+            content = graph.store.serialize(format='trig').decode()
+            for line in (content.splitlines()):
+                print(line)
 
             if query_type in ['SELECT', 'CONSTRUCT', 'ASK', 'DESCRIBE']:
                 res = graph.query(q)
             else:
                 res = graph.update(q)                            
                 quit.commit(graph, "Test Query", ref, query=q)
-            
-        context = {
-            'result': res,
-            'query': q,
-        }
 
-        return render_template('sparql.html', **context)    
-    except Exception as e:
-        print(e)
-        return render_template('sparql.html')        
+            print(mimetype)
+            
+            if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+                results = res.serialize(format='html')
+                response=make_response(render_template("sparql.html", results = Markup(results)))
+                response.headers['Content-Type'] = 'text/html'
+                return response
+            elif mimetype in ['application/json', 'application/sparql-results+json']:
+                response = make_response(res.serialize(format='json'),200)
+                response.headers['Content-Type'] = 'application/json'
+                return response
+            elif mimetype in ['application/rdf+xml','application/xml', 'application/sparql-results+xml']:
+                response = make_response(res.serialize(format='xml'),200)
+                response.headers['Content-Type'] = 'application/rdf+xml'
+                return response
+            elif mimetype in ['application/x-turtle','text/turtle']:
+                response = make_response(res.serialize(format='turtle'),200)
+                response.headers['Content-Type'] = 'text/turtle'
+                return response     
+        except Exception as e:
+            current_app.logger.error(e)
+            current_app.logger.error(traceback.format_exc())
+            return "<pre>"+traceback.format_exc()+"</pre>", 400
+    else:
+        return render_template('sparql.html')
 
 @endpoint.route("/add", methods=['POST'])
 def add():

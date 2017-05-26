@@ -362,9 +362,11 @@ class VirtualGraph(Queryable):
         self.store = InstanceGraph(rewrites)
 
     def query(self, querystring):
+        print(querystring)
         return self.store.query(querystring)
 
     def update(self, querystring, versioning=True):
+        print(querystring)
         return self.store.update(querystring)
 
 class Quit(object):
@@ -424,29 +426,37 @@ class Quit(object):
                 #self.store += g
             
 
-    def instance(self, id, from_git=False):
+    def instance(self, id, from_git=False):        
+
         commit = self.repository.revision(id)
 
         target_files = self.config.getgraphurifilemap().values()
         mapping = {}
 
-        for entry in commit.node().entries(recursive=True):
-            if not entry.is_file:
-                continue
+        for entity in commit.node().entries(recursive=True):
+            # todo check if file was changed
+            if entity.is_file:
+                #if entity.name not in _m.values():
+                #    continue
 
-            if entry not in target_files:
-                continue
-            
-            public = QUIT[prefix]
-            private = QUIT[prefix + '-' + entry.blob.id]
-            
-            if not from_git:
-                g = RevisionGraph(entry.blob.id, store=self.store.store.store, identifier=private)               
-            else: 
-                g = RevisionGraph(entry.blob.id, identifier=private)
-                g.parse(data=entry.content, format='nquads')
+                tmp = ConjunctiveGraph()
+                tmp.parse(data=entity.content, format='nquads')  
+                    
+                for context in [c.identifier for c in tmp.contexts()]:                    
+                    # Todo: why?
+                    #if context not in _m:
+                    #    continue
 
-            mapping[public] = g 
+                    public_uri = context
+                    private_uri = context + '-' + entity.blob.hex
+
+                    if not from_git:
+                        g = RevisionGraph(entity.blob.id, store=self.store.store.store, identifier=private_uri)               
+                    else: 
+                        g = RevisionGraph(entity.blob.id, identifier=private_uri)
+                        g += tmp.get_context(context)
+
+                    mapping[public_uri] = g 
 
         return VirtualGraph(mapping) 
 
@@ -470,7 +480,7 @@ class Quit(object):
             rev = commit.id
 
             # Create the commit            
-            commit_graph = self.instance(commit.id, True)            
+            commit_graph = self.instance(commit.id, True)   
             commit_uri = QUIT['commit-' + commit.id]
 
             g.add((commit_uri, is_a, PROV['Activity']))
@@ -522,18 +532,18 @@ class Quit(object):
 
             if commit.parents:
                 parent = commit.parents[0]
-                parent_graph = self.instance(parent.id, True)
+                parent_graph = self.instance(parent.id, True) 
 
                 for parent in commit.parents:
                     parent_uri = QUIT['commit-' + parent.id]
                     g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))            
 
             # Diff
-            diff = graphdiff(parent_graph, commit_graph)
+            diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
             for ((resource_uri, hex), changesets) in diff.items():
-                for (op, update_graph) in changesets:
-                    update_uri = QUIT['update-' + hex]
-                    op_uri = QUIT[op + ':' + hex]
+                for (op, update_graph) in changesets:                    
+                    update_uri = QUIT['update-' + commit.id]
+                    op_uri = QUIT[op + '-' + commit.id]
                     g.add((commit_uri, QUIT['updates'], update_uri))
                     g.add((update_uri, QUIT['graph'], resource_uri))
                     g.add((update_uri, QUIT[op], op_uri))                    
@@ -545,22 +555,25 @@ class Quit(object):
             for entity in commit.node().entries(recursive=True):
                 # todo check if file was changed
                 if entity.is_file:
-                    if entity.name not in _m.values():
-                        continue
+                    
+                    #if entity.name not in _m.values():
+                    #    continue
 
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')  
                     
-                    for context in tmp.contexts():
-                        if context not in _m.keys():
-                            continue
+                    for context in [c.identifier for c in tmp.contexts()]:
 
-                        public_uri = QUIT[context]
-                        private_uri = QUIT[context + '-' + entity.blob.hex]
+                        # Todo: why?
+                        #if context not in _m:
+                        #    continue
+
+                        public_uri = context
+                        private_uri = context + '-' + entity.blob.hex
 
                         g.add((private_uri, PROV['specializationOf'], public_uri))
                         g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
-                        g.addN((s, p, o, entity_uri) for s, p, o in tmp.quads((None, None, None, context)))
+                        g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
                                                                        
         return g
    

@@ -1,9 +1,9 @@
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
 
-class RevisionGraph(ConjunctiveGraph):
+class RevisionGraph(Graph):
 
     def __init__(self, id = None, store = 'default', identifier = None, namespace_manager = None):
-        super().__init__(hex, store=store, identifier=identifier, namespace_manager=namespace_manager)
+        super().__init__(store=store, identifier=identifier, namespace_manager=namespace_manager)
         self.id = id
 
 class InstanceGraph(ConjunctiveGraph):
@@ -105,6 +105,7 @@ class InstanceGraph(ConjunctiveGraph):
                     yield (s1, p1, o1, k)
 
     def __len__(self):
+        (print(g) for g in self.graphs)
         return sum(len(g) for g in self.graphs)
 
     def contexts(self, triple = None):
