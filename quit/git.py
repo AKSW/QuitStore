@@ -118,18 +118,37 @@ class Repository(Base):
 
         return Revision(self, commit)
 
-    def revisions(self):
-        seen_oids = set()
+    def revisions(self, name=None, order=pygit2.GIT_SORT_REVERSE):
+        seen = set()
 
-        def iter_commits():
-            for name in self.branches:
-                ref = self._repository.lookup_reference(name)
-                for commit in git_repos.walk(ref.target, pygit2.GIT_SORT_REVERSE):
-                    oid = commit.oid
-                    if oid not in seen_oids:
-                        seen_oids.add(oid)
-                        yield Revision(self, commit)
-        return iter_commits()
+        def lookup(name):
+            for template in ['refs/heads/%s', 'refs/tags/%s']:
+                try:                                                           
+                    return self._repository.lookup_reference(template % name)
+                except KeyError:                                                        
+                    pass
+            raise RevisionNotFound(ref)
+        
+        def traverse(ref, seen):
+            for commit in self._repository.walk(ref.target, order):
+                oid = commit.oid
+                if oid not in seen:
+                    seen.add(oid)
+                    yield Revision(self, commit)
+
+        def iter_commits(name, seen):
+            commits = []
+            
+            if not name:
+                for name in self.branches:
+                    ref = self._repository.lookup_reference(name)
+                    commits += traverse(ref, seen)
+            else:
+                ref = lookup(name)
+                commits += traverse(ref, seen)
+            return commits
+        
+        return iter_commits(name, seen)
 
     @property
     def branches(self):
@@ -210,7 +229,7 @@ class Revision(Base):
     def __init__(self, repository, commit):
 
         message = commit.message.strip()
-        properties = self._parse_message(commit.message)
+        properties, message = self._parse_message(commit.message)
         author = Signature(commit.author.name, commit.author.email, _git_timestamp(commit.author.time, commit.author.offset), commit.author.offset)
         committer = Signature(commit.committer.name, commit.committer.email, _git_timestamp(commit.committer.time, commit.committer.offset), commit.committer.offset)
 
@@ -229,14 +248,16 @@ class Revision(Base):
 
     def _parse_message(self, message):
         found = dict()
-        for line in message.splitlines():
+        idx=-1
+        lines = message.splitlines()
+        for line in lines:
+            idx += 1
             m = re.match(self.re_parser, line)
             if m is not None:
                 found[m.group('key')] = m.group('value') or m.group('multiline')
             else:
                 break
-
-        return found
+        return (found, '\n'.join(lines[idx:]))
 
     @property
     def properties(self):
@@ -245,8 +266,7 @@ class Revision(Base):
     @property
     def parents(self):
         if self._parents is None:
-            self._parents = [Revision(self._repository, id)
-                             for id in self._commit.parents]
+            self._parents = [Revision(self._repository, id) for id in self._commit.parents]
         return self._parents
 
     def node(self, path=None):

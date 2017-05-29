@@ -1,0 +1,31 @@
+.branch-select {
+	margin-bottom: 10px;
+}
+
+.avatar {
+    border-radius: 50%;
+}
+
+.table>tbody>tr>td {
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.commit-group {
+    display: table;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.commit-group>.commit-item {
+    display: table-cell;
+    vertical-align: top;
+}
+
+.commit-row .btn{
+    padding: 3px 6px;
+}
+
+#commit-graph {
+	margin-bottom: 20px;
+}

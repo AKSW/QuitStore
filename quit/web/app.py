@@ -1,7 +1,11 @@
 import os
+import urllib
+import hashlib
 
-from flask import Flask, render_template as rt, g, current_app
+from flask import Flask, render_template as rt, render_template_string as rts, g, current_app, request, url_for
 from flask.ext.cors import CORS
+
+from jinja2 import Environment, contextfilter, Markup
 
 from quit.conf import QuitConfiguration
 from quit.core import MemoryStore, Quit
@@ -14,6 +18,27 @@ from quit.provenance import Blame
 # For import *
 __all__ = ['create_app']
 
+DROPDOWN_TEMPLATE="""
+<div class="dropdown branch-select">
+    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-code-fork" aria-hidden="true"></i> Branches <span class="caret"></span></button>
+    <ul class="dropdown-menu">
+        <li class="dropdown-header">Branches</li>
+        {% for branch in branches %}
+            <li><a href="{{ url_for(request.url_rule.endpoint, branch_or_ref=branch) }}">{{ branch }}</a></li>
+        {% endfor %}
+        {% if tags %}
+            <li class="divider"></li>
+            <li class="dropdown-header">Tags</li>
+            {% for tag in tags %}
+                <li><a href="{{ url_for(request.url_rule.endpoint, branch_or_ref=tag) }}">{{ tag }}</a></li>
+            {% endfor %}
+        {% endif %}        
+    </ul>
+</div>
+"""
+
+env=Environment()
+
 def create_app(config):
     """Create a Flask app."""
 
@@ -24,6 +49,7 @@ def create_app(config):
     register_extensions(app)
     register_logging(app)
     register_errorhandlers(app)
+    register_template_helpers(app)
   
     return app
 
@@ -42,7 +68,7 @@ def register_app(app, config):
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
-    register(QUIT.service, quit.store)
+    register(QUIT.service, quit.store.store)
 
 def register_extensions(app):
     """Register extensions."""
@@ -109,13 +135,28 @@ def register_errorhandlers(app):
     def page_not_found(error):
         return render_template("404.html"), 404
 
+def register_template_helpers(app):
+
+    @app.template_filter('gravatar')
+    def gravatar_lookup(u, size=36):
+        gravatar_url = "https://www.gravatar.com/avatar/" + hashlib.md5(u.email.lower().encode()).hexdigest() + "?"
+        gravatar_url += urllib.parse.urlencode({'s':str(size)})
+        return gravatar_url
+
 def render_template(template_name_or_list, **kwargs):
 
     quit = current_app.config['quit']
 
+    available_branches = quit.repository.branches
+    available_tags = quit.repository.tags
+
+    dropdown = rts(DROPDOWN_TEMPLATE, branches=[x.lstrip('refs/heads/') for x in available_branches], tags=[x.lstrip('refs/tags/') for x in available_tags])
+    #dropdown = ""
+
     context = {
-        'available_branches': quit.repository.branches,
-        'available_tags': quit.repository.tags, 
+        'available_branches': available_branches,
+        'available_tags': available_tags, 
+        'dropdown': dropdown
     }
     context.update(kwargs)
 

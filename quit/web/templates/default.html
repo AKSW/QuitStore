@@ -3,14 +3,30 @@
 {% block title %}Quit{% endblock %}
 
 {% block navbar %}
-<div class="navbar navbar-default">
-    <div class="navbar-header">
-        <a class="navbar-brand" href="https://github.com/AKSW/QuitStore/">Quit Store</a>
-    </div>
-    <ul class="nav navbar-nav">
-        <li><a href="{{ url_for('endpoint.sparql') }}">Endpoint</a></li>
-        <li><a href="{{ url_for('debug.blame') }}">Blame</a></li>
-    </ul>
+
+<div class="navbar navbar-inverse">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">Quit Store</a>
+                </div>
+                <ul class="nav navbar-nav">
+                    <li{% if request.url_rule.endpoint == 'git.commits' %} class="active"{% endif %}><a href="{{ url_for('git.commits') }}"><i class="fa fa-history" aria-hidden="true"></i> Commits</a></li>
+                    <li{% if request.url_rule.endpoint == 'endpoint.sparql' %} class="active"{% endif %}><a href="{{ url_for('endpoint.sparql') }}"><i class="fa fa-question-circle" aria-hidden="true"></i> Endpoint</a></li>
+                    <li {% if request.url_rule.endpoint in ['debug.blame'] %} class="dropdown active"{% else %} class="dropdown"{% endif %}>
+                        <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-bug" aria-hidden="true"></i> Debug <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{{ url_for('debug.blame') }}"><i class="fa fa-hand-o-right" aria-hidden="true"></i> Blame</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="https://github.com/AKSW/QuitStore/"><i class="fa fa-github" aria-hidden="true"></i> About</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>    
 </div>
 {% endblock %}
 
@@ -18,6 +34,7 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
+            {% block headline %}{% endblock %}
             {% block quit_content %}
             {% endblock %}
         </div>

@@ -66,7 +66,8 @@ def sparql(branch_or_ref):
                 res = graph.update(q)                            
                 quit.commit(graph, "Test Query", ref, query=q)
 
-            print(mimetype)
+            print(res)
+            print(res.__dict__)
             
             if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
                 results = res.serialize(format='html')

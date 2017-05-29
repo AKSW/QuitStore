@@ -1,11 +1,13 @@
 {% extends "default.html" %}
 
-{% block quit_content %}
+{% block headline %}<div class="lead">Blame</div>{% endblock %}
 
+{% block quit_content %}
+{{ dropdown|safe }}
 {% if results|length > 0 %}
-    {{ results }}
+{{ results }}
 {% else %}
-    No results found
+No results found
 {% endif %}
 
 {% endblock %}

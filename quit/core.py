@@ -461,10 +461,10 @@ class Quit(object):
         return VirtualGraph(mapping) 
 
     def changesets(self, commits=None):
-        if not commits:
-            return
-
         g = ConjunctiveGraph(identifier=QUIT.default)
+
+        if not commits:
+            return g
 
         last = None
 
