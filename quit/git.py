@@ -541,7 +541,7 @@ class Index(object):
         items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
 
         # Create tree
-        tree = IndexTree(self.revision)
+        tree = IndexTree(self)
         while len(items) > 0:
             path, (oid, mode) = items.pop(0)
 
@@ -588,12 +588,14 @@ class IndexHeap(object):
 
 
 class IndexTree(object):
-    def __init__(self, revision):
-        self.repository = revision.repository
-        self.revision = revision
+    def __init__(self, index):
+        self.repository = index.repository
+        self.revision = index.revision
         self.builders = IndexHeap()
-        self.builders[''] = (
-            None, self.repository._repository.TreeBuilder(self.revision.commit.tree))
+        if self.revision:
+            self.builders[''] = (None, self.repository._repository.TreeBuilder(self.revision._commit.tree))
+        else:
+            self.builders[''] = (None, self.repository._repository.TreeBuilder())
 
     def get_builder(self, path):
         parts = path.split(os.path.sep)

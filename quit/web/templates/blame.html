@@ -5,7 +5,33 @@
 {% block quit_content %}
 {{ dropdown|safe }}
 {% if results|length > 0 %}
-{{ results }}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Author</th>
+            <th>Subject</th>
+            <th>Predicate</th>
+            <th>Object</th>
+            <th>Graph</th>
+            <th>Commit</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in results %}
+        <tr>
+            <td><img src="{{ row['email']|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row['name'] }}</td>
+            <td>{{ row['s'] }}</td>
+            <td>{{ row['p'] }}</td>
+            <td>{{ row['o'] }}</td>
+            <td>{{ row['context'] }}</td>
+            <td>{{ row['hex'] }}</td>
+            <td>{{ row['date'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% else %}
 No results found
 {% endif %}

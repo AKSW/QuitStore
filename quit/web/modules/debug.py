@@ -31,8 +31,8 @@ def blame(branch_or_ref):
         res = blame.run(branch_or_ref = branch_or_ref)
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-            results = res.serialize(format='html')
-            response=make_response(render_template("blame.html", results = Markup(results.decode())))
+            results = res
+            response=make_response(render_template("blame.html", results = results))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:

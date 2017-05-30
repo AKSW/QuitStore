@@ -134,10 +134,15 @@ class InstanceGraph(ConjunctiveGraph):
             return -1
 
     def __iadd__(self, other):
-        raise Exception()
+        print(other)
+        self.addN((s, p, o, self) for s, p, o in other)
+        return self
 
     def __isub__(self, other):
-        raise Exception()
+        print(other)
+        for triple in other:
+            self.remove(triple)
+        return self
 
     # Conv.  methods
 

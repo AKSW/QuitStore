@@ -489,6 +489,7 @@ class Quit(object):
                 g.add((commit_uri, is_a, QUIT['Import']))
                 g.add((commit_uri, QUIT['dataSource'], URIRef(commit.properties['import'].strip())))
 
+            g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
             g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
             g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
             g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
@@ -577,34 +578,36 @@ class Quit(object):
                                                                        
         return g
    
-    def commit(self, graph, message, ref='refs/heads/master'):
-        if not isinstance(graph, VirtualGraph):
-            raise Exception()
-        
-        if not graph.is_dirty:
+    def commit(self, changes, message, ref='master', **kwargs):
+        if len(changes) == 0:
             return
-                                        
-        index = self.repository.index(branch)        
-        for context in graph.contexts():
-            if context.id:
-                continue
+        
+        seen = set()
 
-            identifier = context.identifier
-            path = self.config.getfileforgraphuri(identifier)
+        index = self.repository.index(ref)        
 
-            if len(context) > 0:                
-                content = context.serialize(format='nt').decode('UTF-8')
-                index.add(path, content)
-            else:
-                index.remove(path)
+        for op in changes:
+            triples = changes.get(op, [])
 
-        author = self.repository.git_repository.default_signature
+            for (_, identifier) in triples:
+                if identifier in seen:
+                    continue
+                seen.add(identifier)
+                path = self.config.getfileforgraphuri(identifier) or 'unassigned.nq'
+        
+                if op == 'drop':
+                    index.remove(path)
+                else:
+                    content = self.store.store.get_context(identifier).serialize(format='nquad-ordered').decode('UTF-8')
+                    index.add(path, content)
+
+        author = self.repository._repository.default_signature
         id = index.commit(str(message), author.name, author.email, ref=ref)
         
         if id:
-            self.repository.git_repository.set_head(id)
+            self.repository._repository.set_head(id)
             if not self.repository.is_bare:            
-                self.repository.git_repository.reset(id, pygit2.GIT_RESET_HARD)      
+                self.repository._repository.reset(id, pygit2.GIT_RESET_HARD)      
 
 class GitRepo:
     """A class that manages a git repository.

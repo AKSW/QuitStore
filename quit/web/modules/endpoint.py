@@ -62,30 +62,30 @@ def sparql(branch_or_ref):
 
             if query_type in ['SELECT', 'CONSTRUCT', 'ASK', 'DESCRIBE']:
                 res = graph.query(q)
-            else:
-                res = graph.update(q)                            
-                quit.commit(graph, "Test Query", ref, query=q)
 
-            print(res)
-            print(res.__dict__)
+                if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+                    results = res.serialize(format='html')
+                    response=make_response(render_template("results.html", results = Markup(results.decode())))
+                    response.headers['Content-Type'] = 'text/html'
+                    return response
+                elif mimetype in ['application/json', 'application/sparql-results+json']:
+                    response = make_response(res.serialize(format='json'),200)
+                    response.headers['Content-Type'] = 'application/json'
+                    return response
+                elif mimetype in ['application/rdf+xml','application/xml', 'application/sparql-results+xml']:
+                    response = make_response(res.serialize(format='xml'),200)
+                    response.headers['Content-Type'] = 'application/rdf+xml'
+                    return response
+                elif mimetype in ['application/csv','text/csv']:
+                    response = make_response(res.serialize(format='csv'),200)
+                    response.headers['Content-Type'] = 'text/csv'
+                    return response     
+            else:
+                res = graph.update(q) 
+                print(res)                           
+                quit.commit(res, 'New Commit from QuitStore', ref, query=q)          
+                return '', 200
             
-            if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-                results = res.serialize(format='html')
-                response=make_response(render_template("results.html", results = Markup(results.decode())))
-                response.headers['Content-Type'] = 'text/html'
-                return response
-            elif mimetype in ['application/json', 'application/sparql-results+json']:
-                response = make_response(res.serialize(format='json'),200)
-                response.headers['Content-Type'] = 'application/json'
-                return response
-            elif mimetype in ['application/rdf+xml','application/xml', 'application/sparql-results+xml']:
-                response = make_response(res.serialize(format='xml'),200)
-                response.headers['Content-Type'] = 'application/rdf+xml'
-                return response
-            elif mimetype in ['application/csv','text/csv']:
-                response = make_response(res.serialize(format='csv'),200)
-                response.headers['Content-Type'] = 'text/csv'
-                return response     
         except Exception as e:
             current_app.logger.error(e)
             current_app.logger.error(traceback.format_exc())

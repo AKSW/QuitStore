@@ -9,7 +9,7 @@
     <div class="commit-item" style="vertical-align: bottom">
         <div id="commit-graph" data-graph='{{ data }}'></div>        
     </div>
-    <div class="commit-item">
+    <div class="commit-item" style="width: 100%">
         <table class="table">
             <thead>
                 <tr>
@@ -23,7 +23,7 @@
             <tbody>
                 {% for row in results %}
                 <tr class="commit-row">
-                    <td><img src="{{ row.author|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row.author.name }}</td>
+                    <td><img src="{{ row.author.email|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row.author.name }}</td>
                     <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}">{{ row.short_id }}</a></td>
                     <td>{{ row.message }}</td>
                     <td>{{ row.author_date }}</td>
@@ -42,7 +42,7 @@ No results found
 
 {% block scripts %}
 {{super()}}
-<script src="{{ url_for('static', filename='js/jquery.commits-graph.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jquery.commits-graph.js') }}"></script>
 <script>
     var $els = $('.commit-row');
     
@@ -67,8 +67,6 @@ No results found
         self.$container.commits(defaults);
         self.$container.parent.height = defaults.height
     })
-
-
     
 </script>
 {% endblock %}

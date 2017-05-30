@@ -52,14 +52,15 @@ class Blame(object):
         print(values_string)
         
         q = """
-            SELECT ?s ?p ?o ?context ?y ?name ?date WHERE {                
-                ?commit quit:preceedingCommit* ?y .
-                ?y      prov:endedAtTime ?date ;
+            SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {                
+                ?commit quit:preceedingCommit* ?c .
+                ?c      prov:endedAtTime ?date ;
                         prov:qualifiedAssociation ?qa ;
-                        quit:updates ?update .
-                ?qa     prov:agent ?user ;
+                        quit:updates ?update ;
+                        quit:hex ?hex .
+                ?qa     prov:agent ?author ;
                         prov:role quit:author .
-                ?user foaf:mbox ?email ;
+                ?user   foaf:mbox ?email ;
                         rdfs:label ?name .                    
                 ?update quit:graph ?context ;
                         quit:additions ?additions . 
@@ -69,7 +70,7 @@ class Blame(object):
                 FILTER NOT EXISTS {
                     ?y quit:preceedingCommit+ ?z . 
                     ?z quit:updates ?update2 .
-                    ?update2 quit:graph ?context ;
+                    ?update2 quit:graph ?g ;
                         quit:removals ?removals . 
                     GRAPH ?removals {
                         ?s ?p ?o 

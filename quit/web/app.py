@@ -138,8 +138,8 @@ def register_errorhandlers(app):
 def register_template_helpers(app):
 
     @app.template_filter('gravatar')
-    def gravatar_lookup(u, size=36):
-        gravatar_url = "https://www.gravatar.com/avatar/" + hashlib.md5(u.email.lower().encode()).hexdigest() + "?"
+    def gravatar_lookup(email, size=36):
+        gravatar_url = "https://www.gravatar.com/avatar/" + hashlib.md5(email.lower().encode()).hexdigest() + "?"
         gravatar_url += urllib.parse.urlencode({'s':str(size)})
         return gravatar_url
 

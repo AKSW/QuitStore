@@ -1,3 +1,7 @@
+canvas {
+    display: block;
+}
+
 .branch-select {
 	margin-bottom: 10px;
 }
