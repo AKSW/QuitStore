@@ -1,8 +1,5 @@
 import pygit2
 
-import quit.deprecated as deprecated
-
-
 from datetime import datetime
 import logging
 from os import makedirs
@@ -17,7 +14,6 @@ import pygit2
 
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal, BNode, Namespace
 
-from quit.update import evalUpdate
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RevisionGraph, InstanceGraph
 from quit.utils import graphdiff
@@ -353,8 +349,12 @@ class Store(Queryable):
         return
 
 class MemoryStore(Store):
-    def __init__(self):
+    def __init__(self, additional_bindings=list()):
         store = ConjunctiveGraph(identifier='default')
+        for prefix, namespace in [('quit', QUIT), ('foaf', FOAF)]:
+            store.bind(prefix, namespace)
+        for prefix, namespace in additional_bindings:
+            store.bind(prefix, namespace)
         super().__init__(store=store)
 
 class VirtualGraph(Queryable):
@@ -362,11 +362,9 @@ class VirtualGraph(Queryable):
         self.store = InstanceGraph(rewrites)
 
     def query(self, querystring):
-        print(querystring)
         return self.store.query(querystring)
 
     def update(self, querystring, versioning=True):
-        print(querystring)
         return self.store.update(querystring)
 
 class Quit(object):

@@ -1,8 +1,8 @@
-from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
-from quit.web.app import render_template
+import sys, traceback
 
 from werkzeug.http import parse_accept_header
-import sys, traceback
+from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
+from quit.web.app import render_template
 
 __all__ = [ 'debug' ]
 
@@ -23,15 +23,11 @@ def blame(branch_or_ref):
     else:
         mimetype = 'application/sparql-results+json'    
 
-    print(mimetype)
-    #Todo html results instead of force
-    #mimetype = 'application/sparql-results+json'    
-
     try:
         res = blame.run(branch_or_ref = branch_or_ref)
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-            results = res
+            results = [{ 'commit': quit.repository.revision(row['hex']), 'blame': row } for row in res]
             response=make_response(render_template("blame.html", results = results))
             response.headers['Content-Type'] = 'text/html'
             return response
@@ -51,3 +47,4 @@ def blame(branch_or_ref):
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
         return "<pre>"+traceback.format_exc()+"</pre>", 400
+

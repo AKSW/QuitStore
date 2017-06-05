@@ -44,12 +44,8 @@ class Blame(object):
         #if not quads:
         quads = [x for x in g.store.quads((None, None, None, None))]
 
-        print(quads)
-
         values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 
-                          
-        print(values_string)
         
         q = """
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {                

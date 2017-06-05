@@ -1,11 +1,10 @@
+import sys, traceback
 import re
 import pygit2
 
 from flask import Blueprint, flash, redirect, request, url_for, current_app
 from quit.web.app import render_template
-from quit.web.commits_graph import CommitGraph, generate_graph_data
-
-import sys, traceback
+from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
 
 __all__ = [ 'git' ]
 

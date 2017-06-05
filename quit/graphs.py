@@ -105,7 +105,6 @@ class InstanceGraph(ConjunctiveGraph):
                     yield (s1, p1, o1, k)
 
     def __len__(self):
-        (print(g) for g in self.graphs)
         return sum(len(g) for g in self.graphs)
 
     def contexts(self, triple = None):
@@ -114,7 +113,6 @@ class InstanceGraph(ConjunctiveGraph):
                 yield v
 
     def get_context(self, identifier, quoted = False):
-        print('asked: %s'% identifier)
         for k, v in self.graphs.items():
             if k == identifier:
                 return v
@@ -134,12 +132,10 @@ class InstanceGraph(ConjunctiveGraph):
             return -1
 
     def __iadd__(self, other):
-        print(other)
         self.addN((s, p, o, self) for s, p, o in other)
         return self
 
     def __isub__(self, other):
-        print(other)
         for triple in other:
             self.remove(triple)
         return self

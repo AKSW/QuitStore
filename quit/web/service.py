@@ -1,4 +1,4 @@
-from quit.exceptions import ServiceException
+from ..exceptions import ServiceException
 
 _services = {}
 
