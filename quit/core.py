@@ -2,7 +2,6 @@ import pygit2
 
 import quit.deprecated as deprecated
 
-
 from datetime import datetime
 import logging
 from os import makedirs
@@ -16,6 +15,8 @@ from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
 import pygit2
 
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal, BNode, Namespace
+from rdflib import plugin
+from rdflib.store import Store as DefaultStore
 
 from quit.update import evalUpdate
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
@@ -358,8 +359,10 @@ class MemoryStore(Store):
         super().__init__(store=store)
 
 class VirtualGraph(Queryable):
-    def __init__(self, rewrites):
-        self.store = InstanceGraph(rewrites)
+    def __init__(self, store):
+        if not isinstance(store, InstanceGraph):
+            raise Exception()
+        self.store = store
 
     def query(self, querystring):
         print(querystring)
@@ -431,6 +434,14 @@ class Quit(object):
         commit = self.repository.revision(id)
 
         target_files = self.config.getgraphurifilemap().values()
+        
+        if not from_git:
+            local = False
+            store = self.store.store.store
+        else: 
+            local = True
+            store = plugin.get('default', DefaultStore)()
+
         mapping = {}
 
         for entity in commit.node().entries(recursive=True):
@@ -450,15 +461,14 @@ class Quit(object):
                     public_uri = context
                     private_uri = context + '-' + entity.blob.hex
 
-                    if not from_git:
-                        g = RevisionGraph(entity.blob.id, store=self.store.store.store, identifier=private_uri)               
-                    else: 
-                        g = RevisionGraph(entity.blob.id, identifier=private_uri)
-                        g += tmp.get_context(context)
+                    if from_git:
+                        store.add_graph(tmp.get_context(context))
 
-                    mapping[public_uri] = g 
+                    mapping[public_uri] = [public_uri, private_uri] 
 
-        return VirtualGraph(mapping) 
+        instance = InstanceGraph(store, mapping, local)    
+
+        return VirtualGraph(instance) 
 
     def changesets(self, commits=None):
         g = ConjunctiveGraph(identifier=QUIT.default)
@@ -541,8 +551,11 @@ class Quit(object):
 
             # Diff
             diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
-            for ((resource_uri, hex), changesets) in diff.items():
+            for ((resource_uri, _), changesets) in diff.items():
+                print("3")  
+                print(changesets)  
                 for (op, update_graph) in changesets:                    
+                    print("4")
                     update_uri = QUIT['update-' + commit.id]
                     op_uri = QUIT[op + '-' + commit.id]
                     g.add((commit_uri, QUIT['updates'], update_uri))
@@ -578,8 +591,8 @@ class Quit(object):
                                                                        
         return g
    
-    def commit(self, changes, message, ref='master', **kwargs):
-        if len(changes) == 0:
+    def commit(self, graph, message, ref='master', **kwargs):
+        if not graph.is_dirty:
             return
         
         seen = set()
@@ -589,16 +602,13 @@ class Quit(object):
         for op in changes:
             triples = changes.get(op, [])
 
-            for (_, identifier) in triples:
-                if identifier in seen:
-                    continue
-                seen.add(identifier)
-                path = self.config.getfileforgraphuri(identifier) or 'unassigned.nq'
+            for c in graph:
+                path = self.config.getfileforgraphuri(c.identifier) or 'unassigned.nq'
         
-                if op == 'drop':
+                if len(c) == 0:
                     index.remove(path)
                 else:
-                    content = self.store.store.get_context(identifier).serialize(format='nquad-ordered').decode('UTF-8')
+                    content = c.serialize(format='nquad-ordered').decode('UTF-8')
                     index.add(path, content)
 
         author = self.repository._repository.default_signature

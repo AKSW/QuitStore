@@ -81,9 +81,8 @@ def sparql(branch_or_ref):
                     response.headers['Content-Type'] = 'text/csv'
                     return response     
             else:
-                res = graph.update(q) 
-                print(res)                           
-                quit.commit(res, 'New Commit from QuitStore', ref, query=q)          
+                res = graph.update(q)                          
+                quit.commit(graph, 'New Commit from QuitStore', ref, query=q)          
                 return '', 200
             
         except Exception as e:

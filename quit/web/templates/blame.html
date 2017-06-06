@@ -9,11 +9,11 @@
     <thead>
         <tr>
             <th>Author</th>
+            <th>Commit</th>
             <th>Subject</th>
             <th>Predicate</th>
             <th>Object</th>
             <th>Graph</th>
-            <th>Commit</th>
             <th>Date</th>
             <th></th>
         </tr>
@@ -21,13 +21,13 @@
     <tbody>
         {% for row in results %}
         <tr>
-            <td><img src="{{ row['email']|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row['name'] }}</td>
-            <td>{{ row['s'] }}</td>
-            <td>{{ row['p'] }}</td>
-            <td>{{ row['o'] }}</td>
-            <td>{{ row['context'] }}</td>
-            <td>{{ row['hex'] }}</td>
-            <td>{{ row['date'] }}</td>
+            <td><img src="{{ row.commit.author.email|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row.commit.author.name }}</td>
+            <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.commit.id) }}">{{ row.commit.short_id }}</a></td>
+            <td>{{ row.blame.s }}</td>
+            <td>{{ row.blame['p'] }}</td>
+            <td>{{ row.blame['o'] }}</td>
+            <td>{{ row.blame['context'] }}</td>
+            <td>{{ row.commit.author_date }}</td>
         </tr>
         {% endfor %}
     </tbody>

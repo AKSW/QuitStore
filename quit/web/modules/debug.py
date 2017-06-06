@@ -31,7 +31,8 @@ def blame(branch_or_ref):
         res = blame.run(branch_or_ref = branch_or_ref)
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-            results = res
+            results = list(map(lambda x: {'commit': quit.repository.revision(x.hex), 'blame': x}, res))
+            print(results)
             response=make_response(render_template("blame.html", results = results))
             response.headers['Content-Type'] = 'text/html'
             return response

@@ -65,26 +65,35 @@ def graphdiff(g1, g2):
     diffs = {}
     uris = set()
 
-    if g1 and isinstance(g1, InstanceGraph):
-        uris |= set(g1.graphs.keys())
-    if g2 and isinstance(g2, InstanceGraph):
-        uris |= set(g2.graphs.keys())
+    if g1 is not None  and isinstance(g1, InstanceGraph):
+        print("1")
+        uris = uris.union(g1.mappings.keys())
+    if g2 is not None and isinstance(g2, InstanceGraph):
+        print("2")
+        uris = uris.union(g2.mappings.keys())
         
+    print("test")
+    print(isinstance(g2, InstanceGraph))
+    print(g2.mappings.keys())
+    print(uris)
+    
     for uri in uris:
-        id = g2.graphs[uri].id
+        id = None
         changes = diffs.get((uri, id), [])
 
-        if (g1 is not None and uri in g1.graphs.keys()) and (g2 is not None and uri in g2.graphs.keys()):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(g1.graphs[uri]), to_isomorphic(g2.graphs[uri]))
+        if (g1 is not None and uri in g1.mappings.keys()) and (g2 is not None and uri in g2.mappings.keys()):
+            in_both, in_first, in_second = graph_diff(to_isomorphic(g1.get_context(uri)), to_isomorphic(g2.get_context(uri)))
 
             if len(in_second) > 0:
                 changes.append(('additions', in_second))
             if len(in_first) > 0:
                 changes.append(('removals', in_first))
-        elif g1 is not None and uri in g1.graphs.keys():
-            changes.append(('removals', g1.graphs[uri]))
-        elif g2 is not None and uri in g2.graphs.keys():            
-            changes.append(('additions', g2.graphs[uri]))
+        elif g1 is not None and uri in g1.mappings.keys():
+            changes.append(('removals', g1.get_context(uri)))
+        elif g2 is not None and uri in g2.mappings.keys():  
+            print(uri);          
+            print(g2.get_context(uri));          
+            changes.append(('additions', g2.get_context(uri)))
         else: 
             continue
                         

@@ -17,12 +17,16 @@ class Blame(object):
 
         for quad in quads:  
             (s, p, o, c) = quad
+
+            c.rewrite = True
             
             # Todo: BNodes in VALUES are not supported by specification? Using UNDEF for now
             _s = 'UNDEF' if isinstance(s, BNode) else s.n3()
             _p = 'UNDEF' if isinstance(p, BNode) else p.n3()
             _o = 'UNDEF' if isinstance(o, BNode) else o.n3()
-            _c = 'UNDEF' if isinstance(c, BNode) else c.n3()
+            _c = 'UNDEF' if isinstance(c, BNode) else c.identifier.n3()
+
+            c.rewrite= False
 
             result.append((_s, _p, _o, _c))
         return result
@@ -41,16 +45,21 @@ class Blame(object):
         commit = self.quit.repository.revision(branch_or_ref)
         g = self.quit.instance(branch_or_ref)    
 
+        print(g)
+        print('----------')
+        print(g.store.mappings)
+
         #if not quads:
-        quads = [x for x in g.store.quads((None, None, None, None))]
+        quads = [x for x in g.store.quads((None, None, None))]
 
         print(quads)
+        for q in quads:
+            print(q[3].identifier);
 
         values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 
-                          
+        print('----------')
         print(values_string)
-        
         q = """
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {                
                 ?commit quit:preceedingCommit* ?c .
