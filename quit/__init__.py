@@ -5,19 +5,19 @@ from rdflib.plugins.sparql.algebra import SequencePath
 
 register(
     'sparql', Processor,
-    'quit.processor', 'SPARQLProcessor')
+    'quit.tools.processor', 'SPARQLProcessor')
 
 register(
     'sparql', UpdateProcessor,
-    'quit.processor', 'SPARQLUpdateProcessor')
+    'quit.tools.processor', 'SPARQLUpdateProcessor')
 
 register(
     'html', ResultSerializer,
-    'quit.htmlresults', 'HTMLResultSerializer')
+    'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
 
 register(
     'nquad-ordered', Serializer,
-    'quit.serializer', 'OrderedNQuadsSerializer')
+    'quit.plugins.serializers.nquadsordered', 'OrderedNQuadsSerializer')
 
 # from Github: https://github.com/RDFLib/rdflib/issues/617
 # Egregious hack, the SequencePath object doesn't support compare, this implements the __lt__ method so that algebra.py works on sorting in SPARQL queries on e.g. rdf:List paths

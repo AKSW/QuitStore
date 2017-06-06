@@ -403,3 +403,16 @@ class QuitConfiguration:
         self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
 
         return
+
+    def getBindings(self):
+        ns = Namespace('http://quit.aksw.org/')
+        q = """SELECT DISTINCT ?prefix ?namespace WHERE {{
+            {{
+                ?ns a <{binding}> ;
+                    <{predicate_prefix}> ?prefix ;
+                    <{predicate_namespace}> ?namespace .
+            }}
+        }}""".format(binding=ns['Binding'], predicate_prefix=ns['prefix'], predicate_namespace=ns['namespace'])
+        
+        result = self.sysconf.query(q)
+        return [(row['prefix'], row['namespace']) for row in result]

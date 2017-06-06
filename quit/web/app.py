@@ -1,6 +1,7 @@
 import os
 import urllib
 import hashlib
+import rdflib
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app, request, url_for
 from flask.ext.cors import CORS
@@ -12,7 +13,7 @@ from quit.core import MemoryStore, Quit
 from quit.git import Repository
 
 from quit.namespace import QUIT
-from quit.service import register
+from quit.web.service import register
 from quit.provenance import Blame
 
 # For import *
@@ -24,13 +25,13 @@ DROPDOWN_TEMPLATE="""
     <ul class="dropdown-menu">
         <li class="dropdown-header">Branches</li>
         {% for branch in branches %}
-            <li><a href="{{ url_for(request.url_rule.endpoint, branch_or_ref=branch) }}">{{ branch }}</a></li>
+            <li><a href="#">{{ branch }}</a></li>
         {% endfor %}
         {% if tags %}
             <li class="divider"></li>
             <li class="dropdown-header">Tags</li>
             {% for tag in tags %}
-                <li><a href="{{ url_for(request.url_rule.endpoint, branch_or_ref=tag) }}">{{ tag }}</a></li>
+                <li><a href="#">{{ tag }}</a></li>
             {% endfor %}
         {% endif %}        
     </ul>
@@ -58,8 +59,9 @@ def register_app(app, config):
     """Different ways of configurations."""
 
     repository = Repository(config.getRepoPath(), create=True)
-    
-    quit = Quit(config, repository, MemoryStore())
+    bindings = config.getBindings()
+
+    quit = Quit(config, repository, MemoryStore(bindings))
     quit.sync()
     
     content = quit.store.store.serialize(format='trig').decode()
@@ -143,6 +145,30 @@ def register_template_helpers(app):
         gravatar_url += urllib.parse.urlencode({'s':str(size)})
         return gravatar_url
 
+    @contextfilter
+    @app.template_filter('term_to_string')
+    def term_to_string(ctx, t): 
+        def qname(ctx, t):
+            try:
+                config = ctx.get('config')
+                l=config['quit'].store.store.compute_qname(t, False)
+                return u'%s:%s'%(l[0],l[2])
+            except Exception as e: 
+                print("Error: " + str(e))
+                return t
+        
+        if isinstance(t, rdflib.URIRef):
+            l=qname(ctx, t)
+            return Markup("<a href='%s'>%s</a>" % (t,l))
+        elif isinstance(t, rdflib.Literal): 
+            if t.language: 
+                return '"%s"@%s'%(t,t.language)
+            elif t.datatype: 
+                return '"%s"^^&lt;%s&gt;'%(t,qname(ctx,t.datatype))
+            else:
+                return '"%s"'%t
+        return t
+
 def render_template(template_name_or_list, **kwargs):
 
     quit = current_app.config['quit']
@@ -151,7 +177,6 @@ def render_template(template_name_or_list, **kwargs):
     available_tags = quit.repository.tags
 
     dropdown = rts(DROPDOWN_TEMPLATE, branches=[x.lstrip('refs/heads/') for x in available_branches], tags=[x.lstrip('refs/tags/') for x in available_tags])
-    #dropdown = ""
 
     context = {
         'available_branches': available_branches,

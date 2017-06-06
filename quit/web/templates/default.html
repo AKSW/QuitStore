@@ -13,7 +13,14 @@
                 </div>
                 <ul class="nav navbar-nav">
                     <li{% if request.url_rule.endpoint == 'git.commits' %} class="active"{% endif %}><a href="{{ url_for('git.commits') }}"><i class="fa fa-history" aria-hidden="true"></i> Commits</a></li>
-                    <li{% if request.url_rule.endpoint == 'endpoint.sparql' %} class="active"{% endif %}><a href="{{ url_for('endpoint.sparql') }}"><i class="fa fa-question-circle" aria-hidden="true"></i> Endpoint</a></li>
+                    <li {% if request.url_rule.endpoint in ['endpoint.sparql', 'endpoint.provenance'] %} class="dropdown active"{% else %} class="dropdown"{% endif %}>
+                        <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-database" aria-hidden="true"></i> Endpoints <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{{ url_for('endpoint.sparql') }}"><i class="fa fa-question-circle" aria-hidden="true"></i> Endpoint</a></li>
+                            <li><a href="{{ url_for('endpoint.provenance') }}"><i class="fa fa-info-circle" aria-hidden="true"></i> Provenance</a></li>
+                        </ul>
+                    </li>
+                    
                     <li {% if request.url_rule.endpoint in ['debug.blame'] %} class="dropdown active"{% else %} class="dropdown"{% endif %}>
                         <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-bug" aria-hidden="true"></i> Debug <span class="caret"></span></a>
                         <ul class="dropdown-menu">

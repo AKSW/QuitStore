@@ -1,9 +1,17 @@
 import rdflib
+
+from jinja2 import Environment, Markup
 from rdflib.query import ResultSerializer
 
-from jinja2 import Environment, contextfilter, Markup
+__all__ = ['HTMLResultSerializer']
 
-SELECT_TEMPLATE="""
+namespace_manager=rdflib.Graph().namespace_manager
+namespace_manager.bind('xsd',rdflib.XSD)
+
+env=Environment()
+env.filters["term_to_string"]=term_to_string
+
+RESULT_TEMPLATE="""
 <table class="table">
 <thead>
     <tr>
@@ -16,15 +24,13 @@ SELECT_TEMPLATE="""
     {% for row in result.bindings %}
         <tr>
         {% for var in result.vars %}
-            <td>{{row[var]}}</td>
+            <td>{{row[var]|term_to_string}}</td>
         {% endfor %}
         </tr>
     {% endfor %}
 </tbody>
 </table>
 """
-
-env=Environment()
 
 class HTMLResultSerializer(ResultSerializer):
 
@@ -36,5 +42,6 @@ class HTMLResultSerializer(ResultSerializer):
             stream.write("<strong>true</strong>".encode(encoding))
             return
         if self.result.type=='SELECT':
-            template = env.from_string(SELECT_TEMPLATE)
+            print("hello")
+            template = env.from_string(RESULT_TEMPLATE)
             stream.write(template.render(result=self.result))

@@ -29,7 +29,7 @@ from rdflib.plugins.sparql.evalutils import (
 from rdflib.plugins.sparql.aggregates import Aggregator
 from rdflib.plugins.sparql.algebra import Join, ToMultiSet, Values
 
-import quit.service as service
+from quit.web import service
 
 def evalBGP(ctx, bgp):
 

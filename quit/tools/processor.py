@@ -4,8 +4,7 @@ from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 
 from quit.algebra import translateQuery, translateUpdate
 from quit.evaluate import evalQuery
-#from quit.update import evalUpdate
-from rdflib.plugins.sparql.update import evalUpdate
+from quit.update import evalUpdate
 
 class SPARQLUpdateProcessor(UpdateProcessor):
     def __init__(self, graph):

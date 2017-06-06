@@ -1,8 +1,4 @@
-import rdflib
-
 from rdflib.serializer import Serializer
-from six import b
-
 from rdflib.plugins.serializers.nquads import NQuadsSerializer, _nq_row
 
 class OrderedNQuadsSerializer(NQuadsSerializer):

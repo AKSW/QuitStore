@@ -11,9 +11,7 @@ from quit.core import FileReference, MemoryStore, GitRepo
 from quit.conf import QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
-from quit.parsers import NQuadsParser
 from quit.utils import splitinformation, sparqlresponse
-from quit.deprecated import deprecated
 from quit.web.app import create_app
 import handleexit
 import logging
@@ -25,9 +23,6 @@ from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph, Graph, Literal
 import json
 import subprocess
-
-app = FlaskAPI(__name__)
-CORS(app)
 
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
@@ -412,8 +407,6 @@ def savedexit():
 API
 '''
 
-
-@app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
     """Process a SPARQL query (Select or Update).
 
@@ -459,139 +452,6 @@ def sparql():
                         content_type=resultFormat()['mime']
                         )
         # return '', status.HTTP_200_OK
-
-@app.route("/git/checkout/", methods=['POST', 'GET'], defaults={'commitid': None})
-@app.route('/git/checkout/<string:commitid>')
-def checkoutVersion(commitid):
-    """Receive a HTTP request with a commit id and initialize store with data from this commit.
-
-    Returns:
-        HTTP Response 200: If commit id is valid and store is reinitialized with the data.
-        HTTP Response 400: If commit id is not valid.
-    """
-    if request.method == 'GET':
-        if 'commitid' in request.args:
-            commitid = request.args['commitid']
-    elif request.method == 'POST':
-        if 'commitid' in request.form:
-            commitid = request.form['commitid']
-
-    if commitid is None:
-        msg = 'Commit id is missing in request'
-        logger.debug(msg)
-        return msg, status.HTTP_400_BAD_REQUEST
-
-    if gitrepo.commitexists(commitid) is True:
-        gitrepo.checkout(commitid)
-        # TODO store has to be reinitialized with old data
-        # Maybe a working copy of quit config, containing file to graph mappings
-        # would do the job
-        reloadstore()
-    else:
-        msg = 'Not a valid commit id'
-        logger.debug(msg)
-        return msg, status.HTTP_400_BAD_REQUEST
-
-    return '', status.HTTP_200_OK
-
-
-@app.route("/git/log", methods=['GET'])
-def getCommits():
-    """Receive a HTTP request and reply with all known commits.
-
-    Returns:
-        HTTP Response: json containing id, committeddate and message.
-    """
-    data = gitrepo.getcommits()
-    resp = Response(json.dumps(data), status=200, mimetype='application/json')
-    return resp
-
-
-@app.route("/add", methods=['POST'])
-@set_parsers(NQuadsParser)
-def addTriple():
-    """Add nquads to the store.
-
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was added)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
-    if request.method == 'POST':
-        try:
-            data = checkrequest(request)
-        except:
-            return '', status.HTTP_403_FORBIDDEN
-
-        for graphuri in data['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
-
-        addtriples(data)
-
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-
-@app.route("/delete", methods=['POST', 'GET'])
-@set_parsers(NQuadsParser)
-def deleteTriple():
-    """Delete nquads from the store.
-
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was deleted)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
-    if request.method == 'POST':
-        try:
-            values = checkrequest(request)
-        except:
-            return '', status.HTTP_403_FORBIDDEN
-
-        for graphuri in values['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
-
-        deletetriples(values)
-
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-
-@app.route("/pull", methods=['POST', 'GET'])
-def pull():
-    """Pull from remote.
-
-    Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
-    """
-    if gitrepo.pull():
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-    return
-
-
-@app.route("/push", methods=['POST', 'GET'])
-def push():
-    """Pull from remote.
-
-    Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
-    """
-    if gitrepo.push():
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-    return
-
 
 def resultFormat():
     """Get the mime type and result format for a Accept Header."""

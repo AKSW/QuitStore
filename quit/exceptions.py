@@ -47,3 +47,13 @@ class ServiceException(Error):
     Thrown when requesting a missing service
     """
     pass
+
+class UnSupportedQueryType(Exception):
+    """
+    Thrown when providing an unsupported query type
+    """
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return ("This query is not allowed by this endpoint")

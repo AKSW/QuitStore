@@ -216,7 +216,7 @@ class Repository(Base):
 
     def __prov__(self):
 
-        commit_graph = self.instance(commit.id, True)            
+        commit_graph = self.instance(commit.id, True)
         pass
 
 

@@ -1,0 +1,38 @@
+{% extends "default.html" %}
+
+{% block headline %}<div class="lead">Provenance Endpoint</div>{% endblock %}
+
+{% block quit_content %}
+<div id="yasqe"></div>
+<div id="yasr"></div>
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<script src="{{ url_for('static', filename='js/codemirror.js') }}"></script>
+<script src="{{ url_for('static', filename='js/yasqe.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/yasr.min.js') }}"></script>
+<script>
+    var yasqe = YASQE(document.getElementById("yasqe"), {
+    	createShareLink: null, 
+		sparql: {
+			showQueryButton: true,
+			endpoint: '{{ request.base_url }}'
+		}
+	});
+	var yasr = YASR(document.getElementById("yasr"), {
+		getUsedPrefixes: yasqe.getPrefixesFromQuery,
+		outputPlugins: ["error", "boolean", "rawResponse", "table"]
+	});
+
+	//link both together
+	yasqe.options.sparql.callbacks.complete = yasr.setResponse;
+</script>
+{% endblock %}
+
+{% block styles %}
+{{super()}}
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/codemirror.css') }}" />
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/yasqe.min.css') }}" />
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/yasr.min.css') }}" />
+{% endblock %}
