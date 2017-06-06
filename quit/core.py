@@ -589,24 +589,22 @@ class Quit(object):
         return g
    
     def commit(self, graph, message, ref='master', **kwargs):
-        if not graph.is_dirty:
+        if not graph.store.is_dirty:
             return
         
         seen = set()
 
         index = self.repository.index(ref)        
 
-        for op in changes:
-            triples = changes.get(op, [])
-
-            for c in graph:
-                path = self.config.getfileforgraphuri(c.identifier) or 'unassigned.nq'
-        
-                if len(c) == 0:
-                    index.remove(path)
-                else:
-                    content = c.serialize(format='nquad-ordered').decode('UTF-8')
-                    index.add(path, content)
+        for c in graph.store.contexts():
+            c.rewrite = True
+            path = self.config.getfileforgraphuri(c.identifier) or 'unassigned.nq'
+    
+            if len(c) == 0:
+                index.remove(path)
+            else:
+                content = c.serialize(format='nquad-ordered').decode('UTF-8')
+                index.add(path, content)
 
         author = self.repository._repository.default_signature
         id = index.commit(str(message), author.name, author.email, ref=ref)

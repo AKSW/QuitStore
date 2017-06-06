@@ -33,16 +33,24 @@
 <linkToGitRemote> a rdfs:Property ;
   rdfs:label "Link to the Git Remote" .
 
+<Binding> a rdfs:Class ;
+  rdfs:label "Information about custom namespaces" .
+
+<prefix> a rdfs:Property ;  
+  rdfs:label "Prefix for a binding" .
+
+<namespace> a rdfs:Property ;  
+  rdfs:label "Actual namespace for a binding" .
+
 conf:store a <QuitStore> ;
   <allowNewGraphs> 1 ;
-  <pathOfGitRepo> "../store.default" .
-
-conf:dbpedia a <Graph> ;
-  <graphUri> <http://dbpedia.org/> ;
-  <isVersioned> 1 ;
-  <hasQuadFile> "dbpedia.nq" .
+  <pathOfGitRepo> "d:/git.default" .
 
 conf:default a <Graph> ;
   <graphUri> <http://my.quit.graph/> ;
   <isVersioned> 1 ;
   <hasQuadFile> "default.nq" .
+
+conf:aksw a <Binding> ;
+  <prefix> "aksw" ;
+  <namespace> <http://aksw.org/> .

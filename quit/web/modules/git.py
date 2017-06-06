@@ -29,6 +29,16 @@ def commits(branch_or_ref):
         data = generate_graph_data(CommitGraph.gets(results))
 
         return render_template('commits.html', results=results, data=data)
+
+        if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+            results = res.serialize(format='html')
+            response=make_response(render_template("results.html", results = Markup(results.decode())))
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        elif mimetype in ['application/json', 'application/sparql-results+json']:
+            response = make_response(res.serialize(format='json'),200)
+            response.headers['Content-Type'] = 'application/json'
+            return response
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
@@ -47,8 +57,7 @@ def pull():
     #else:
     #    return '', status.HTTP_403_FORBIDDEN
     try:
-        quit = current_app.config['quit']
-        quit.repository.pull()
+        current_app.config['quit'].repository.pull()
         return '', 201
     except Exception as e:
         current_app.logger.error(e)
@@ -69,8 +78,7 @@ def push():
     #    return '', status.HTTP_403_FORBIDDEN
 
     try:
-        quit = current_app.config['quit']
-        quit.repository.push()
+        current_app.config['quit'].repository.push()
         return '', 201
     except Exception as e:
         current_app.logger.error(e)

@@ -1,6 +1,8 @@
 from rdflib.serializer import Serializer
 from rdflib.plugins.serializers.nquads import NQuadsSerializer, _nq_row
 
+import warnings
+
 class OrderedNQuadsSerializer(NQuadsSerializer):
 
     def __init__(self, store): 
@@ -14,4 +16,4 @@ class OrderedNQuadsSerializer(NQuadsSerializer):
         encoding = self.encoding
         for triple in sorted(self.store)      :
             stream.write(_nq_row(triple, self.store.identifier).encode(encoding, "replace"))
-        stream.write(b("\n"))
+        stream.write("\n".encode(encoding, "replace"))

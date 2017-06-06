@@ -2,6 +2,7 @@ import rdflib.plugin as plugin
 
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
 from rdflib.graph import ReadOnlyGraphAggregate, ModificationException, UnSupportedAggregateOperation, Path
+from rdflib.store import Store
 
 class RevisionGraph(Graph):
 
@@ -26,6 +27,7 @@ class InstanceGraph(ConjunctiveGraph):
         
         self.mappings = mappings
         self.dirty = False
+        self.local = local
 
     @property
     def is_dirty(self):
@@ -35,7 +37,10 @@ class InstanceGraph(ConjunctiveGraph):
         if not self.local:
             old_store = self.store
             new_store = plugin.get('default', Store)()
-            new_store += old_store
+            editor = ConjunctiveGraph(store=new_store)
+            for subgraph in self.contexts():
+                for (s,p,o) in subgraph.triples((None,None,None)):
+                    editor.add((s,p,o,subgraph.identifier))      
             self._Graph__store = store = new_store
 
     def add(self, xxx_todo_changeme):

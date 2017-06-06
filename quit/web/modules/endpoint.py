@@ -3,7 +3,7 @@ import re
 
 from werkzeug.http import parse_accept_header
 from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
-from rdflib.serializer import Serializer
+from rdflib import ConjunctiveGraph
 from quit.web.app import render_template
 from quit.exceptions import UnSupportedQueryType
 
@@ -19,8 +19,7 @@ def parse_query_type(query):
     try:
         query_type = pattern.search(query).group("queryType").upper()
     except AttributeError:
-        query_type = None
-    
+        query_type = None    
     return query_type
 
 @endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
@@ -34,22 +33,17 @@ def sparql(branch_or_ref):
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
     if not branch_or_ref:
-        branch_or_ref= 'master'
+        branch_or_ref = 'master'
 
     quit = current_app.config['quit']
 
-    q = request.values.get('query', None)
-    if not q:
-        q = request.values.get('update', None)
+    q = request.values.get('query', None) or request.values.get('update', None)
+    ref = request.values.get('ref', None) or 'refs/heads/master'
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
-        mimetype = 'text/html'
-        
-    ref = request.values.get('ref', None)
-    if not ref:
-        ref = 'refs/heads/master'
+        mimetype = 'text/html'        
 
     if q:
         try:
@@ -141,49 +135,137 @@ def provenance():
     else:
         return render_template('provenance.html')
 
-@endpoint.route("/add", methods=['POST'])
-def add():
-    """Add nquads to the store.
+def negotiate(accept_header):
+    """Get the mime type and result format for a Accept Header."""
+    formats = {
+        'application/rdf+xml': 'xml',
+        'text/turtle': 'turtle',
+        'application/n-triples': 'nt',
+        'application/n-quads': 'nquads'
+    }
+    best = request.accept_mimetypes.best_match(
+        ['application/n-triples', 'application/rdf+xml', 'text/turtle', 'application/n-quads']
+    )
+    # Return json as default, if no mime type is matching
+    if best is None:
+        best = 'text/turtle'
 
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was added)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
-    try:
-        data = checkrequest(request)
+    return (best, formats[best])
+
+def edit_store(method, args, body, mimetype, accept_header, graph):
+
+    def get_where(graph, args):
+        s,p,o,c = _spoc(args)
+        
+        result = ConjunctiveGraph()
+
+        print(len(graph.store))
+
+        for subgraph in (x for x in graph.store.contexts((s,p,o)) if c is None or x == c):
+            print("test")
+            result.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
+        return result
+
+    def copy_where(target, graph, args):
+        s,p,o,c = _spoc(args)
+
+        for subgraph in (x for x in graph.contexts((s,p,o)) if c is None or x == c):
+            target.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
     
+    def remove_where(graph, args):
+        s,p,o,c = _spoc(args)
+        graph.remove((s, p, o, c))
 
-        for graphuri in data['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
+    def clear_where(graph, args):
+        _,_,_,c = _spoc(args)
+        graph.remove_context(c)
 
-        addtriples(data)
+    def serialize(graph, format_):
+        format_,mimetype_=mimeutils.format_to_mime(format_)
+        response=make_response(graph.serialize(format=format_))
+        response.headers["Content-Type"]=mimetype_
+        return response
 
-        return '', 201
-    except:
-        return '', 403
+    def _spoc(args):
+        s = args.get('subj', None)
+        p = args.get('pred', None)
+        o = args.get('obj', None)
+        c = args.get('context', None)
+        return s, p, o, c
 
-
-@endpoint.route("/delete", methods=['POST'])
-def delete():
-    """Delete nquads from the store.
-
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was deleted)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
     try:
-        values = checkrequest(request)
+        if method in ['GET', 'HEAD']:
+            #format, content_type = self.negotiate(self.RESULT_GRAPH, accept_header)
+            #if content_type.startswith('text/'): content_type += "; charset=utf-8"
+
+            content_type, format = negotiate(accept_header)
+            if content_type.startswith('text/'): content_type += "; charset=utf-8"
+            print(format)
+            headers = {"Content-type": content_type}
+            response = (200, headers, get_where(graph, args).serialize(format=format))            
+
+        elif method == 'DELETE':
+            remove_where(graph, args)
+            response = (200, dict(), None)
+
+        elif method in ['POST', 'PUT']:
+        
+            data = ConjunctiveGraph()
+            data.parse(body, format="nquads")
+
+            if method == 'POST':
+                copy_where(graph, data, args)
+                response = (200, dict(), None)
+
+            elif method == 'PUT':
+                clear_where(graph, args)
+                copy_where(graph, data, args)
+                response = (200, dict(), None)
+
+            quit.commit(res, 'New Commit from QuitStore', ref, query=q)
+
+        else:
+            response = (405, {"Allow": "GET, HEAD, POST, PUT, DELETE"}, "Method %s not supported" % method)
+
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        response = (400, dict(), "<pre>"+traceback.format_exc()+"</pre>")
+
+    return response
+
+@endpoint.route("/statements", defaults={'branch_or_ref': None}, methods=['GET', 'POST', 'PUT', 'DELETE'])
+@endpoint.route("/statements/<branch_or_ref>", methods=['GET', 'POST', 'PUT', 'DELETE'])
+def statements(branch_or_ref):
     
+    if not branch_or_ref:
+        branch_or_ref = 'master'
 
-        for graphuri in values['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
+    quit = current_app.config['quit']
 
-        deletetriples(values)
+    method = request.method
+    mimetype = request.mimetype
+    args = request.args
+    body = request.data
 
-        return '', 201
-    except:
-        return '', 403
+    print('%s %s %s %s' % (method, mimetype, args, body))
+
+    if 'Accept' in request.headers:
+        mimetype = parse_accept_header(request.headers['Accept']).best
+    else:
+        mimetype = 'application/sparql-results+json'
+
+    result = edit_store(
+        method=method, 
+        args=args,
+        body=body, 
+        mimetype=mimetype,
+        accept_header=request.headers.get("Accept"),
+        graph=quit.instance(branch_or_ref)
+    )
+    code, headers, body = result
+
+    response = make_response(body or '', code)
+    for k, v in headers.items():
+        response.headers[k] = v
+    return response
