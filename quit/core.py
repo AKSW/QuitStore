@@ -440,7 +440,8 @@ class Quit(object):
         else: 
             local = True
             store = plugin.get('default', DefaultStore)()
-
+            editor = ConjunctiveGraph(store=store)
+        
         mapping = {}
 
         for entity in commit.node().entries(recursive=True):
@@ -451,8 +452,9 @@ class Quit(object):
 
                 tmp = ConjunctiveGraph()
                 tmp.parse(data=entity.content, format='nquads')  
-                    
+
                 for context in [c.identifier for c in tmp.contexts()]:                    
+
                     # Todo: why?
                     #if context not in _m:
                     #    continue
@@ -461,12 +463,11 @@ class Quit(object):
                     private_uri = context + '-' + entity.blob.hex
 
                     if from_git:
-                        store.add_graph(tmp.get_context(context))
+                        editor.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), public_uri))
 
                     mapping[public_uri] = [public_uri, private_uri] 
 
         instance = InstanceGraph(store, mapping, local)    
-
         return VirtualGraph(instance) 
 
     def changesets(self, commits=None):
@@ -550,11 +551,8 @@ class Quit(object):
 
             # Diff
             diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
-            for ((resource_uri, _), changesets) in diff.items():
-                print("3")  
-                print(changesets)  
-                for (op, update_graph) in changesets:                    
-                    print("4")
+            for ((resource_uri, _), changesets) in diff.items():                
+                for (op, update_graph) in changesets: 
                     update_uri = QUIT['update-' + commit.id]
                     op_uri = QUIT[op + '-' + commit.id]
                     g.add((commit_uri, QUIT['updates'], update_uri))

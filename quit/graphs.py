@@ -6,7 +6,7 @@ from rdflib.graph import ReadOnlyGraphAggregate, ModificationException, UnSuppor
 class RevisionGraph(Graph):
 
     def __init__(self, id = None, store = 'default', public = None, private = None, namespace_manager = None, local = False):
-        super().__init__(store=store, identifier=public, namespace_manager=namespace_manager)
+        super().__init__(store=store, identifier=private, namespace_manager=namespace_manager)
         self.id = id
         
         self.__private_identifier = private

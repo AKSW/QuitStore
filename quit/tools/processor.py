@@ -2,9 +2,9 @@ from rdflib.query import Processor, Result, UpdateProcessor
 from rdflib.plugins.sparql.sparql import Query
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 
-from quit.algebra import translateQuery, translateUpdate
-from quit.evaluate import evalQuery
-from quit.update import evalUpdate
+from quit.tools.algebra import translateQuery, translateUpdate
+from quit.tools.evaluate import evalQuery
+from quit.tools.update import evalUpdate
 
 class SPARQLUpdateProcessor(UpdateProcessor):
     def __init__(self, graph):

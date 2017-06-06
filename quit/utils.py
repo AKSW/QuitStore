@@ -66,16 +66,9 @@ def graphdiff(g1, g2):
     uris = set()
 
     if g1 is not None  and isinstance(g1, InstanceGraph):
-        print("1")
         uris = uris.union(g1.mappings.keys())
     if g2 is not None and isinstance(g2, InstanceGraph):
-        print("2")
-        uris = uris.union(g2.mappings.keys())
-        
-    print("test")
-    print(isinstance(g2, InstanceGraph))
-    print(g2.mappings.keys())
-    print(uris)
+        uris = uris.union(g2.mappings.keys())       
     
     for uri in uris:
         id = None
@@ -90,9 +83,7 @@ def graphdiff(g1, g2):
                 changes.append(('removals', in_first))
         elif g1 is not None and uri in g1.mappings.keys():
             changes.append(('removals', g1.get_context(uri)))
-        elif g2 is not None and uri in g2.mappings.keys():  
-            print(uri);          
-            print(g2.get_context(uri));          
+        elif g2 is not None and uri in g2.mappings.keys():
             changes.append(('additions', g2.get_context(uri)))
         else: 
             continue
