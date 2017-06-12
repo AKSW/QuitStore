@@ -3,111 +3,129 @@ import rdflib.plugin as plugin
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
 from rdflib.graph import ReadOnlyGraphAggregate, ModificationException, UnSupportedAggregateOperation, Path
 from rdflib.store import Store
+from rdflib.plugins.memory import IOMemory
 
-class RevisionGraph(Graph):
+class ReadOnlyRewriteGraph(Graph):
+    def __init__(self, store='default', identifier = None, rewritten_identifier = None, namespace_manager = None):
+        self.g = Graph(store=store, identifier=identifier, namespace_manager=namespace_manager)
 
-    def __init__(self, id = None, store = 'default', public = None, private = None, namespace_manager = None, local = False):
-        super().__init__(store=store, identifier=private, namespace_manager=namespace_manager)
-        self.id = id
-        
-        self.__private_identifier = private
-        self.__public_identifier = public
-        self.rewrite = False    
+        super().__init__(store=store, identifier=rewritten_identifier, namespace_manager=namespace_manager)
 
-    def __get_identifier(self):
-        if not self.rewrite:        
-            return self.__private_identifier
+    def triples(self, triple):
+        return self.g.triples(triple)
+   
+    def __cmp__(self, other):
+        if other is None:
+            return -1
+        elif isinstance(other, Graph):
+            return -1
+        elif isinstance(other, ReadOnlyRewriteGraph):
+            return cmp(self.g, other.g)
         else:
-            return self.__public_identifier
-    identifier = property(__get_identifier)  # read-only attr
+            return -1
+    
+    def add(self, triple_or_quad):
+        raise ModificationException()
 
-class InstanceGraph(ConjunctiveGraph):
-    def __init__(self, store='default', mappings=dict(), local=False):
-        super().__init__(store=store)
-        
-        self.mappings = mappings
-        self.dirty = False
-        self.local = local
+    def addN(self, triple_or_quad):
+        raise ModificationException()
+
+    def remove(self, triple_or_quad):
+        raise ModificationException()
+
+    def __iadd__(self, other):
+        raise ModificationException()
+
+    def __isub__(self, other):
+        raise ModificationException()
+
+    def parse(self, source, publicID=None, format="xml", **args):
+        raise ModificationException()
+
+class InMemoryGraphAggregate(ConjunctiveGraph):
+    def __init__(self, default_graphs, identifier=None):                
+        self.default_graphs = default_graphs
+        self.memory_store = IOMemory()
+        super().__init__(self.memory_store, identifier)
+
+    def __repr__(self):
+        return "<InMemoryGraphAggregate: %s graphs>" % len(self.graphs)
 
     @property
     def is_dirty(self):
-        return self.dirty
+        return len(self.store) > 0
 
-    def _localize(self):
-        if not self.local:
-            old_store = self.store
-            new_store = plugin.get('default', Store)()
-            editor = ConjunctiveGraph(store=new_store)
-            for subgraph in self.contexts():
-                for (s,p,o) in subgraph.triples((None,None,None)):
-                    editor.add((s,p,o,subgraph.identifier))      
-            self._Graph__store = store = new_store
+    def _rewrite(self, graph):
+        if isinstance(graph, ReadOnlyRewriteGraph):
+            return graph.rewritten_identifier
+        else: 
+            return graph.identifier
 
-    def add(self, xxx_todo_changeme):
-        self.dirty = True
-        if not self.local:
-            self._localize()
-        super().add(xxx_todo_changeme)
+    def _copy(self, graph):
+        if not isinstance(graph, InMempryGraph):
+            new_graph = Graph(store=self.store, identifier=graph.identifier)
+            new_graph += graph.triples((None, None, None))
+            return new_graph
+        else:
+            return graph
+
+    def add(self, triple_or_quad):
+        s,p,o,c = self._spoc(triple_or_quad, default=True)
+        self.store.add((s, p, o), context=_copy(c), quoted=False)
 
     def addN(self, quads):
-        self.dirty = True
-        if not self.local:
-            self._localize()
-        super().addN(quads)
+        self.store.addN((s, p, o, self._copy(self._graph(c))) for s, p, o, c in quads)
 
-    def remove(self, xxx_todo_changeme1):
-        self.dirty = True
-        if not self.local:
-            self._localize()
-        super().remove(xxx_todo_changeme1)
+    def remove(self, triple_or_quad):
+        s,p,o,c = self._spoc(triple_or_quad)
+        self.store.remove((s, p, o), context=c_copy(c))
 
-    def __iadd__(self, other):
-        self.dirty = True
-        if not self.local:
-            self._localize()
-        super().__iadd__(other)
+    def triples(self, triple_or_quad, context=None):
+        s,p,o,c = self._spoc(triple_or_quad)
+        context = self._graph(context or c)
 
-    def __isub__(self, other):
-        self.dirty = True
-        if not self.local:
-            self._localize()
-        super().__isub__(other)
-        
-    def get_context(self, identifier, quoted=False):
-        mapping = self.mappings.get(identifier, None)
-        if not mapping:
-            mapping = [identifier, identifier]
-        return RevisionGraph(store=self.store, public=mapping[0], private=mapping[1], namespace_manager=self)    
+        if isinstance(p, Path):
+            for s, o in p.eval(self, s, o):
+                yield s, p, o
+        else:
+            for graph in self.graphs():
+                if context is None or graph.identifier == context.identifier:
+                    for s, p, o in graph.triples((s, p, o)):
+                        yield s, p, o
 
-    def triples(self, xxx_todo_changeme8):
-        (s, p, o) = xxx_todo_changeme8
-        for graph in [self.get_context(x) for x in self.mappings.keys()]:
-            if isinstance(p, Path):
-                for s, o in p.eval(self, s, o):
-                    yield s, p, o
-            else:
+    def quads(self, triple_or_quad=None):
+        s,p,o,c = self._spoc(triple_or_quad)
+        context = self._graph(c)
+
+        for graph in self.graphs():
+           if context is None or graph.identifier == context.identifier:
                 for s1, p1, o1 in graph.triples((s, p, o)):
-                    yield (s1, p1, o1)
+                    yield (s1, p1, o1, graph)
+
+    def contexts(self, triple=None):
+        default = False
+        for graph in self.default_graphs:
+            if graph.identifier not in self.store.contexts():
+                yield graph
+        for graph in self.store.contexts():
+            yield graph
+
+    graphs = contexts
+
+    def graph(self, identifier=None):
+        if identifier is None:
+            identifier = self.default_context.identifier
+
+        for graph in self.graphs():
+           if graph.identifier == identifier:
+               return graph
+        
+        return self.get_context(identifier)
 
     def __contains__(self, triple_or_quad):
-        context = None
-        if len(triple_or_quad) == 4:
-            context = triple_or_quad[3]
-        for graph in [self.get_context(x) for x in self.mappings.keys()]:
+        (_,_,_,context) = self._spoc(triple_or_quad)
+        for graph in self.graphs:
             if context is None or graph.identifier == context.identifier:
                 if triple_or_quad[:3] in graph:
                     return True
         return False
-
-    def quads(self, xxx_todo_changeme9):
-        """Iterate over all the quads in the entire aggregate graph"""
-        (s, p, o) = xxx_todo_changeme9
-        for graph in [self.get_context(x) for x in self.mappings.keys()]:
-            for s1, p1, o1 in graph.triples((s, p, o)):
-                yield (s1, p1, o1, graph)
-
-    def __len__(self):
-        return sum(len(g) for g in [self.get_context(x) for x in self.mappings.keys()])
-
-    def __repr__(self):
-        return "<InstanceGraph: %s graphs>" % len(self.graphs)

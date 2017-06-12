@@ -17,7 +17,7 @@ from rdflib import plugin
 from rdflib.store import Store as DefaultStore
 
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
-from quit.graphs import RevisionGraph, InstanceGraph
+from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
 from quit.utils import graphdiff
 
 corelogger = logging.getLogger('core.quit')
@@ -361,7 +361,7 @@ class MemoryStore(Store):
 
 class VirtualGraph(Queryable):
     def __init__(self, store):
-        if not isinstance(store, InstanceGraph):
+        if not isinstance(store, InMemoryGraphAggregate):
             raise Exception()
         self.store = store
 
@@ -428,22 +428,13 @@ class Quit(object):
                 #self.store += g
             
 
-    def instance(self, id, from_git=False):        
+    def instance(self, id, sync=False):        
 
         commit = self.repository.revision(id)
 
+        default_graphs = []
         target_files = self.config.getgraphurifilemap().values()
         
-        if not from_git:
-            local = False
-            store = self.store.store.store
-        else: 
-            local = True
-            store = plugin.get('default', DefaultStore)()
-            editor = ConjunctiveGraph(store=store)
-        
-        mapping = {}
-
         for entity in commit.node().entries(recursive=True):
             # todo check if file was changed
             if entity.is_file:
@@ -453,21 +444,24 @@ class Quit(object):
                 tmp = ConjunctiveGraph()
                 tmp.parse(data=entity.content, format='nquads')  
 
-                for context in [c.identifier for c in tmp.contexts()]:                    
+                for context in (c.identifier for c in tmp.contexts()):                    
 
                     # Todo: why?
                     #if context not in _m:
                     #    continue
 
-                    public_uri = context
-                    private_uri = context + '-' + entity.blob.hex
+                    identifier = context + '-' + entity.blob.hex
+                    rewritten_identifier = context
 
-                    if from_git:
-                        editor.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), public_uri))
+                    if sync:
+                        g = Graph(identifier=rewritten_identifier)
+                        g += tmp.triples((None, None, None))
+                    else:
+                        g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
+                    default_graphs.append(g)
 
-                    mapping[public_uri] = [public_uri, private_uri] 
+        instance = InMemoryGraphAggregate(default_graphs=default_graphs, identifier='default')    
 
-        instance = InstanceGraph(store, mapping, local)    
         return VirtualGraph(instance) 
 
     def changesets(self, commits=None):
@@ -611,8 +605,8 @@ class Quit(object):
         
         if id:
             self.repository._repository.set_head(id)
-            if not self.repository.is_bare:            
-                self.repository._repository.reset(id, pygit2.GIT_RESET_HARD)      
+            if not self.repository.is_bare:                            
+                self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
 
 class GitRepo:
     """A class that manages a git repository.

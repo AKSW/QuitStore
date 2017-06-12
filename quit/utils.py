@@ -4,7 +4,7 @@ import contextlib
 import signal
 import sys
 from datetime import tzinfo, timedelta, datetime
-from quit.graphs import InstanceGraph
+from quit.graphs import InMemoryGraphAggregate
 
 
 ZERO = timedelta(0)
@@ -56,7 +56,7 @@ def splitinformation(quads, GraphObject):
     return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
 
 
-def graphdiff(g1, g2):
+def graphdiff(first, second):
     """
     Diff between graph instances, should be replaced/included in quit diff
     """
@@ -65,26 +65,28 @@ def graphdiff(g1, g2):
     diffs = {}
     uris = set()
 
-    if g1 is not None  and isinstance(g1, InstanceGraph):
-        uris = uris.union(g1.mappings.keys())
-    if g2 is not None and isinstance(g2, InstanceGraph):
-        uris = uris.union(g2.mappings.keys())       
+    if first is not None and isinstance(first, InMemoryGraphAggregate):
+        first_identifiers = list((g.identifier for g in first.graphs()))
+        uris = uris.union(first_identifiers)
+    if second is not None and isinstance(second, InMemoryGraphAggregate):
+        second_identifiers = list((g.identifier for g in second.graphs()))
+        uris = uris.union(second_identifiers)       
     
     for uri in uris:
         id = None
         changes = diffs.get((uri, id), [])
 
-        if (g1 is not None and uri in g1.mappings.keys()) and (g2 is not None and uri in g2.mappings.keys()):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(g1.get_context(uri)), to_isomorphic(g2.get_context(uri)))
+        if (first is not None and uri in first_identifiers) and (second is not None and uri in second_identifiers):
+            in_both, in_first, in_second = graph_diff(to_isomorphic(first.graph(uri)), to_isomorphic(second.graph(uri)))
 
             if len(in_second) > 0:
                 changes.append(('additions', in_second))
             if len(in_first) > 0:
                 changes.append(('removals', in_first))
-        elif g1 is not None and uri in g1.mappings.keys():
-            changes.append(('removals', g1.get_context(uri)))
-        elif g2 is not None and uri in g2.mappings.keys():
-            changes.append(('additions', g2.get_context(uri)))
+        elif first is not None and uri in first_identifiers:
+            changes.append(('removals', first.graph(uri)))
+        elif second is not None and uri in second_identifiers:
+            changes.append(('additions', second.graph(uri)))
         else: 
             continue
                         

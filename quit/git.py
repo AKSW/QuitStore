@@ -5,7 +5,6 @@ import re
 from datetime import datetime
 from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset, BNode
-from quit.graphs import InstanceGraph, RevisionGraph
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a, XSD
 from quit.utils import graphdiff
 
@@ -468,7 +467,7 @@ class Node(Base):
                 public_uri = QUIT[context]
                 private_uri = QUIT[context + '-' + self.blob.hex]
             
-                g = RevisionGraph(entry.blob.hex, identifier=private_uri)
+                g = ReadOnlyRewriteGraph(entry.blob.hex, identifier=private_uri)
                 g.parse(data=entry.content, format='nquads')
 
                 yield (public_uri, g)

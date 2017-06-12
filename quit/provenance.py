@@ -4,6 +4,7 @@ import functools as ft
 
 from rdflib import BNode
 from quit.namespace import FOAF, PROV, QUIT
+from quit.graphs import ReadOnlyRewriteGraph
 
 class Blame(object):
     """
@@ -45,15 +46,16 @@ class Blame(object):
         commit = self.quit.repository.revision(branch_or_ref)
         g = self.quit.instance(branch_or_ref)    
 
-        print(g)
-        print('----------')
-        print(g.store.mappings)
-
         #if not quads:
         quads = [x for x in g.store.quads((None, None, None))]
 
+        print(quads)
+
         values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 
+
+        print(values_string)
+
         q = """
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {                
                 ?commit quit:preceedingCommit* ?c .
@@ -61,7 +63,7 @@ class Blame(object):
                         prov:qualifiedAssociation ?qa ;
                         quit:updates ?update ;
                         quit:hex ?hex .
-                ?qa     prov:agent ?author ;
+                ?qa     prov:agent ?user ;
                         prov:role quit:author .
                 ?user   foaf:mbox ?email ;
                         rdfs:label ?name .                    
