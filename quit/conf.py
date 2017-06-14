@@ -209,9 +209,9 @@ class QuitConfiguration:
                     pass
                 else:
                     try:
-                        open(absfile, 'a').close()
+                        open(absfile, 'a+').close()
                     except:
-                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                        raise Exception('Can\'t create file', absfile, 'in repo', self.getRepoPath())
                 filename = relpath(repopath, absfile)
             else:
                 if isfile(joinedabsfile):
@@ -219,9 +219,9 @@ class QuitConfiguration:
                     pass
                 else:
                     try:
-                        open(joinedabsfile, 'a').close()
+                        open(joinedabsfile, 'a+').close()
                     except:
-                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                        raise Exception('Can\'t create file', joinedabsfile, 'in repo', self.getRepoPath())
                 filename = relpath(joinedabsfile, repopath)
 
             filename = clean_path(filename)
@@ -351,7 +351,7 @@ class QuitConfiguration:
             A string of the path to the file asociated with named graph
         """
         for uri, filename in self.graphs.items():
-            if uri == str(graphuri):
+            if uri == graphuri:
                 return filename
 
         return
