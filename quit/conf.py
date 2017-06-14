@@ -224,8 +224,11 @@ class QuitConfiguration:
                         raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
                 filename = relpath(joinedabsfile, repopath)
 
+            filename = clean_path(filename)
+            graphuri = URIRef(graphuri)
+
             # we store which named graph is serialized in which file
-            self.graphs[graphuri] = clean_path(filename)
+            self.graphs[graphuri] = filename
             # and furthermore we assume that one file can contain data of more
             # than one named graph and so we store for each file a set of graphs
             if filename in self.files:

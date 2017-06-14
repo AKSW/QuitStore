@@ -167,7 +167,7 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
     def copy_where(target, graph, args):
         s,p,o,c = _spoc(args)
 
-        for subgraph in (x for x in graph.contexts((None, None, None))): #if c is None or x.identifier == c):
+        for subgraph in (x for x in graph.contexts()): #if c is None or x.identifier == c):
             target.store.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
     
     def remove_where(graph, args):
@@ -239,9 +239,6 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
 @endpoint.route("/statements", defaults={'branch_or_ref': None}, methods=['GET', 'POST', 'PUT', 'DELETE'])
 @endpoint.route("/statements/<branch_or_ref>", methods=['GET', 'POST', 'PUT', 'DELETE'])
 def statements(branch_or_ref):
-    
-    if not branch_or_ref:
-        branch_or_ref = 'master'
 
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch() or 'master'

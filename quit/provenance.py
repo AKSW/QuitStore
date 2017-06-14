@@ -50,15 +50,18 @@ class Blame(object):
         quads = [x for x in g.store.quads((None, None, None))]
 
         if len(quads) == 0:
-            return
-            yield
+            return []
 
         values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 
 
-        print(values_string)
-
         q = """
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX aksw: <http://aksw.org/>
+            PREFIX quit: <http://quit.aksw.org/>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {                
                 ?commit quit:preceedingCommit* ?c .
                 ?c      prov:endedAtTime ?date ;
@@ -89,4 +92,4 @@ class Blame(object):
             }                
             """ % values_string
 
-        return self.quit.store.store.query(q, initNs = { 'foaf': FOAF, 'prov': PROV, 'quit': QUIT }, initBindings = { 'commit': QUIT['commit-' + commit.id] })
+        return list(self.quit.store.store.query(q, initNs = { 'foaf': FOAF, 'prov': PROV, 'quit': QUIT }, initBindings = { 'commit': QUIT['commit-' + commit.id] }))
