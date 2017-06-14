@@ -31,7 +31,7 @@ DROPDOWN_TEMPLATE="""
             <li class="divider"></li>
             <li class="dropdown-header">Tags</li>
             {% for tag in tags %}
-                <li><a href="#">{{ tag }}</a></li>
+                <li><a href="{{ url_for(request.endpoint, branch_or_ref=tag) }}">{{ tag }}</a></li>
             {% endfor %}
         {% endif %}        
     </ul>

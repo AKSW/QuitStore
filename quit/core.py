@@ -387,7 +387,7 @@ class Quit(object):
                 self.store.remove((None,None,None), c) 
 
         def exists(id):
-            uri = QUIT['version-' + id]
+            uri = QUIT['commit-' + id]
             for _ in self.store.store.quads((uri, None, None, QUIT.default)):
                 return True
             return False
