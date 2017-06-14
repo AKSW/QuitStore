@@ -3,7 +3,7 @@
 {% block headline %}<div class="lead">Commits</div>{% endblock %}
 
 {% block quit_content %}
-{{ dropdown|safe }}
+{{ render_dropdown(available_branches, available_tags)|safe }}
 {% if results|length > 0 %}
 <div class="commit-group">
     <div class="commit-item" style="vertical-align: bottom">

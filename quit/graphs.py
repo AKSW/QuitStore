@@ -79,7 +79,7 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
 
     @property
     def is_dirty(self):
-        return len(self.store) > 0
+        return len(list(self.store.contexts())) > 0
 
     def _spoc(self, triple_or_quad, default=False):
         """
@@ -105,14 +105,24 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
 
     def add(self, triple_or_quad):
         s,p,o,c = self._spoc(triple_or_quad, default=True)
+        if isinstance(c, InMemoryGraphAggregate.InMemoryGraph):
+            c.force()
         self.store.add((s, p, o), context=c, quoted=False)
 
     def addN(self, quads):
-        self.store.addN((s, p, o, self._graph(c)) for s, p, o, c in quads)
+        def do(g):
+            g = self._graph(g)
+            if isinstance(g, InMemoryGraphAggregate.InMemoryGraph):
+                g.force()
+            return g
+
+        self.store.addN((s, p, o, do(c)) for s, p, o, c in quads)
 
     def remove(self, triple_or_quad):
         s,p,o,c = self._spoc(triple_or_quad)
-        self.store.remove((s, p, o), context=c_copy(c))
+        if isinstance(c, InMemoryGraphAggregate.InMemoryGraph):
+            c.force()
+        self.store.remove((s, p, o), context=c)
 
     def contexts(self, triple=None):
         for graph in self.__graphs:

@@ -329,6 +329,7 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 ctx[k] = v
             # ctx.push()  # nescessary?
 
+        changes = defaultdict(set)
         try:
             if u.name == 'Load':
                 evalLoad(ctx, u)

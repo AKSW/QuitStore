@@ -12,10 +12,12 @@ debug = Blueprint('debug', __name__)
 @debug.route("/blame/<branch_or_ref>", methods=['GET'])
 def blame(branch_or_ref):
 
-    if not branch_or_ref:
-        branch_or_ref = 'master'
-
     quit = current_app.config['quit']
+    default_branch = quit.config.getDefaultBranch() or 'master'
+
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
+
     blame = current_app.config['blame']
 
     if 'Accept' in request.headers:

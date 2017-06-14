@@ -49,7 +49,9 @@ class Blame(object):
         #if not quads:
         quads = [x for x in g.store.quads((None, None, None))]
 
-        print(quads)
+        if len(quads) == 0:
+            return
+            yield
 
         values = self._generate_values(quads)
         values_string = ft.reduce(lambda acc, quad: acc + '( %s %s %s %s )\n' % quad, values, '') 

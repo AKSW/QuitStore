@@ -33,7 +33,7 @@ def sparql(branch_or_ref):
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
+    default_branch = quit.config.getDefaultBranch() or 'master'
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
@@ -153,33 +153,30 @@ def negotiate(accept_header):
 
     return (best, formats[best])
 
-def edit_store(method, args, body, mimetype, accept_header, graph):
+def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_header, graph):
 
     def get_where(graph, args):
         s,p,o,c = _spoc(args)
         
         result = ConjunctiveGraph()
 
-        print(len(graph.store))
-
-        for subgraph in (x for x in graph.store.contexts((s,p,o)) if c is None or x == c):
-            print("test")
+        for subgraph in (x for x in graph.store.contexts((s,p,o)) if c is None or x.identifier == c):
             result.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
         return result
 
     def copy_where(target, graph, args):
         s,p,o,c = _spoc(args)
 
-        for subgraph in (x for x in graph.contexts((s,p,o)) if c is None or x == c):
-            target.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
+        for subgraph in (x for x in graph.contexts((None, None, None))): #if c is None or x.identifier == c):
+            target.store.addN((s, p, o, subgraph.identifier) for s, p, o in subgraph.triples((None, None, None)))
     
     def remove_where(graph, args):
         s,p,o,c = _spoc(args)
-        graph.remove((s, p, o, c))
+        graph.store.remove((s, p, o, c))
 
     def clear_where(graph, args):
         _,_,_,c = _spoc(args)
-        graph.remove_context(c)
+        graph.store.remove_context(c)
 
     def serialize(graph, format_):
         format_,mimetype_=mimeutils.format_to_mime(format_)
@@ -188,10 +185,12 @@ def edit_store(method, args, body, mimetype, accept_header, graph):
         return response
 
     def _spoc(args):
+        from rdflib import URIRef
         s = args.get('subj', None)
         p = args.get('pred', None)
         o = args.get('obj', None)
         c = args.get('context', None)
+        if c: c = URIRef(c)
         return s, p, o, c
 
     try:
@@ -209,10 +208,12 @@ def edit_store(method, args, body, mimetype, accept_header, graph):
             remove_where(graph, args)
             response = (200, dict(), None)
 
+            quit.commit(graph, 'New Commit from QuitStore', branch_or_ref, ref)
+
         elif method in ['POST', 'PUT']:
         
             data = ConjunctiveGraph()
-            data.parse(body, format="nquads")
+            data.parse(data=body, format="nquads")
 
             if method == 'POST':
                 copy_where(graph, data, args)
@@ -223,7 +224,7 @@ def edit_store(method, args, body, mimetype, accept_header, graph):
                 copy_where(graph, data, args)
                 response = (200, dict(), None)
 
-            quit.commit(res, 'New Commit from QuitStore', ref, query=q)
+            quit.commit(graph, 'New Commit from QuitStore', branch_or_ref, ref)
 
         else:
             response = (405, {"Allow": "GET, HEAD, POST, PUT, DELETE"}, "Method %s not supported" % method)
@@ -243,11 +244,17 @@ def statements(branch_or_ref):
         branch_or_ref = 'master'
 
     quit = current_app.config['quit']
+    default_branch = quit.config.getDefaultBranch() or 'master'
+
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
+
+    ref = request.values.get('ref', None) or 'refs/heads/%s' % default_branch
 
     method = request.method
     mimetype = request.mimetype
     args = request.args
-    body = request.data
+    body = request.data.decode('utf-8')
 
     print('%s %s %s %s' % (method, mimetype, args, body))
 
@@ -257,6 +264,9 @@ def statements(branch_or_ref):
         mimetype = 'application/sparql-results+json'
 
     result = edit_store(
+        quit=quit,
+        branch_or_ref=branch_or_ref,
+        ref=ref,
         method=method, 
         args=args,
         body=body, 

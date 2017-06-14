@@ -205,48 +205,7 @@ def initialize(args):
         configmode=args.configmode,
     )
 
-    try:
-        gitrepo = GitRepo(
-            path=config.getRepoPath(),
-            origin=config.getOrigin()
-        )
-    except Exception as e:
-        raise InvalidConfigurationError(e)
-
-    # since repo is handled, we can add graphs to config
     config.initgraphconfig()
-
-    store = MemoryStore()
-
-    # Load data to store
-    files = config.getfiles()
-    for filename in files:
-        filepath = join(config.getRepoPath(), filename)
-        graphs = config.getgraphuriforfile(filename)
-        graphstring = ''
-
-        for graph in graphs:
-            graphstring+= str(graph)
-
-        try:
-            store.addfile(filepath, config.getserializationoffile(filename))
-            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
-        except:
-            logger.info('Error: Graph with URI: ' + graphstring + ' not added')
-            pass
-
-    # Save file objects per file
-    filereferences = {}
-
-    for file in config.getfiles():
-        graphs = config.getgraphuriforfile(file)
-        content = []
-        for graph in graphs:
-            content+= store.getgraphcontent(graph)
-        fileobject = FileReference(join(config.getRepoPath(), file))
-        # TODO: Quick Fix, add sorting to FileReference
-        fileobject.setcontent(sorted(content))
-        filereferences[file] = fileobject
 
     logger.info('QuitStore successfully running.')
     logger.info('Known graphs: ' + str(config.getgraphs()))
@@ -255,7 +214,7 @@ def initialize(args):
     logger.debug('Config mode: ' + str(config.getConfigMode()))
     logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
-    return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
+    return {'config': config}
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -502,10 +461,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     objects = initialize(args)
-    store = objects['store']
     config = objects['config']
-    gitrepo = objects['gitrepo']
-    references = objects['references']
     sys.setrecursionlimit(2 ** 15)
 
     # The app is started with an exit handler
