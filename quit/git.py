@@ -6,18 +6,11 @@ from datetime import datetime
 from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset, BNode
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a, XSD
-from quit.utils import graphdiff
+from quit.utils import graphdiff, clean_path
 
 # roles
 role_author = QUIT['author']
 role_committer = QUIT['committer']
-
-def clean_path(path):
-    path = os.path.normpath(path)
-    if path.startswith(os.sep):
-        path = path[len(os.sep):]
-
-    return path
 
 def _git_timestamp(ts, offset):
     import quit.utils as tzinfo
@@ -407,7 +400,7 @@ class Node(Base):
             except KeyError:
                 raise NodeNotFound(path, commit.hex)
             self.obj = repository._repository.get(entry.oid)
-            self.name = path
+            self.name = clean_path(path)
             if self.obj.type == pygit2.GIT_OBJ_TREE:
                 self.kind = Node.DIRECTORY
                 self.tree = self.obj
