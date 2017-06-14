@@ -1,5 +1,6 @@
 from rdflib.serializer import Serializer
 from rdflib.plugins.serializers.nquads import NQuadsSerializer, _nq_row
+from rdflib.graph import ReadOnlyGraphAggregate
 
 import warnings
 
@@ -14,6 +15,10 @@ class OrderedNQuadsSerializer(NQuadsSerializer):
         if encoding is not None:
             warnings.warn("NQuadsSerializer does not use custom encoding.")
         encoding = self.encoding
-        for triple in sorted(self.store)      :
-            stream.write(_nq_row(triple, self.store.identifier).encode(encoding, "replace"))
+
+        contexts = self.store.graphs if isinstance(self.store, ReadOnlyGraphAggregate) else self.store.contexts()
+
+        for context in contexts:
+            for triple in context:
+                stream.write(_nq_row(triple, context.identifier).encode(encoding, "replace"))
         stream.write("\n".encode(encoding, "replace"))

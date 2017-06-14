@@ -25,7 +25,7 @@ DROPDOWN_TEMPLATE="""
     <ul class="dropdown-menu">
         <li class="dropdown-header">Branches</li>
         {% for branch in branches %}
-            <li><a href="#">{{ branch }}</a></li>
+            <li><a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a></li>
         {% endfor %}
         {% if tags %}
             <li class="divider"></li>
@@ -67,6 +67,9 @@ def register_app(app, config):
     content = quit.store.store.serialize(format='trig').decode()
     for line in (content.splitlines()):
         print(line)
+
+    for e in quit.config.getgraphs():
+        print(e)
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)

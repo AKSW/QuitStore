@@ -1,5 +1,6 @@
 import logging
-from os import listdir
+
+from os import walk
 from os.path import join, isfile, abspath, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
@@ -104,8 +105,7 @@ class QuitConfiguration:
         graphs = self.getgraphsfromdir(repodir)
 
         for file, format in graphs.items():
-            absfile = join(self.getRepoPath(), file)
-            absgraphfile = absfile + '.graph'
+            absgraphfile = file + '.graph'
             graphuri = self.__readGraphIriFile(absgraphfile)
 
             if graphuri and format == 'nquads':
@@ -114,9 +114,9 @@ class QuitConfiguration:
                 tmpgraph = ConjunctiveGraph(identifier='default')
 
                 try:
-                    tmpgraph.parse(source=absfile, format=format)
+                    tmpgraph.parse(source=file, format=format)
                 except:
-                    conflogger.warning('Could not parse graphfile ' + absfile + ' skipped.')
+                    conflogger.warning('Could not parse graphfile ' + file + ' skipped.')
                     continue
 
                 namedgraphs = tmpgraph.contexts()
@@ -130,15 +130,15 @@ class QuitConfiguration:
                 if len(founduris) == 1:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 elif len(founduris) > 1:
-                    conflogger.warning('No named graph found. ' + absfile + ' skipped.')
+                    conflogger.warning('No named graph found. ' + file + ' skipped.')
                 elif len(founduris) < 1:
-                    conflogger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
+                    conflogger.warning('More than one named graphs found. Can\'t decide. ' + file + ' skipped.')
 
             elif format == 'nt':
                 if graphuri:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 else:
-                    conflogger.warning('No .graph file found. ' + absfile + ' skipped.')
+                    conflogger.warning('No *.graph file found. ' + file + ' skipped.')
 
         self.__setgraphsfromconf()
 
@@ -164,7 +164,7 @@ class QuitConfiguration:
         Returns:
             graphuri: String with the graph URI
         """
-        if isfile(graphfile):
+        if isfile(graphfile):  
             f = open(graphfile, 'r')
             graphuri = f.readline().strip()
             try:
@@ -278,6 +278,32 @@ class QuitConfiguration:
         for s, p, o in self.sysconf.triples((None, property, None)):
             return str(o)
 
+    def getDefaultBranch(self):
+        """Get the path of Git repository from configuration.
+
+        Returns:
+            A string containig the path of the git repo.
+        """
+        nsQuit = 'http://quit.aksw.org/'
+        storeuri = URIRef('http://my.quit.conf/store')
+        property = URIRef(nsQuit + 'defaultBranch')
+
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
+
+    def getGlobalFile(self):
+        """Get the path of Git repository from configuration.
+
+        Returns:
+            A string containig the path of the git repo.
+        """
+        nsQuit = 'http://quit.aksw.org/'
+        storeuri = URIRef('http://my.quit.conf/store')
+        property = URIRef(nsQuit + 'globalFile')
+
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
+
     def getOrigin(self):
         """Get the URI of Git remote from configuration."""
         nsQuit = 'http://quit.aksw.org/'
@@ -321,7 +347,7 @@ class QuitConfiguration:
             A string of the path to the file asociated with named graph
         """
         for uri, filename in self.graphs.items():
-            if uri == graphuri:
+            if uri == str(graphuri):
                 return filename
 
         return
@@ -371,12 +397,18 @@ class QuitConfiguration:
         """
         if path is None:
             path = self.getRepoPath()
-        files = [f for f in listdir(path) if isfile(join(path, f))]
+
+        exclude = set(['.git'])
+
         graphfiles = {}
-        for file in files:
-            format = guess_format(file)
-            if format is not None:
-                graphfiles[file] = format
+        for dirpath, dirs, files in walk(path): 
+            dirs[:] = [d for d in dirs if d not in exclude]
+            for file in files:
+                filename = join(dirpath, file)
+                    
+                format = guess_format(filename)
+                if format is not None:
+                    graphfiles[filename] = format
 
         return graphfiles
 

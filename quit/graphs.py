@@ -1,18 +1,17 @@
 import rdflib.plugin as plugin
 
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
-from rdflib.graph import ReadOnlyGraphAggregate, ModificationException, UnSupportedAggregateOperation, Path
+from rdflib.graph import Node, ReadOnlyGraphAggregate, ModificationException, UnSupportedAggregateOperation, Path
 from rdflib.store import Store
 from rdflib.plugins.memory import IOMemory
 
 class ReadOnlyRewriteGraph(Graph):
     def __init__(self, store='default', identifier = None, rewritten_identifier = None, namespace_manager = None):
-        self.g = Graph(store=store, identifier=identifier, namespace_manager=namespace_manager)
-
         super().__init__(store=store, identifier=rewritten_identifier, namespace_manager=namespace_manager)
+        self.__graph = Graph(store=store, identifier=identifier, namespace_manager=namespace_manager)
 
     def triples(self, triple):
-        return self.g.triples(triple)
+        return self.__graph.triples(triple)
    
     def __cmp__(self, other):
         if other is None:
@@ -20,7 +19,7 @@ class ReadOnlyRewriteGraph(Graph):
         elif isinstance(other, Graph):
             return -1
         elif isinstance(other, ReadOnlyRewriteGraph):
-            return cmp(self.g, other.g)
+            return cmp(self.__graph, other.__graph)
         else:
             return -1
     
@@ -42,11 +41,38 @@ class ReadOnlyRewriteGraph(Graph):
     def parse(self, source, publicID=None, format="xml", **args):
         raise ModificationException()
 
+    def __len__(self):
+        return len(self.__graph)
+
+
 class InMemoryGraphAggregate(ConjunctiveGraph):
-    def __init__(self, default_graphs, identifier=None):                
-        self.default_graphs = default_graphs
-        self.memory_store = IOMemory()
-        super().__init__(self.memory_store, identifier)
+    def __init__(self, graphs=list(), identifier=None):                
+        self.__memory_store = IOMemory()        
+        super().__init__(self.__memory_store, identifier)
+        
+        assert isinstance(graphs, list), "graphs argument must be a list of Graphs!!"
+        self.__graphs = graphs
+
+    class InMemoryGraph(Graph):
+        def __init__(self, store = 'default', identifier = None, namespace_manager = None, external = None):            
+            super().__init__(store, identifier, namespace_manager)
+            self.__external = external
+
+        def force(self):
+            if self.__external is not None and self not in self.store.contexts():
+                self.store.addN((s, p, o, self) for s, p, o in self.__external.triples((None, None, None)))
+        
+        def add(self, triple_or_quad):
+            self.force()
+            super().add(triple_or_quad)
+
+        def addN(self, triple_or_quad):
+            self.force()
+            super().addN(triple_or_quad)
+
+        def remove(self, triple_or_quad):
+            self.force()
+            super().remove(triple_or_quad)
 
     def __repr__(self):
         return "<InMemoryGraphAggregate: %s graphs>" % len(self.graphs)
@@ -55,30 +81,47 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
     def is_dirty(self):
         return len(self.store) > 0
 
-    def _rewrite(self, graph):
-        if isinstance(graph, ReadOnlyRewriteGraph):
-            return graph.rewritten_identifier
-        else: 
-            return graph.identifier
+    def _spoc(self, triple_or_quad, default=False):
+        """
+        helper method for having methods that support
+        either triples or quads
+        """
+        if triple_or_quad is None:
+            return (None, None, None, self.default_context if default else None)
+        if len(triple_or_quad) == 3:
+            c = self.default_context if default else None
+            (s, p, o) = triple_or_quad
+        elif len(triple_or_quad) == 4:
+            (s, p, o, c) = triple_or_quad
+            c = self._graph(c)
+        return s,p,o,c
 
-    def _copy(self, graph):
-        if not isinstance(graph, InMempryGraph):
-            new_graph = Graph(store=self.store, identifier=graph.identifier)
-            new_graph += graph.triples((None, None, None))
-            return new_graph
+    def _graph(self, c):
+        if c is None: return None
+        if not isinstance(c, Graph):
+            return self.get_context(c)
         else:
-            return graph
+            return c
 
     def add(self, triple_or_quad):
         s,p,o,c = self._spoc(triple_or_quad, default=True)
-        self.store.add((s, p, o), context=_copy(c), quoted=False)
+        self.store.add((s, p, o), context=c, quoted=False)
 
     def addN(self, quads):
-        self.store.addN((s, p, o, self._copy(self._graph(c))) for s, p, o, c in quads)
+        self.store.addN((s, p, o, self._graph(c)) for s, p, o, c in quads)
 
     def remove(self, triple_or_quad):
         s,p,o,c = self._spoc(triple_or_quad)
         self.store.remove((s, p, o), context=c_copy(c))
+
+    def contexts(self, triple=None):
+        for graph in self.__graphs:
+            if graph.identifier not in (c.identifier for c in self.store.contexts()):
+                yield graph
+        for graph in self.store.contexts():
+            yield graph
+
+    graphs = contexts
 
     def triples(self, triple_or_quad, context=None):
         s,p,o,c = self._spoc(triple_or_quad)
@@ -102,30 +145,27 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
                 for s1, p1, o1 in graph.triples((s, p, o)):
                     yield (s1, p1, o1, graph)
 
-    def contexts(self, triple=None):
-        default = False
-        for graph in self.default_graphs:
-            if graph.identifier not in self.store.contexts():
-                yield graph
-        for graph in self.store.contexts():
-            yield graph
-
-    graphs = contexts
-
     def graph(self, identifier=None):
-        if identifier is None:
-            identifier = self.default_context.identifier
-
         for graph in self.graphs():
-           if graph.identifier == identifier:
+           if str(graph.identifier) == str(identifier):
                return graph
         
         return self.get_context(identifier)
 
     def __contains__(self, triple_or_quad):
         (_,_,_,context) = self._spoc(triple_or_quad)
-        for graph in self.graphs:
+        for graph in self.graphs():
             if context is None or graph.identifier == context.identifier:
                 if triple_or_quad[:3] in graph:
                     return True
         return False
+
+    
+
+    def _default(self, identifier):
+        return next( (x for x in self.__graphs if x.identifier == identifier), None)
+
+    def get_context(self, identifier, quoted=False):   
+        if not isinstance(identifier, Node):
+            identifier = URIRef(identifier)     
+        return InMemoryGraphAggregate.InMemoryGraph(store=self.__memory_store, identifier=identifier, namespace_manager=self, external=self._default(identifier))

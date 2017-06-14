@@ -2,10 +2,14 @@
 
 {% block headline %}<div class="lead">Blame</div>{% endblock %}
 
+{%- block styles %}
+{{super()}}
+{%- endblock styles %}
+
 {% block quit_content %}
 {{ dropdown|safe }}
 {% if results|length > 0 %}
-<table class="table">
+<table id="blame" class="table">
     <thead>
         <tr>
             <th>Author</th>
@@ -37,3 +41,12 @@ No results found
 {% endif %}
 
 {% endblock %}
+
+{% block scripts %}
+{{super()}}
+{% endblock %}
+
+
+
+
+

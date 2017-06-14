@@ -19,13 +19,14 @@ def commits(branch_or_ref):
     Returns:
         HTTP Response with commits.
     """
-    if not branch_or_ref:
-        branch_or_ref= 'master'
-
     quit = current_app.config['quit']
+    default_branch = quit.config.getDefaultBranch()
+
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
 
     try:
-        results = quit.repository.revisions(branch_or_ref, order=pygit2.GIT_SORT_TIME)
+        results = quit.repository.revisions(branch_or_ref, order=pygit2.GIT_SORT_TIME) if branch_or_ref else []
         data = generate_graph_data(CommitGraph.gets(results))
 
         return render_template('commits.html', results=results, data=data)

@@ -32,13 +32,14 @@ def sparql(branch_or_ref):
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
-    if not branch_or_ref:
-        branch_or_ref = 'master'
-
     quit = current_app.config['quit']
+    default_branch = quit.config.getDefaultBranch()
+
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
 
     q = request.values.get('query', None) or request.values.get('update', None)
-    ref = request.values.get('ref', None) or 'refs/heads/master'
+    ref = request.values.get('ref', None) or 'refs/heads/%s' % default_branch
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
@@ -72,7 +73,7 @@ def sparql(branch_or_ref):
                     return response     
             else:
                 res = graph.update(q)                          
-                quit.commit(graph, 'New Commit from QuitStore', ref, query=q)          
+                quit.commit(graph, 'New Commit from QuitStore', branch_or_ref, ref, query=q)          
                 return '', 200
             
         except Exception as e:

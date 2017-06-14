@@ -30,6 +30,12 @@
 <pathOfGitRepo> a rdfs:Property ;
   rdfs:label "Path to the local Git Repository" .
 
+<defaultBranch> a rdfs:Property ;
+    rdfs:label "Branch used as default" .
+
+<globalFile> a rdfs:Property ;
+    rdfs:label "File for unassigned graphs" .
+
 <linkToGitRemote> a rdfs:Property ;
   rdfs:label "Link to the Git Remote" .
 
@@ -44,12 +50,14 @@
 
 conf:store a <QuitStore> ;
   <allowNewGraphs> 1 ;
-  <pathOfGitRepo> "d:/git.default" .
+  <pathOfGitRepo> "d:/git.default" ;
+  <defaultBranch> "master" ;
+  <globalFile> "global.nq" .
 
 conf:default a <Graph> ;
-  <graphUri> <http://my.quit.graph/> ;
+  <graphUri> <http://aksw.org/NatanaelArndt> ;
   <isVersioned> 1 ;
-  <hasQuadFile> "default.nq" .
+  <hasQuadFile> ".store/radtke.nq" .
 
 conf:aksw a <Binding> ;
   <prefix> "aksw" ;

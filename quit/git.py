@@ -163,7 +163,8 @@ class Repository(Base):
 
     def index(self, revision=None):
         index = Index(self)
-        index.set_revision(revision or 'HEAD')
+        if revision:
+            index.set_revision(revision)
         return index
 
     def pull(self, remote_name='origin', branch='master'):
@@ -396,23 +397,23 @@ class Node(Base):
     def __init__(self, repository, commit, path=None):
 
         if path in (None, '', '.'):
-            self._obj = commit.tree
+            self.obj = commit.tree
             self.name = ''
             self.kind = Node.DIRECTORY
-            self.tree = self._obj
+            self.tree = self.obj
         else:
             try:
                 entry = commit.tree[path]
             except KeyError:
                 raise NodeNotFound(path, commit.hex)
-            self._obj = repository._repository.get(entry.oid)
+            self.obj = repository._repository.get(entry.oid)
             self.name = path
-            if self._obj.type == pygit2.GIT_OBJ_TREE:
+            if self.obj.type == pygit2.GIT_OBJ_TREE:
                 self.kind = Node.DIRECTORY
-                self.tree = self._obj
-            elif self._obj.type == pygit2.GIT_OBJ_BLOB:
+                self.tree = self.obj
+            elif self.obj.type == pygit2.GIT_OBJ_BLOB:
                 self.kind = Node.FILE
-                self.blob = self._obj
+                self.blob = self.obj
 
         self._repository = repository
         self._commit = commit
@@ -440,13 +441,13 @@ class Node(Base):
         return self.blob.data.decode("utf-8")
 
     def entries(self, recursive=False):
-        if isinstance(self._obj, pygit2.Tree):            
-            for entry in self._obj:
+        if isinstance(self.obj, pygit2.Tree):            
+            for entry in self.obj:
                 dirname = self.is_dir and self.name or self.dirname
                 node = Node(self._repository, self._commit, '/'.join(x for x in [dirname, entry.name] if x))
 
                 yield node
-                if recursive and node.is_dir and node._obj is not None:
+                if recursive and node.is_dir and node.obj is not None:
                     for x in node.entries(recursive=True):
                         yield x
 
@@ -509,7 +510,6 @@ class Index(object):
             raise IndexError(e)
 
     def add(self, path, contents, mode=None):
-        self._assert_revision()
         path = clean_path(path)
 
         oid = self.repository._repository.create_blob(contents)
@@ -518,26 +518,25 @@ class Index(object):
         self.contents.add(contents)
 
     def remove(self, path):
-        self._assert_revision()
         path = clean_path(path)
 
         self.stash[path] = (None, None)
 
     def commit(self, message, author_name, author_email, **kwargs):
-        self._assert_revision()
         if self.dirty:
             raise IndexError('Index already commited')
 
         ref = kwargs.pop('ref', 'HEAD')
         commiter_name = kwargs.pop('commiter_name', author_name)
         commiter_email = kwargs.pop('commiter_email', author_email)
-        parents = kwargs.pop('parents', [self.revision.id])
+        parents = kwargs.pop('parents', [self.revision.id] if self.revision else [])
 
         author = pygit2.Signature(author_name, author_email)
         commiter = pygit2.Signature(commiter_name, commiter_email)
 
         # Sort index items
         items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
+        print(items)
 
         # Create tree
         tree = IndexTree(self)
@@ -554,12 +553,9 @@ class Index(object):
 
         try:
             return self.repository._repository.create_commit(ref, author, commiter, message, oid, parents)
-        except:
+        except Exception as e:
+            print(e)
             return None
-
-    def _assert_revision(self):
-        if self.revision is None:
-            raise IndexError('No base revision')
 
 
 class IndexHeap(object):
@@ -608,11 +604,11 @@ class IndexTree(object):
 
             args = []
             try:
-                node = self.revision.node(_path)
-                if node.is_file:
-                    raise IndexError(
-                        'Cannot create a tree builder. "{0}" is a file'.format(node.name))
-                args.append(node.obj.oid)
+                if self.revision:
+                    node = self.revision.node(_path)
+                    if node.is_file:
+                        raise IndexError('Cannot create a tree builder. "{0}" is a file'.format(node.name))
+                    args.append(node.obj.oid)
             except NodeNotFound:
                 pass
 

@@ -4,7 +4,7 @@
 
 {% block navbar %}
 
-<div class="navbar navbar-inverse">
+<nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container">
         <div class="row">
             <div class="col-md-12">
@@ -14,10 +14,11 @@
                 <ul class="nav navbar-nav">
                     <li{% if request.url_rule.endpoint == 'git.commits' %} class="active"{% endif %}><a href="{{ url_for('git.commits') }}"><i class="fa fa-history" aria-hidden="true"></i> Commits</a></li>
                     <li {% if request.url_rule.endpoint in ['endpoint.sparql', 'endpoint.provenance'] %} class="dropdown active"{% else %} class="dropdown"{% endif %}>
-                        <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-database" aria-hidden="true"></i> Endpoints <span class="caret"></span></a>
+                        <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-database" aria-hidden="true"></i> Data <span class="caret"></span></a>
                         <ul class="dropdown-menu">
-                            <li><a href="{{ url_for('endpoint.sparql') }}"><i class="fa fa-question-circle" aria-hidden="true"></i> Endpoint</a></li>
-                            <li><a href="{{ url_for('endpoint.provenance') }}"><i class="fa fa-info-circle" aria-hidden="true"></i> Provenance</a></li>
+                            <li><a href="{{ url_for('endpoint.sparql') }}"><i class="fa fa-code" aria-hidden="true"></i> Query</a></li>
+                            <li><a href="{{ url_for('endpoint.provenance') }}"><i class="fa fa-clock-o" aria-hidden="true"></i> Provenance</a></li>
+                            <li><a href="{{ url_for('endpoint.statements') }}"><i class="fa fa-magic" aria-hidden="true"></i> Statements</a></li>
                         </ul>
                     </li>
                     
@@ -34,7 +35,7 @@
             </div>
         </div>
     </div>    
-</div>
+</nav>
 {% endblock %}
 
 {% block content %}

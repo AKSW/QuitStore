@@ -6,15 +6,16 @@ from os import makedirs
 from os.path import abspath, exists, isdir, join
 from subprocess import Popen
 
+import pygit2
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL, GIT_MERGE_ANALYSIS_UP_TO_DATE, GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
-import pygit2
 
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal, BNode, Namespace
 from rdflib import plugin
 from rdflib.store import Store as DefaultStore
+from rdflib.graph import ReadOnlyGraphAggregate
 
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
@@ -428,39 +429,40 @@ class Quit(object):
                 #self.store += g
             
 
-    def instance(self, id, sync=False):        
+    def instance(self, id=None, sync=False):                
+        default_graphs = list()
 
-        commit = self.repository.revision(id)
-
-        default_graphs = []
-        target_files = self.config.getgraphurifilemap().values()
+        if id:
+            commit = self.repository.revision(id)
         
-        for entity in commit.node().entries(recursive=True):
-            # todo check if file was changed
-            if entity.is_file:
-                #if entity.name not in _m.values():
-                #    continue
-
-                tmp = ConjunctiveGraph()
-                tmp.parse(data=entity.content, format='nquads')  
-
-                for context in (c.identifier for c in tmp.contexts()):                    
-
-                    # Todo: why?
-                    #if context not in _m:
+            target_files = self.config.getgraphurifilemap().values()
+        
+            for entity in commit.node().entries(recursive=True):
+                # todo check if file was changed
+                if entity.is_file:
+                    #if entity.name not in _m.values():
                     #    continue
 
-                    identifier = context + '-' + entity.blob.hex
-                    rewritten_identifier = context
+                    tmp = ConjunctiveGraph()
+                    tmp.parse(data=entity.content, format='nquads')  
 
-                    if sync:
-                        g = Graph(identifier=rewritten_identifier)
-                        g += tmp.triples((None, None, None))
-                    else:
-                        g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
-                    default_graphs.append(g)
+                    for context in (c.identifier for c in tmp.contexts()):                    
 
-        instance = InMemoryGraphAggregate(default_graphs=default_graphs, identifier='default')    
+                        # Todo: why?
+                        #if context not in _m:
+                        #    continue
+
+                        identifier = context + '-' + entity.blob.hex
+                        rewritten_identifier = context
+
+                        if sync:
+                            g = Graph(identifier=rewritten_identifier)
+                            g += tmp.triples((None, None, None))
+                        else:
+                            g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
+                        default_graphs.append(g)
+
+        instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')    
 
         return VirtualGraph(instance) 
 
@@ -582,31 +584,40 @@ class Quit(object):
                                                                        
         return g
    
-    def commit(self, graph, message, ref='master', **kwargs):
+    def commit(self, graph, message, index, ref, **kwargs):
         if not graph.store.is_dirty:
             return
         
         seen = set()
 
-        index = self.repository.index(ref)        
+        index = self.repository.index(index)        
 
-        for c in graph.store.contexts():
-            c.rewrite = True
-            path = self.config.getfileforgraphuri(c.identifier) or 'unassigned.nq'
+        files = {}
+
+        for context in graph.store.graphs():
+            file = self.config.getfileforgraphuri(context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
+
+            graphs = files.get(file, [])
+            graphs.append(context)
+            files[file] = graphs
+
+        for file, graphs in files.items():                
+            g = ReadOnlyGraphAggregate(graphs)
     
-            if len(c) == 0:
-                index.remove(path)
+            if len(g) == 0:
+                index.remove(file)
             else:
-                content = c.serialize(format='nquad-ordered').decode('UTF-8')
-                index.add(path, content)
+                content = g.serialize(format='nquad-ordered').decode('UTF-8')
+                index.add(file, content)
 
         author = self.repository._repository.default_signature
         id = index.commit(str(message), author.name, author.email, ref=ref)
-        
-        if id:
-            self.repository._repository.set_head(id)
+
+        if id:            
+            self.repository._repository.set_head(id)            
             if not self.repository.is_bare:                            
                 self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
+            self.sync()
 
 class GitRepo:
     """A class that manages a git repository.

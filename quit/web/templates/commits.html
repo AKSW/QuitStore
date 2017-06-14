@@ -27,7 +27,7 @@
                     <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}">{{ row.short_id }}</a></td>
                     <td>{{ row.message }}</td>
                     <td>{{ row.author_date }}</td>
-                    <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-question-circle" aria-hidden="true"></i></a> <a href="{{ url_for('debug.blame', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a></td>
+                    <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-code" aria-hidden="true"></i></a> <a href="{{ url_for('debug.blame', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -35,7 +35,7 @@
     </div>
 </div>
 {% else %}
-No results found
+No commits
 {% endif %}
 
 {% endblock %}
