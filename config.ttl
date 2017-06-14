@@ -13,7 +13,7 @@
   rdfs:range xsd:Boolean ;
   rdfs:label "The Information if a graph should be versioned" .
 
-<hasQuadFile> a rdfs:Property ;
+<graphFile> a rdfs:Property ;
   rdfs:label "The filename" .
 
 <QuitStore> a rdfs:Class ;
@@ -57,7 +57,7 @@ conf:store a <QuitStore> ;
 conf:default a <Graph> ;
   <graphUri> <http://aksw.org/NatanaelArndt> ;
   <isVersioned> 1 ;
-  <hasQuadFile> ".store/radtke.nq" .
+  <graphFile> ".store/radtke.nq" .
 
 conf:aksw a <Binding> ;
   <prefix> "aksw" ;

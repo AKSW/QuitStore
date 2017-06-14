@@ -435,13 +435,13 @@ class Quit(object):
         if id:
             commit = self.repository.revision(id)
         
-            target_files = self.config.getgraphurifilemap().values()
+            _m = self.config.getgraphurifilemap()
         
             for entity in commit.node().entries(recursive=True):
                 # todo check if file was changed
                 if entity.is_file:
-                    #if entity.name not in _m.values():
-                    #    continue
+                    if entity.name not in _m.values():
+                        continue
 
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')  
@@ -449,8 +449,8 @@ class Quit(object):
                     for context in (c.identifier for c in tmp.contexts()):                    
 
                         # Todo: why?
-                        #if context not in _m:
-                        #    continue
+                        if context not in _m:
+                            continue
 
                         identifier = context + '-' + entity.blob.hex
                         rewritten_identifier = context
@@ -563,8 +563,8 @@ class Quit(object):
                 # todo check if file was changed
                 if entity.is_file:
                     
-                    #if entity.name not in _m.values():
-                    #    continue
+                    if entity.name not in _m.values():
+                        continue
 
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')  
@@ -572,8 +572,8 @@ class Quit(object):
                     for context in [c.identifier for c in tmp.contexts()]:
 
                         # Todo: why?
-                        #if context not in _m:
-                        #    continue
+                        if context not in _m:
+                            continue
 
                         public_uri = context
                         private_uri = context + '-' + entity.blob.hex

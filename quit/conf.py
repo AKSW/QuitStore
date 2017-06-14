@@ -7,6 +7,7 @@ from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse
+from quit.utils import clean_path
 
 conflogger = logging.getLogger('conf.quit')
 # create file handler which logs even debug messages
@@ -224,7 +225,7 @@ class QuitConfiguration:
                 filename = relpath(joinedabsfile, repopath)
 
             # we store which named graph is serialized in which file
-            self.graphs[graphuri] = filename
+            self.graphs[graphuri] = clean_path(filename)
             # and furthermore we assume that one file can contain data of more
             # than one named graph and so we store for each file a set of graphs
             if filename in self.files:
