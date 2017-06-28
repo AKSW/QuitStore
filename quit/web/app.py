@@ -3,7 +3,9 @@ import urllib
 import hashlib
 import rdflib
 
-from flask import Flask, render_template as rt, render_template_string as rts, g, current_app, request, url_for
+from functools import wraps
+
+from flask import Flask, render_template as rt, render_template_string as rts, g, current_app, request, url_for, redirect, make_response
 from flask.ext.cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
@@ -39,6 +41,16 @@ DROPDOWN_TEMPLATE="""
 """
 
 env=Environment()
+
+def storemode_required(mode):
+    def wrapper(f):
+        @wraps(f)
+        def decorated_view(*args, **kwargs):
+            if not current_app.config['quit'].config.checkStoremode(mode):
+                return render_template("config_error.html"), 404
+            return f(*args, **kwargs)
+        return decorated_view
+    return wrapper
 
 def create_app(config):
     """Create a Flask app."""
@@ -90,6 +102,10 @@ def register_blueprints(app):
         
     for bp in [debug, endpoint, git]:
         app.register_blueprint(bp)
+
+    @app.route("/")
+    def index():
+        return redirect(url_for('git.commits'))
 
 
 def register_logging(app):
@@ -175,7 +191,11 @@ def register_template_helpers(app):
     @app.context_processor
     def context_processor():
         def render_dropdown(available_branches, available_tags):
-            return rts(DROPDOWN_TEMPLATE, branches=[x.lstrip('refs/heads/') for x in available_branches], tags=[x.lstrip('refs/tags/') for x in available_tags])
+            branches_prefix = 'refs/heads/'
+            branches=[x[len(branches_prefix):] if x.startswith(branches_prefix) else x for x in available_branches]
+            tags_prefix = 'refs/heads/'
+            tags=[x[len(tags_prefix):] if x.startswith(tags_prefix) else x for x in available_tags]
+            return rts(DROPDOWN_TEMPLATE, branches=branches, tags=tags)
 
         return dict(render_dropdown=render_dropdown)
 

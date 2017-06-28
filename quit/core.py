@@ -5,6 +5,7 @@ import logging
 from os import makedirs
 from os.path import abspath, exists, isdir, join
 from subprocess import Popen
+from functools import lru_cache
 
 import pygit2
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL, GIT_MERGE_ANALYSIS_UP_TO_DATE, GIT_MERGE_ANALYSIS_FASTFORWARD
@@ -17,6 +18,7 @@ from rdflib import plugin
 from rdflib.store import Store as DefaultStore
 from rdflib.graph import ReadOnlyGraphAggregate
 
+from quit.conf import STORE_NONE, STORE_DATA, STORE_PROVENANCE, STORE_ALL
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
 from quit.utils import graphdiff
@@ -428,8 +430,8 @@ class Quit(object):
                 #(_, g) = commit.__prov__()
                 #self.store += g
             
-
-    def instance(self, id=None, sync=False):                
+    @lru_cache()
+    def instance(self, id=None, force=False):                
         default_graphs = list()
 
         if id:
@@ -455,7 +457,7 @@ class Quit(object):
                         identifier = context + '-' + entity.blob.hex
                         rewritten_identifier = context
 
-                        if sync:
+                        if force or not self.config.checkStoremode(STORE_DATA):
                             g = Graph(identifier=rewritten_identifier)
                             g += tmp.triples((None, None, None))
                         else:
@@ -469,15 +471,15 @@ class Quit(object):
     def changesets(self, commits=None):
         g = ConjunctiveGraph(identifier=QUIT.default)
 
-        if not commits:
+        if not commits or (not self.config.checkStoremode(STORE_DATA) and not self.config.checkStoremode(STORE_PROVENANCE)):
             return g
 
         last = None
+                 
+        if self.config.checkStoremode(STORE_PROVENANCE):
+            role_author_uri = QUIT['author']
+            role_committer_uri = QUIT['committer']
 
-        role_author_uri = QUIT['author']
-        role_committer_uri = QUIT['committer']
-        
-        if commits:            
             g.add((role_author_uri, is_a, PROV['Role']))
             g.add((role_committer_uri, is_a, PROV['Role']))
 
@@ -486,75 +488,79 @@ class Quit(object):
             rev = commit.id
 
             # Create the commit            
-            commit_graph = self.instance(commit.id, True)   
+            commit_graph = self.instance(commit.id, True)               
             commit_uri = QUIT['commit-' + commit.id]
 
-            g.add((commit_uri, is_a, PROV['Activity']))
+            if self.config.checkStoremode(STORE_PROVENANCE):
+                g.add((commit_uri, is_a, PROV['Activity']))
 
-            if 'import' in commit.properties.keys(): 
-                g.add((commit_uri, is_a, QUIT['Import']))
-                g.add((commit_uri, QUIT['dataSource'], URIRef(commit.properties['import'].strip())))
+                if 'Source' in commit.properties.keys(): 
+                    g.add((commit_uri, is_a, QUIT['Import']))
+                    g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
+                if 'Query' in commit.properties.keys(): 
+                    g.add((commit_uri, is_a, QUIT['Transformation']))
+                    g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))            
 
-            g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
-            g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
-            g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
-            g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
+                g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
+                g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
+                g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
+                g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
 
-            # Author
-            hash = pygit2.hash(commit.author.email).hex
-            author_uri = QUIT['user-' + hash]
-            g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
+                # Author
+                hash = pygit2.hash(commit.author.email).hex
+                author_uri = QUIT['user-' + hash]
+                g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
             
-            g.add((author_uri, is_a, PROV['Agent']))
-            g.add((author_uri, RDFS.label, Literal(commit.author.name)))
-            g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
+                g.add((author_uri, is_a, PROV['Agent']))
+                g.add((author_uri, RDFS.label, Literal(commit.author.name)))
+                g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
 
-            q_author_uri = BNode()
-            g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
-            g.add((q_author_uri, is_a, PROV['Association']))
-            g.add((q_author_uri, PROV['agent'], author_uri))
-            g.add((q_author_uri, PROV['role'], role_author_uri))
+                q_author_uri = BNode()
+                g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
+                g.add((q_author_uri, is_a, PROV['Association']))
+                g.add((q_author_uri, PROV['agent'], author_uri))
+                g.add((q_author_uri, PROV['role'], role_author_uri))
 
-            if commit.author.name != commit.committer.name:
-                # Committer
-                hash = pygit2.hash(commit.committer.email).hex
-                committer_uri = QUIT['user-' + hash]
-                g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
+                if commit.author.name != commit.committer.name:
+                    # Committer
+                    hash = pygit2.hash(commit.committer.email).hex
+                    committer_uri = QUIT['user-' + hash]
+                    g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
 
-                g.add((committer_uri, is_a, PROV['Agent']))
-                g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
-                g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
+                    g.add((committer_uri, is_a, PROV['Agent']))
+                    g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
+                    g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
 
-                q_committer_uri = BNode()
-                g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
-                g.add((q_committer_uri, is_a, PROV['Association']))
-                g.add((q_committer_uri, PROV['agent'], author_uri))
-                g.add((q_committer_uri, PROV['role'], role_committer_uri))
-            else:
-                g.add((q_author_uri, PROV['role'], role_committer_uri))
+                    q_committer_uri = BNode()
+                    g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
+                    g.add((q_committer_uri, is_a, PROV['Association']))
+                    g.add((q_committer_uri, PROV['agent'], author_uri))
+                    g.add((q_committer_uri, PROV['role'], role_committer_uri))
+                else:
+                    g.add((q_author_uri, PROV['role'], role_committer_uri))
 
-            # Parents
-            parent = None
-            parent_graph = None
+                # Parents
+                parent = None
+                parent_graph = None
 
-            if commit.parents:
-                parent = commit.parents[0]
-                parent_graph = self.instance(parent.id, True) 
+                if commit.parents:
+                    parent = commit.parents[0]
+                    parent_graph = self.instance(parent.id, True) 
 
-                for parent in commit.parents:
-                    parent_uri = QUIT['commit-' + parent.id]
-                    g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))            
+                    for parent in commit.parents:
+                        parent_uri = QUIT['commit-' + parent.id]
+                        g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))            
 
-            # Diff
-            diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
-            for ((resource_uri, _), changesets) in diff.items():                
-                for (op, update_graph) in changesets: 
-                    update_uri = QUIT['update-' + commit.id]
-                    op_uri = QUIT[op + '-' + commit.id]
-                    g.add((commit_uri, QUIT['updates'], update_uri))
-                    g.add((update_uri, QUIT['graph'], resource_uri))
-                    g.add((update_uri, QUIT[op], op_uri))                    
-                    g.addN((s, p, o, op_uri) for s, p, o in update_graph)
+                # Diff
+                diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
+                for ((resource_uri, _), changesets) in diff.items():                
+                    for (op, update_graph) in changesets: 
+                        update_uri = QUIT['update-' + commit.id]
+                        op_uri = QUIT[op + '-' + commit.id]
+                        g.add((commit_uri, QUIT['updates'], update_uri))
+                        g.add((update_uri, QUIT['graph'], resource_uri))
+                        g.add((update_uri, QUIT[op], op_uri))                    
+                        g.addN((s, p, o, op_uri) for s, p, o in update_graph)
 
             # Entities
             _m = self.config.getgraphurifilemap()
@@ -578,9 +584,11 @@ class Quit(object):
                         public_uri = context
                         private_uri = context + '-' + entity.blob.hex
 
-                        g.add((private_uri, PROV['specializationOf'], public_uri))
-                        g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
-                        g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
+                        if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
+                            g.add((private_uri, PROV['specializationOf'], public_uri))
+                            g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
+                        if self.config.checkStoremode(STORE_DATA):
+                            g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
                                                                        
         return g
    
@@ -610,8 +618,19 @@ class Quit(object):
                 content = g.serialize(format='nquad-ordered').decode('UTF-8')
                 index.add(file, content)
 
+        out = list()
+        for k,v in kwargs.items():
+            if '\n' in v:
+                out.append('%s: "%s"' % (k, v))
+            else: 
+                out.pre('%s: %s' % (k, v))
+        out.append('')
+        if message:
+            out.append(message)
+        #message = "\n".join(out)
+
         author = self.repository._repository.default_signature
-        id = index.commit(str(message), author.name, author.email, ref=ref)
+        id = index.commit(message, author.name, author.email, ref=ref)
 
         if id:            
             self.repository._repository.set_head(id)            

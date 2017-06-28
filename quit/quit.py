@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath
 import argparse
 from os.path import join
 from quit.core import FileReference, MemoryStore, GitRepo
-from quit.conf import QuitConfiguration
+from quit.conf import QuitConfiguration, STORE_ALL, STORE_DATA, STORE_PROVENANCE
 from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
 from quit.utils import splitinformation, sparqlresponse
@@ -196,6 +196,12 @@ def initialize(args):
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
 
+    storemode = STORE_ALL
+    if args.disable_data_store:
+        storemode &= ~STORE_DATA
+    if args.disable_provenance_store:
+        storemode &= ~STORE_PROVENANCE
+
     config = QuitConfiguration(
         versioning=v,
         gc=gc,
@@ -203,6 +209,7 @@ def initialize(args):
         targetdir=args.targetdir,
         repository=args.repourl,
         configmode=args.configmode,
+        storemode=storemode
     )
 
     config.initgraphconfig()
@@ -356,7 +363,7 @@ def savedexit():
     Add methods you want to call on unexpected shutdown.
     """
     logger.info("Exiting store")
-    store.exit()
+    #store.exit()
     logger.info("Store exited")
 
     return
@@ -458,6 +465,8 @@ if __name__ == '__main__':
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('--disable-data-store', action='store_true')
+    parser.add_argument('--disable-provenance-store', action='store_true')
     args = parser.parse_args()
 
     objects = initialize(args)

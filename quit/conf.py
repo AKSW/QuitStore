@@ -15,6 +15,10 @@ fh = logging.FileHandler('quit.log')
 fh.setLevel(logging.DEBUG)
 conflogger.addHandler(fh)
 
+STORE_NONE       = 0
+STORE_PROVENANCE = (1 << 0)
+STORE_DATA       = (1 << 1)
+STORE_ALL        = STORE_DATA | STORE_PROVENANCE
 
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
@@ -23,6 +27,7 @@ class QuitConfiguration:
         self,
         configmode=None,
         configfile='config.ttl',
+        storemode=None,
         repository=None,
         targetdir=None,
         gc=False,
@@ -34,6 +39,7 @@ class QuitConfiguration:
         If the config file is missing, it will be generated after analyzing the
         file structure.
         """
+        self.storemode = storemode
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -421,6 +427,9 @@ class QuitConfiguration:
 
     def isversioningon(self):
         return self.versioning
+
+    def checkStoremode (self, flags):
+        return (self.storemode & flags) == flags
 
     def setConfigMode(self, mode):
         self.sysconf.remove((None, self.quit.configMode, None))
