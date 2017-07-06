@@ -13,7 +13,7 @@ from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
 from quit.parsers import NQuadsParser
 from quit.utils import splitinformation, sparqlresponse
-import handleexit
+from quit import handleexit
 import logging
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
@@ -100,24 +100,31 @@ def __commit(self, message=None):
 
 def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
-    store = MemoryStore
-    files = config.getfiles()
-    for filename in files:
-        filepath = join(config.getRepoPath(), filename)
-        graphs = config.getgraphuriforfile(filename)
-        graphstring = ''
-        for graph in graphs:
-            graphstring+= str(graph)
-        try:
-            store.addfile(filepath, config.getserializationoffile(filename))
-        except:
-            pass
+    oldStore = app.config['store']
+    config = app.config['config']
+    filereferences = app.config['references']
+    gitrepo = app.config['gitrepo']
+
+    store = initializeMemoryStore(config)
+    oldStore = None
+
+    updateConfig(store, config, gitrepo, filereferences)
 
     return
 
+def updateConfig(store, config, gitrepo, references):
+    app.config.update(dict(
+        store=store,
+        config=config,
+        gitrepo=gitrepo,
+        references=references
+        )
+    )
 
 def applyupdates(actions):
     """Update files after store was updated."""
+    config = app.config['config']
+    references = app.config['references']
     graphsandfiles = config.getgraphurifilemap()
     savefiles = {}
 
@@ -225,24 +232,7 @@ def initialize(args):
     # since repo is handled, we can add graphs to config
     config.initgraphconfig()
 
-    store = MemoryStore()
-
-    # Load data to store
-    files = config.getfiles()
-    for filename in files:
-        filepath = join(config.getRepoPath(), filename)
-        graphs = config.getgraphuriforfile(filename)
-        graphstring = ''
-
-        for graph in graphs:
-            graphstring+= str(graph)
-
-        try:
-            store.addfile(filepath, config.getserializationoffile(filename))
-            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
-        except:
-            logger.info('Error: Graph with URI: ' + graphstring + ' not added')
-            pass
+    store = initializeMemoryStore(config)
 
     # Save file objects per file
     filereferences = {}
@@ -264,7 +254,30 @@ def initialize(args):
     logger.debug('Config mode: ' + str(config.getConfigMode()))
     logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
-    return {'store': store, 'config': config, 'gitrepo': gitrepo, 'references': filereferences}
+    updateConfig(store, config, gitrepo, filereferences)
+
+
+def initializeMemoryStore(config):
+    """Create and return a MemoryStore object with all known graphs."""
+    store = MemoryStore()
+
+    files = config.getfiles()
+    for filename in files:
+        filepath = join(config.getRepoPath(), filename)
+        graphs = config.getgraphuriforfile(filename)
+        graphstring = ''
+
+        for graph in graphs:
+            graphstring+= str(graph)
+
+        try:
+            store.addfile(filepath, config.getserializationoffile(filename))
+            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+        except:
+            logger.info('Error: Graph with URI: ' + graphstring + ' not added')
+            pass
+
+    return store
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -312,19 +325,23 @@ def processsparql(querystring):
     except:
         raise
 
-    if query.getType() == 'SELECT':
+    store = app.config['store']
+    config = app.config['config']
+    querytype = query.getType()
+
+    if querytype == 'SELECT':
         logger.debug('Execute select query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'DESCRIBE':
+    elif querytype == 'DESCRIBE':
         logger.debug('Skip describe query')
         result = None
-    elif query.getType() == 'CONSTRUCT':
+    elif querytype == 'CONSTRUCT':
         logger.debug('Execute construct query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'ASK':
+    elif querytype == 'ASK':
         logger.debug('Execute ask query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'UPDATE':
+    elif querytype == 'UPDATE':
         if query.getParsedQuery() is None:
             query = querystring
         else:
@@ -352,6 +369,8 @@ def addtriples(values):
     Raises:
         Exception: If contained data is not valid.
     """
+    store = app.config['store']
+
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -382,6 +401,8 @@ def deletetriples(values):
     Raises:
         Exception: If contained data is not valid.
     """
+    store = app.config['store']
+
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -406,6 +427,7 @@ def savedexit():
     Add methods you want to call on unexpected shutdown.
     """
     logger.info("Exiting store")
+    store = app.config['store']
     store.exit()
     logger.info("Store exited")
 
@@ -447,7 +469,6 @@ def sparql():
 
     try:
         result = processsparql(query)
-        pass
     except Exception as e:
         logger.debug('Something is wrong with received query:', e)
         import traceback
@@ -485,6 +506,8 @@ def checkoutVersion(commitid):
         logger.debug(msg)
         return msg, status.HTTP_400_BAD_REQUEST
 
+    gitrepo = app.config['gitrepo']
+
     if gitrepo.commitexists(commitid) is True:
         gitrepo.checkout(commitid)
         # TODO store has to be reinitialized with old data
@@ -506,6 +529,7 @@ def getCommits():
     Returns:
         HTTP Response: json containing id, committeddate and message.
     """
+    gitrepo = app.config['gitrepo']
     data = gitrepo.getcommits()
     resp = Response(json.dumps(data), status=200, mimetype='application/json')
     return resp
@@ -525,6 +549,8 @@ def addTriple():
             data = checkrequest(request)
         except:
             return '', status.HTTP_403_FORBIDDEN
+
+        store = app.config['store']
 
         for graphuri in data['graphs']:
             if not store.graphexists(graphuri):
@@ -553,6 +579,8 @@ def deleteTriple():
         except:
             return '', status.HTTP_403_FORBIDDEN
 
+        store = app.config['store']
+
         for graphuri in values['graphs']:
             if not store.graphexists(graphuri):
                 logger.debug('Graph ' + graphuri + ' is not part of the store')
@@ -573,6 +601,8 @@ def pull():
         HTTP Response 201: If pull was possible
         HTTP Response: 403: If pull did not work
     """
+    store = app.config['store']
+
     if store.pull():
         return '', status.HTTP_201_CREATED
     else:
@@ -589,6 +619,8 @@ def push():
         HTTP Response 201: If pull was possible
         HTTP Response: 403: If pull did not work
     """
+    gitrepo = app.config['gitrepo']
+
     if gitrepo.push():
         return '', status.HTTP_201_CREATED
     else:
@@ -618,13 +650,7 @@ def resultFormat():
 
     return {"mime": best, "format": formats[best]}
 
-
-def main():
-    """Start the app."""
-    app.run(debug=True, use_reloader=False)
-
-
-if __name__ == '__main__':
+def parseArgs(args):
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
@@ -642,13 +668,19 @@ if __name__ == '__main__':
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
-    args = parser.parse_args()
 
-    objects = initialize(args)
-    store = objects['store']
-    config = objects['config']
-    gitrepo = objects['gitrepo']
-    references = objects['references']
+    return parser.parse_args(args)
+
+
+def main():
+    """Start the app."""
+    app.run(debug=True, use_reloader=False)
+
+
+if __name__ == '__main__':
+    args = parseArgs(sys.argv[1:])
+
+    initialize(args)
     sys.setrecursionlimit(2 ** 15)
 
     # The app is started with an exit handler

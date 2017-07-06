@@ -1,0 +1,13 @@
+@base <http://quit.aksw.org/> .
+@prefix conf: <http://my.quit.conf/> .
+
+conf:store a <QuitStore> ;
+  <pathOfGitRepo> "./tests/samples/applicationTests" .
+
+conf:graph1 a <Graph> ;
+  <graphUri> <http://example.org/1/> ;
+  <graphFile> "example1.nq" .
+
+conf:graph2 a <Graph> ;
+  <graphUri> <http://example.org/2/> ;
+  <graphFile> "example2.nq" .
