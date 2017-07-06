@@ -56,9 +56,9 @@ pip install -r requirements.txt
 Quit-Store can be started in three different modes.
 These modes differ in how the store choses the named graphs and the corresponding files that will be part of the store.
 
-1. localconfig - Use the graphs specified in a local config file (e.g. `config.ttl`).
-2. repoconfig - Search for a `config.ttl` file in the specified repository.
-3. graphfiles - Use `*.graph` files for each RDF file or analyze found N-Quads files to get the URI of named graphs.
+1. `localconfig` - Use the graphs specified in a local config file (e.g. `config.ttl`).
+2. `repoconfig` - Search for a `config.ttl` file in the specified repository.
+3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)), furthermore found N-Quads files are analyzed to get the URI of named graphs from the used context.
 
 `-t`, `--targetdir`
 
