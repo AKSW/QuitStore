@@ -650,6 +650,7 @@ def resultFormat():
 
     return {"mime": best, "format": formats[best]}
 
+
 def parseArgs(args):
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
@@ -668,13 +669,15 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('-p', '--port', default=5000, type=int)
+    parser.add_argument('--host', default='0.0.0.0', type=str)
 
     return parser.parse_args(args)
 
 
 def main():
     """Start the app."""
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
 
 
 if __name__ == '__main__':

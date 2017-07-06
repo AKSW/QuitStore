@@ -91,7 +91,7 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='remoteconfig'
+            configmode='repoconfig'
         )
 
         conf.initgraphconfig()
@@ -153,7 +153,7 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='remoteconfig'
+            configmode='repoconfig'
         )
         conf.initgraphconfig()
 
@@ -227,7 +227,7 @@ class TestConfiguration(unittest.TestCase):
 
     def testGraphConfigRemoteConfig(self):
         conf = QuitConfiguration(
-                    configmode='remoteconfig',
+                    configmode='repoconfig',
                     configfile=self.localConfigFile
                 )
 

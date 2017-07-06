@@ -510,7 +510,7 @@ class GitRepo:
                 """
                 self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
         except Exception as e:
-            self.logger.debug('Git garbage collection failed to spawn')
+            self.logger.debug('Git garbage collection failed to spawn', e)
         return
 
     def getpath(self):

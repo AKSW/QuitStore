@@ -90,7 +90,7 @@ class QuitConfiguration:
 
         if configmode == 'localconfig':
             self.__initgraphsfromconf(self.configfile)
-        elif configmode == 'remoteconfig':
+        elif configmode == 'repoconfig':
             remConfigFile = join(self.getRepoPath(), 'config.ttl')
             self.__initgraphsfromconf(remConfigFile)
         elif configmode == 'graphfiles':
