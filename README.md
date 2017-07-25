@@ -29,10 +29,10 @@ conf:store a <YourQuitStore> ;
 conf:example a <Graph> ; # Define a Graph resource for a named graph
     <graphUri> <http://example.org/> ; # Set the URI of named graph
     <isVersioned> 1 ; # Defaults to True, future work
-    <hasQuadFile> "example.nq" . # Set the filename
+    <graphFile> "example.nq" . # Set the filename
 ```
 
-The `config.ttl` could as well be put under version controll for collaboration, but this is not neccessary.
+The `config.ttl` could as well be put under version control for collaboration, but this is not necessary.
 
 ## Run from command line
 

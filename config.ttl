@@ -13,15 +13,11 @@
   rdfs:range xsd:Boolean ;
   rdfs:label "The Information if a graph should be versioned" .
 
-<hasQuadFile> a rdfs:Property ;
+<graphFile> a rdfs:Property ;
   rdfs:label "The filename" .
 
 <QuitStore> a rdfs:Class ;
   rdfs:label "Information about the Git Store" .
-
-<allowNewGraphs> a rdfs:Property ;
-  rdfs:range xsd:Boolean ;
-  rdfs:label "(Dis)allow Quit adding new files for each new named graph." .
 
 <storeFromDir> a rdfs:Property ;
   rdfs:range xsd:Boolean ;
@@ -40,9 +36,9 @@ conf:store a <QuitStore> ;
 conf:dbpedia a <Graph> ;
   <graphUri> <http://dbpedia.org/> ;
   <isVersioned> 1 ;
-  <hasQuadFile> "dbpedia.nq" .
+  <graphFile> "dbpedia.nq" .
 
 conf:default a <Graph> ;
   <graphUri> <http://my.quit.graph/> ;
   <isVersioned> 1 ;
-  <hasQuadFile> "default.nq" .
+  <graphFile> "default.nq" .
