@@ -48,6 +48,9 @@ logger.addHandler(ch)
 
 def __savefiles():
     """Update the files after a update query was executed on the store."""
+    config = app.config['config']
+    store = app.config['store']
+
     for file in config.getfiles():
         graphs = config.getgraphuriforfile(file)
         content = []
@@ -63,27 +66,13 @@ def __savefiles():
 
 def __updategit():
     """Private method to add all updated tracked files."""
+    config = app.config['config']
+    gitrepo = app.config['gitrepo']
     gitrepo.addall()
     gitrepo.commit()
+
     if config.isgarbagecollectionon():
         gitrepo.garbagecollection()
-
-    return
-
-
-def __removefile(self, graphuri):
-    # TODO actions needed to remove file also from
-    # - directory and
-    # - git repository
-    try:
-        del self.files[graphuri]
-    except:
-        return
-
-    try:
-        self.store.remove((None, None, None, graphuri))
-    except:
-        return
 
     return
 
@@ -112,7 +101,9 @@ def reloadstore():
 
     return
 
+
 def updateConfig(store, config, gitrepo, references):
+    """Update configuration."""
     app.config.update(dict(
         store=store,
         config=config,
@@ -120,6 +111,7 @@ def updateConfig(store, config, gitrepo, references):
         references=references
         )
     )
+
 
 def applyupdates(actions):
     """Update files after store was updated."""
@@ -278,6 +270,7 @@ def initializeMemoryStore(config):
             pass
 
     return store
+
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -485,6 +478,7 @@ def sparql():
                         )
         # return '', status.HTTP_200_OK
 
+
 @app.route("/git/checkout/", methods=['POST', 'GET'], defaults={'commitid': None})
 @app.route('/git/checkout/<string:commitid>')
 def checkoutVersion(commitid):
@@ -652,6 +646,7 @@ def resultFormat():
 
 
 def parseArgs(args):
+    """Parse command line arguments."""
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
