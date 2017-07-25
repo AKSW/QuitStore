@@ -1,0 +1,18 @@
+@base <http://my.quit.conf/> .
+@prefix quit: <http://quit.aksw.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<exampleStore> a quit:QuitStore ;
+  quit:allowNewGraphs 1 ;
+  quit:pathOfGitRepo "../store.default" .
+
+<exampleDBpedia> a quit:Graph ;
+  quit:graphUri <http://dbpedia.org/> ;
+  quit:isVersioned 1 ;
+  quit:graphFile "dbpedia.nq" .
+
+<exampleGraph> a quit:Graph ;
+  quit:graphUri <http://my.quit.graph/> ;
+  quit:isVersioned 1 ;
+  quit:graphFile "default.nq" .
