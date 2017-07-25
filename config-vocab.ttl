@@ -1,0 +1,29 @@
+@prefix quit: <http://quit.aksw.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+quit:Graph a rdfs:Class ;
+  rdfs:label "A named Graph" .
+
+quit:graphUri a rdfs:Property ;
+  rdfs:label "The URI of a graph" .
+
+quit:isVersioned a rdfs:Property ;
+  rdfs:range xsd:Boolean ;
+  rdfs:label "The Information if a graph should be versioned" .
+
+quit:graphFile a rdfs:Property ;
+  rdfs:label "The filename" .
+
+quit:QuitStore a rdfs:Class ;
+  rdfs:label "Information about the Git Store" .
+
+quit:storeFromDir a rdfs:Property ;
+  rdfs:range xsd:Boolean ;
+  rdfs:label "(Dis)allow Quit building the store from all files found in repository" .
+
+quit:pathOfGitRepo a rdfs:Property ;
+  rdfs:label "Path to the local Git Repository" .
+
+quit:linkToGitRemote a rdfs:Property ;
+  rdfs:label "Link to the Git Remote" .
