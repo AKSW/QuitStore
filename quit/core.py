@@ -115,39 +115,21 @@ class FileReference:
         content = self.__getcontent()
 
         try:
-            self.__setcontent(sorted(content))
+            self.__setcontent(sorted(list(set(content))))
         except AttributeError:
             pass
 
     def addquads(self, quads):
         """Add quads to the file content."""
         self.content.append(quads)
-        self.content = list(set(self.content))
         self.sortcontent()
 
         return
 
     def addquad(self, quad):
         """Add a quad to the file content."""
-        if(self.quadexists(quad)):
-            return
 
         self.content.append(quad)
-
-        return
-
-    def quadexists(self, quad):
-        """Look if a quad is in the file content.
-
-        Returns:
-            True if quad was found, False else
-        """
-        searchPattern = quad
-
-        if searchPattern in self.content:
-            return True
-
-        return False
 
     def deletequads(self, quads):
         """Remove quads from the file content."""
