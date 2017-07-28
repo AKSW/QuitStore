@@ -3,7 +3,7 @@ import os
 
 from distutils.dir_util import copy_tree, remove_tree
 from glob import glob
-from os import remove
+from os import remove, stat, path
 from os.path import join, isdir
 from quit import quit as quitApp
 import unittest
@@ -15,6 +15,7 @@ class QuitAppTestCase(unittest.TestCase):
         self.testData = './tests/samples/applicationTests'
         self.local = './tests/samples/local'
         self.remote = '.tests/samples/remote'
+        self.logfile = '.tests/samples/quit.log'
         copy_tree(self.testData, self.local)
         copy_tree(self.testData, self.remote)
         self.localConfigFile = join(self.local, 'config.ttl')
@@ -34,8 +35,6 @@ class QuitAppTestCase(unittest.TestCase):
                     f.write(line)
 
         self.app = quitApp.app.test_client()
-        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
-        quitApp.initialize(args)
 
     def tearDown(self):
         def __deleteFiles(directory):
@@ -46,6 +45,9 @@ class QuitAppTestCase(unittest.TestCase):
         __deleteFiles(self.local)
         __deleteFiles(self.remote)
 
+        if os.path.isfile(self.logfile):
+            remove(self.logfile)
+
         localGit = join(self.local, '.git')
         remoteGit = join(self.remote, '.git')
 
@@ -55,19 +57,66 @@ class QuitAppTestCase(unittest.TestCase):
             remove_tree(remoteGit)
 
     def testStartApp(self):
+        """Test start of quit store."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        quitApp.initialize(args)
+
         query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
         response = self.app.post('/sparql', data=dict(query=query))
         self.assertEqual(response.status, '200 OK')
 
+    def testLogfileExists(self):
+        """Test start of quit store with logfile."""
+        self.assertFalse(os.path.isfile(self.logfile))
+
+        args = quitApp.parseArgs([
+            '-c',
+            self.localConfigFile,
+            '-cm',
+            'localconfig',
+            '-l',
+            self.logfile
+            ])
+
+        quitApp.initialize(args)
+
+        self.assertTrue(os.path.isfile(self.logfile))
+        self.assertNotEqual(stat(self.logfile).st_size, 0)
+
+        infomsg = 'QuitStore successfully running.'
+        check = False
+
+        if infomsg in open(self.logfile).read():
+            check = True
+
+        self.assertTrue(check)
+
+    def testLogfileNotExists(self):
+        """Test start of quit store without logfile."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        quitApp.initialize(args)
+
+        self.assertFalse(os.path.isfile(self.logfile))
+
     def testReloadStore(self):
+        """Test reload of quit store."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        quitApp.initialize(args)
+
         quitApp.reloadstore()
+
         query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
         response = self.app.post('/sparql', data=dict(query=query))
         self.assertEqual(response.status, '200 OK')
 
     def testGitLog(self):
+        """Test /git/log API request."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        quitApp.initialize(args)
+
         response= self.app.get('/git/log')
         self.assertEqual(response.status, '200 OK')
+
 
 if __name__ == '__main__':
     unittest.main()
