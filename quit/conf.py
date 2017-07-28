@@ -7,11 +7,7 @@ from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse
 
-conflogger = logging.getLogger('conf.quit')
-# create file handler which logs even debug messages
-fh = logging.FileHandler('quit.log')
-fh.setLevel(logging.DEBUG)
-conflogger.addHandler(fh)
+logger = logging.getLogger('quit.conf')
 
 
 class QuitConfiguration:
@@ -32,6 +28,7 @@ class QuitConfiguration:
         If the config file is missing, it will be generated after analyzing the
         file structure.
         """
+        logger = logging.getLogger('quit.conf.QuitConfiguration')
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -116,7 +113,7 @@ class QuitConfiguration:
                 try:
                     tmpgraph.parse(source=absfile, format=format)
                 except:
-                    conflogger.warning('Could not parse graphfile ' + absfile + ' skipped.')
+                    logger.warning('Could not parse graphfile ' + absfile + ' skipped.')
                     continue
 
                 namedgraphs = tmpgraph.contexts()
@@ -130,15 +127,15 @@ class QuitConfiguration:
                 if len(founduris) == 1:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 elif len(founduris) > 1:
-                    conflogger.warning('No named graph found. ' + absfile + ' skipped.')
+                    logger.warning('No named graph found. ' + absfile + ' skipped.')
                 elif len(founduris) < 1:
-                    conflogger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
+                    logger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
 
             elif format == 'nt':
                 if graphuri:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 else:
-                    conflogger.warning('No .graph file found. ' + absfile + ' skipped.')
+                    logger.warning('No .graph file found. ' + absfile + ' skipped.')
 
         self.__setgraphsfromconf()
 

@@ -30,7 +30,7 @@ CORS(app)
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
 
-logger = logging.getLogger('core')
+logger = logging.getLogger('quit')
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
