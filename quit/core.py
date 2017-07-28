@@ -115,7 +115,7 @@ class FileReference:
         content = self.__getcontent()
 
         try:
-            self.__setcontent(sorted(list(set(content))))
+            self.__setcontent(sorted(set(content)))
         except AttributeError:
             pass
 
