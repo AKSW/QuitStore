@@ -30,21 +30,14 @@ CORS(app)
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
 
-logger = logging.getLogger('core')
+logger = logging.getLogger('quit')
 logger.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
-fh = logging.FileHandler('quit.log')
-fh.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 # create console handler with a higher log level
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
 ch.setFormatter(formatter)
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
-
 
 def __savefiles():
     """Update the files after a update query was executed on the store."""
@@ -180,11 +173,37 @@ def initialize(args):
     """
     gc = False
 
+    if args.verbose:
+        ch.setLevel(logging.INFO)
+        logger.addHandler(ch)
+        logger.debug('Loglevel: INFO')
+
+    if args.verboseverbose:
+        ch.setLevel(logging.DEBUG)
+        logger.addHandler(ch)
+        logger.debug('Loglevel: DEBUG')
+
+    # add the handlers to the logger
+
+    if args.logfile:
+        try:
+            fh = logging.FileHandler(args.logfile)
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+            logger.debug('Logfile: '+ args.logfile)
+        except FileNotFoundError:
+            logger.error('Logfile not found: ' + args.logfile)
+            sys.exit('Exiting quit')
+        except PermissionError:
+            logger.error('Can not create logfile: ' + args.logfile)
+            sys.exit('Exiting quit')
+
     if args.disableversioning:
-        logger.info('Versioning is disabled')
+        logger.info('Versioning: disabled')
         v = False
     else:
-        logger.info('Versioning is enabled')
+        logger.info('Versioning: enabled')
         v = True
 
         if args.garbagecollection:
@@ -652,11 +671,15 @@ def parseArgs(args):
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
                 "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
+    loghelp = """Path to the log file."""
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-vv', '--verboseverbose', action='store_true')
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
+    parser.add_argument('-l', '--logfile', type=str, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
     parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
     parser.add_argument('-cm', '--configmode', type=str, choices=[

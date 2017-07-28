@@ -12,8 +12,7 @@ from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 from subprocess import Popen
 
-corelogger = logging.getLogger('core.quit')
-
+logger = logging.getLogger('quit.core')
 
 class FileReference:
     """A class that manages n-quad files.
@@ -34,8 +33,8 @@ class FileReference:
         Raises:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
         """
-        self.logger = logging.getLogger('file_reference_core.quit')
-        self.logger.debug('Create an instance of FileReference')
+        logger = logging.getLogger('quit.core.FileReference')
+        logger.debug('Create an instance of FileReference')
         self.content = None
         self.path = abspath(filelocation)
         self.modified = False
@@ -69,13 +68,13 @@ class FileReference:
 
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            self.logger.debug('Success: File', self.path, 'parsed')
+            logger.debug('Success: File', self.path, 'parsed')
             # quadstring = graph.serialize(format="nquads").decode('UTF-8')
             # quadlist = quadstring.splitlines()
             # self.__setcontent(quadlist)
         except:
             # Given file contains non valid rdf data
-            # self.logger.debug('Error: File', self.path, 'not parsed')
+            # logger.debug('Error: File', self.path, 'not parsed')
             # self.__setcontent([[None][None][None][None]])
             pass
 
@@ -102,13 +101,13 @@ class FileReference:
         """Save the file."""
         f = open(self.path, "w")
 
-        self.logger.debug('Saving file:', self.path)
+        logger.debug('Saving file:', self.path)
         content = self.__getcontent()
         for line in content:
             f.write(line + '\n')
         f.close
 
-        self.logger.debug('File saved')
+        logger.debug('File saved')
 
     def sortcontent(self):
         """Order file content."""
@@ -164,8 +163,8 @@ class MemoryStore:
 
     def __init__(self):
         """Initialize a new MemoryStore instance."""
-        self.logger = logging.getLogger('memory_store.core.quit')
-        self.logger.debug('Create an instance of MemoryStore')
+        logger = logging.getLogger('quit.core.MemoryStore')
+        logger.debug('Create an instance of MemoryStore')
         self.store = ConjunctiveGraph(identifier='default')
 
         return
@@ -239,8 +238,8 @@ class MemoryStore:
         try:
             self.store.parse(source=filename, format=serialization)
         except:
-            self.logger.debug('Could not import', filename, '.')
-            self.logger.debug('Make sure the file exists and contains data in', serialization)
+            logger.debug('Could not import', filename, '.')
+            logger.debug('Make sure the file exists and contains data in', serialization)
             pass
 
         return
@@ -321,8 +320,8 @@ class GitRepo:
         Args:
             path: A string containing the path to the repository.
         """
-        self.logger = logging.getLogger('git_repo.core.quit')
-        self.logger.debug('GitRepo, init, Create an instance of GitStore')
+        logger = logging.getLogger('quit.core.GitRepo')
+        logger.debug('GitRepo, init, Create an instance of GitStore')
         self.path = path
 
         if not exists(path):
@@ -385,7 +384,7 @@ class GitRepo:
             index.add(filename)
             index.write()
         except:
-            self.logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
+            logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
 
     def addRemote(self, name, url):
         """Add a remote.
@@ -396,15 +395,15 @@ class GitRepo:
         """
         try:
             self.repo.remotes.create(name, url)
-            self.logger.debug('GitRepo, addRemote, successfully added remote', name, url)
+            logger.debug('GitRepo, addRemote, successfully added remote', name, url)
         except:
-            self.logger.debug('GitRepo, addRemote, could not add remote', name, url)
+            logger.debug('GitRepo, addRemote, could not add remote', name, url)
 
         try:
             self.repo.remotes.set_push_url(name, url)
             self.repo.remotes.set_url(name, url)
         except:
-            self.logger.debug('GitRepo, addRemote, could not set urls', name, url)
+            logger.debug('GitRepo, addRemote, could not set urls', name, url)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -416,9 +415,9 @@ class GitRepo:
             commit = self.repo.revparse_single(commitid)
             self.repo.set_head(commit.oid)
             self.repo.reset(commit.oid, GIT_RESET_HARD)
-            self.logger.debug('GitRepo, checkout, Checked out commit:', commitid)
+            logger.debug('GitRepo, checkout, Checked out commit:', commitid)
         except:
-            self.logger.debug('GitRepo, checkout, Commit-ID (' + commitid + ') does not exist')
+            logger.debug('GitRepo, checkout, Commit-ID (' + commitid + ') does not exist')
 
     def commit(self, message=None):
         """Commit staged files.
@@ -458,9 +457,9 @@ class GitRepo:
                                         tree,
                                         [self.repo.head.get_object().hex]
                                         )
-            self.logger.debug('GitRepo, commit, Updates commited')
+            logger.debug('GitRepo, commit, Updates commited')
         except:
-            self.logger.debug('GitRepo, commit, Nothing to commit')
+            logger.debug('GitRepo, commit, Nothing to commit')
 
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
@@ -492,7 +491,7 @@ class GitRepo:
                 """
                 self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
         except Exception as e:
-            self.logger.debug('Git garbage collection failed to spawn', e)
+            logger.debug('Git garbage collection failed to spawn', e)
         return
 
     def getpath(self):
@@ -573,7 +572,7 @@ class GitRepo:
         try:
             self.repo.remotes[remote].fetch()
         except:
-            self.logger.debug('GitRepo, pull,  No remote', remote)
+            logger.debug('GitRepo, pull,  No remote', remote)
 
         ref = 'refs/remotes/' + remote + '/' + branch
         remoteid = self.repo.lookup_reference(ref).target
@@ -602,7 +601,7 @@ class GitRepo:
                                     [self.repo.head.target, remoteid])
             self.repo.state_cleanup()
         else:
-            self.logger.debug('GitRepo, pull, Unknown merge analysis result')
+            logger.debug('GitRepo, pull, Unknown merge analysis result')
 
     def push(self, remote='origin', branch='master'):
         """Push if possible.
@@ -616,13 +615,13 @@ class GitRepo:
         try:
             remo = self.repo.remotes[remote]
         except:
-            self.logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
+            logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
             return
 
         try:
             remo.push(ref, callbacks=self.callback)
         except:
-            self.logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
+            logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
 
     def getRemotes(self):
         remotes = {}
@@ -663,7 +662,7 @@ class GitRepo:
         try:
             credentials = Keypair(username, pubkey, privkey, passphrase)
         except:
-            self.logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
+            logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
             return
 
         return RemoteCallbacks(credentials=credentials)
