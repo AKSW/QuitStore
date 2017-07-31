@@ -36,6 +36,8 @@ def splitinformation(quads, GraphObject):
 
 def _sigterm_handler(signum, frame):
     sys.exit(0)
+
+
 _sigterm_handler.__enter_ctx__ = False
 
 
