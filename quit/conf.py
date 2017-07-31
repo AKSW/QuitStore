@@ -44,7 +44,12 @@ class QuitConfiguration:
         self.nsMngrGraphconf = NamespaceManager(self.sysconf)
         self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/', override=False)
 
-        self.__initstoreconfig(repository=repository, targetdir=targetdir, configfile=configfile, configmode=configmode)
+        self.__initstoreconfig(
+            repository=repository,
+            targetdir=targetdir,
+            configfile=configfile,
+            configmode=configmode
+        )
 
         return
 
@@ -54,7 +59,9 @@ class QuitConfiguration:
             try:
                 self.sysconf.parse(configfile, format='turtle')
             except:
-                raise InvalidConfigurationError('Configuration could not be parsed', self.configfile)
+                raise InvalidConfigurationError(
+                    'Configuration could not be parsed', self.configfile
+                )
 
             self.configfile = configfile
         else:
@@ -129,7 +136,9 @@ class QuitConfiguration:
                 elif len(founduris) > 1:
                     logger.warning('No named graph found. ' + absfile + ' skipped.')
                 elif len(founduris) < 1:
-                    logger.warning('More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.')
+                    logger.warning(
+                        'More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.'
+                    )
 
             elif format == 'nt':
                 if graphuri:

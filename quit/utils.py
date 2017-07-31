@@ -27,10 +27,15 @@ def splitinformation(quads, GraphObject):
                         })
         else:
             graphsInRequest.add(graph.strip('<>'))
-            data.append({
-                        'graph': graph.strip('<>'),
-                        'quad': quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' ' + graph + ' .\n'
-                        })
+            data.append(
+                            {
+                                'graph': graph.strip('<>'),
+                                'quad': quad[0].n3() + ' ' +
+                                quad[1].n3() + ' ' +
+                                quad[2].n3() + ' ' +
+                                graph + ' .\n'
+                            }
+                        )
     return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
 
 

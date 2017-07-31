@@ -483,13 +483,10 @@ class GitRepo:
             commitid: A string cotaining a commitid.
         """
         try:
-            """
-            Check if the garbage collection process is still running
-            """
+            # Check if the garbage collection process is still running
             if self.gcProcess is None or self.gcProcess.poll() is not None:
-                """
-                Start garbage collection with "--auto" option, which imidietly terminates, if it is not necessary
-                """
+                # Start garbage collection with "--auto" option,
+                # which imidietly terminates, if it is not necessary
                 self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
         except Exception as e:
             logger.debug('Git garbage collection failed to spawn', e)
@@ -512,7 +509,6 @@ class GitRepo:
         commits = []
         if len(self.repo.listall_reference_objects()) > 0:
             for commit in self.repo.walk(self.repo.head.target, GIT_SORT_REVERSE):
-                # commitdate = datetime.fromtimestamp(float(commit.date)).strftime('%Y-%m-%d %H:%M:%S')
                 commits.append({
                     'id': str(commit.oid),
                     'message': str(commit.message),

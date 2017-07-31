@@ -208,17 +208,21 @@ def initialize(args):
 
         if args.garbagecollection:
             try:
-                gcAutoThreshold = subprocess.check_output(["git", "config", "gc.auto"]).decode("UTF-8").strip()
+                gcAutoThreshold = subprocess.check_output(
+                    ["git", "config", "gc.auto"]
+                ).decode("UTF-8").strip()
+
                 if not gcAutoThreshold:
                     gcAutoThreshold = 256
                     subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
                     logger.info('Set default gc.auto threshold ' + str(gcAutoThreshold))
+
                 gc = True
-                logger.info('Garbage Collection is enabled with gc.auto threshold ' + str(gcAutoThreshold))
+                logger.info('Garbage Collection is enabled with gc.auto threshold ' +
+                            str(gcAutoThreshold))
             except Exception as e:
-                """
-                Disable garbage collection for the rest of the run because it is likely that git is not available
-                """
+                # Disable garbage collection for the rest of the run because it
+                # is likely that git is not available
                 gc = False
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
@@ -283,7 +287,9 @@ def initializeMemoryStore(config):
 
         try:
             store.addfile(filepath, config.getserializationoffile(filename))
-            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
+            logger.info(
+                'Success: Graph with URI: ' + graphstring + ' added to my known graphs list'
+            )
         except:
             logger.info('Error: Graph with URI: ' + graphstring + ' not added')
             pass
@@ -655,7 +661,13 @@ def resultFormat():
         'application/n-quads': 'nquads'
     }
     best = request.accept_mimetypes.best_match(
-        ['application/sparql-results+json', 'application/sparql-results+xml', 'application/rdf+xml', 'text/turtle', 'application/nquads']
+        [
+            'application/sparql-results+json',
+            'application/sparql-results+xml',
+            'application/rdf+xml',
+            'text/turtle',
+            'application/nquads'
+        ]
     )
     # Return json as default, if no mime type is matching
     if best is None:
@@ -672,6 +684,7 @@ def parseArgs(args):
                 "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
+    targethelp = 'The directory of the local store repository.'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
@@ -681,7 +694,7 @@ def parseArgs(args):
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
     parser.add_argument('-l', '--logfile', type=str, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
-    parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
+    parser.add_argument('-t', '--targetdir', type=str, help=targethelp)
     parser.add_argument('-cm', '--configmode', type=str, choices=[
         'graphfiles',
         'localconfig',
