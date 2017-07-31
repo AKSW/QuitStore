@@ -12,8 +12,7 @@ from quit.conf import QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
 from quit.parsers import NQuadsParser
-from quit.utils import splitinformation, sparqlresponse
-from quit import handleexit
+from quit.utils import splitinformation, sparqlresponse, handle_exit
 import logging
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
@@ -705,5 +704,5 @@ if __name__ == '__main__':
     sys.setrecursionlimit(2 ** 15)
 
     # The app is started with an exit handler
-    with handleexit.handle_exit(savedexit):
+    with handle_exit(savedexit):
         main()
