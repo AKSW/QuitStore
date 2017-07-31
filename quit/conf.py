@@ -167,7 +167,7 @@ class QuitConfiguration:
             try:
                 urlparse(graphuri)
             except:
-                graphuri=None
+                graphuri = None
 
             return graphuri
 
@@ -175,10 +175,10 @@ class QuitConfiguration:
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org/'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
-        query+= '  ?graph a <' + nsQuit + 'Graph> . '
-        query+= '  ?graph <' + nsQuit + 'graphUri> ?graphuri . '
-        query+= '  ?graph <' + nsQuit + 'graphFile> ?filename . '
-        query+= '}'
+        query += '  ?graph a <' + nsQuit + 'Graph> . '
+        query += '  ?graph <' + nsQuit + 'graphUri> ?graphuri . '
+        query += '  ?graph <' + nsQuit + 'graphFile> ?filename . '
+        query += '}'
         result = self.graphconf.query(query)
 
         repopath = self.getRepoPath()

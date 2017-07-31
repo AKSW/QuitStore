@@ -48,7 +48,7 @@ def __savefiles():
         graphs = config.getgraphuriforfile(file)
         content = []
         for graph in graphs:
-            content+= store.getgraphcontent(graph)
+            content += store.getgraphcontent(graph)
         fileobject = FileReference(file)
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
@@ -191,7 +191,7 @@ def initialize(args):
             fh.setLevel(logging.DEBUG)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
-            logger.debug('Logfile: '+ args.logfile)
+            logger.debug('Logfile: ' + args.logfile)
         except FileNotFoundError:
             logger.error('Logfile not found: ' + args.logfile)
             sys.exit('Exiting quit')
@@ -252,7 +252,7 @@ def initialize(args):
         graphs = config.getgraphuriforfile(file)
         content = []
         for graph in graphs:
-            content+= store.getgraphcontent(graph)
+            content += store.getgraphcontent(graph)
         fileobject = FileReference(join(config.getRepoPath(), file))
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
@@ -279,7 +279,7 @@ def initializeMemoryStore(config):
         graphstring = ''
 
         for graph in graphs:
-            graphstring+= str(graph)
+            graphstring += str(graph)
 
         try:
             store.addfile(filepath, config.getserializationoffile(filename))
