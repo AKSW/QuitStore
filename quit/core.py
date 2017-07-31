@@ -14,6 +14,7 @@ from subprocess import Popen
 
 logger = logging.getLogger('quit.core')
 
+
 class FileReference:
     """A class that manages n-quad files.
 

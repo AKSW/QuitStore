@@ -38,6 +38,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
 ch.setFormatter(formatter)
 
+
 def __savefiles():
     """Update the files after a update query was executed on the store."""
     config = app.config['config']
