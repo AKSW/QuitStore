@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
-from os import makedirs
-from os.path import abspath, exists, isdir, join
+from os import makedirs, environ
+from os.path import abspath, exists, isdir, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
 from quit.update import evalUpdate
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
@@ -9,7 +9,9 @@ from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 from pygit2 import init_repository, clone_repository
-from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
+from pygit2 import Repository, Signature, RemoteCallbacks
+from pygit2 import KeypairFromAgent, Keypair, UserPass
+from pygit2 import credentials
 from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
 from subprocess import Popen
 
@@ -319,6 +321,7 @@ class GitRepo:
 
         Args:
             path: A string containing the path to the repository.
+            origin: The remote URL where to clone and fetch from and push to
         """
         logger = logging.getLogger('quit.core.GitRepo')
         logger.debug('GitRepo, init, Create an instance of GitStore')
@@ -338,7 +341,7 @@ class GitRepo:
             pass
 
         if origin:
-            self.callback = self.setCallback(origin)
+            self.callback = QuitRemoteCallbacks()
 
         if self.repo:
             if self.repo.is_bare:
@@ -350,7 +353,7 @@ class GitRepo:
         else:
             if origin:
                 # clone
-                self.cloneRepository(origin, path, self.callback)
+                self.repo = self.cloneRepository(origin, path, self.callback)
             else:
                 self.repo = init_repository(path=path, bare=False)
 
@@ -362,7 +365,6 @@ class GitRepo:
                 bare=False,
                 callbacks=callback
             )
-            self.addRemote('origin', origin)
             return repo
         except Exception as e:
             raise QuitGitRepoError(
@@ -542,17 +544,6 @@ class GitRepo:
                 ids.append(str(commit.oid))
         return ids
 
-    def isCallbackSet(self):
-        """Checks if an authentication callback is already defined in the current GitRepo object.
-
-        Returns:
-            True if callback is set, else False
-        """
-        if self.callback is None:
-            return False
-
-        return True
-
     def isstagingareaclean(self):
         """Check if staging area is clean.
 
@@ -645,36 +636,48 @@ class GitRepo:
 
         return remotes
 
-    def setCallback(self, origin):
-        """Set a pygit callback for user authentication when acting with remotes.
 
-        This method uses the private-public-keypair of the ssh host configuration.
-        The keys are expected to be found at ~/.ssh/
-        Warning: Create a keypair that will be used only in QuitStore and do not use
-        existing keypairs.
+class QuitRemoteCallbacks (RemoteCallbacks):
+    """Set a pygit callback for user authentication when acting with remotes."""
 
-        Args:
-            username: The git username (mostly) given in the adress.
-            passphrase: The passphrase of the private key.
+    def credentials(self, url, username_from_url, allowed_types):
         """
-        from os.path import expanduser
-        ssh = join(expanduser('~'), '.ssh')
-        pubkey = join(ssh, 'id_quit.pub')
-        privkey = join(ssh, 'id_quit')
+        The callback to return a suitable authentication method.
 
-        from re import search
-        # regex to match username in web git adresses
-        regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
-        p = search(regex, origin)
-        username = p.group(3)
-
-        passphrase = ''
-
-        try:
-            credentials = Keypair(username, pubkey, privkey, passphrase)
-        except Exception as e:
-            logger.info('GitRepo, setcallback: Something went wrong with Keypair')
-            logger.debug(e)
-            return
-
-        return RemoteCallbacks(credentials=credentials)
+        it supports GIT_CREDTYPE_SSH_KEY and GIT_CREDTYPE_USERPASS_PLAINTEXT
+        GIT_CREDTYPE_SSH_KEY with an ssh agent configured in the env variable SSH_AUTH_SOCK
+          or with id_rsa and id_rsa.pub in ~/.ssh (password must be the empty string)
+        GIT_CREDTYPE_USERPASS_PLAINTEXT from the env variables GIT_USERNAME and GIT_PASSWORD
+        """
+        if credentials.GIT_CREDTYPE_SSH_KEY & allowed_types:
+            if "SSH_AUTH_SOCK" in environ:
+                # Use ssh agent for authentication
+                return KeypairFromAgent(username_from_url)
+            else:
+                ssh = join(expanduser('~'), '.ssh')
+                if "QUIT_SSH_KEY_HOME" in environ:
+                    ssh = environ["QUIT_SSH_KEY_HOME"]
+                # public key is still needed because:
+                # _pygit2.GitError: Failed to authenticate SSH session:
+                # Unable to extract public key from private key file:
+                # Method unimplemented in libgcrypt backend
+                pubkey = join(ssh, 'id_rsa.pub')
+                privkey = join(ssh, 'id_rsa')
+                # check if ssh key is available in the directory
+                if isfile(pubkey) and isfile(privkey):
+                    return Keypair(username_from_url, pubkey, privkey, "")
+                else:
+                    raise Exception(
+                        "No SSH keys could be found, please specify SSH_AUTH_SOCK or add keys to " +
+                        "your ~/.ssh/"
+                    )
+        elif credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
+            if "GIT_USERNAME" in environ and "GIT_PASSWORD" in environ:
+                return UserPass(environ["GIT_USERNAME"], environ["GIT_PASSWORD"])
+            else:
+                raise Exception(
+                    "Remote requested plaintext username and password authentication but " +
+                    "GIT_USERNAME or GIT_PASSWORD are not set."
+                )
+        else:
+            raise Exception("Only unsupported credential types allowed by remote end")

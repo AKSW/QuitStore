@@ -2,13 +2,14 @@ FROM python:3
 
 MAINTAINER Norman Radtke <radtke@informatik.uni-leipzig.de>
 MAINTAINER Natanael Arndt <arndt@informatik.uni-leipzig.de>
+ENV SSH_AUTH_SOCK /var/run/ssh-agent.sock
 
 RUN apt-get update && apt-get -y install \
     git \
     cmake \
-    libssh2-1 \
-    openssl \
     libffi-dev \
+    libssl-dev \
+    libssh2-1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 --branch v0.25.1 https://github.com/libgit2/libgit2.git \
