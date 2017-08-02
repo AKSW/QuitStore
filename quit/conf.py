@@ -2,10 +2,12 @@ import logging
 from os import listdir
 from os.path import join, isfile, abspath, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
+from quit.exceptions import UnknownConfigurationError
 from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
+from rdflib.plugins.parsers import notation3, nquads, ntriples
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, urlencode
 
 logger = logging.getLogger('quit.conf')
 
@@ -29,6 +31,7 @@ class QuitConfiguration:
         file structure.
         """
         logger = logging.getLogger('quit.conf.QuitConfiguration')
+        logger.debug('Initializing configuration object.')
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -44,12 +47,16 @@ class QuitConfiguration:
         self.nsMngrGraphconf = NamespaceManager(self.sysconf)
         self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/', override=False)
 
-        self.__initstoreconfig(
-            repository=repository,
-            targetdir=targetdir,
-            configfile=configfile,
-            configmode=configmode
-        )
+        try:
+            self.__initstoreconfig(
+                repository=repository,
+                targetdir=targetdir,
+                configfile=configfile,
+                configmode=configmode
+            )
+        except InvalidConfigurationError as e:
+            logger.error(e)
+            raise e
 
         return
 
@@ -58,9 +65,19 @@ class QuitConfiguration:
         if isfile(configfile):
             try:
                 self.sysconf.parse(configfile, format='turtle')
-            except:
+            except notation3.BadSyntax:
                 raise InvalidConfigurationError(
-                    'Configuration could not be parsed', self.configfile
+                    "Bad syntax. Configuration file could not be parsed. {}".format(configfile)
+                )
+            except PermissionError:
+                raise InvalidConfigurationError(
+                    "Configuration file could not be parsed. Permission denied. {}".format(
+                        configfile
+                    )
+                )
+            except Exception as e:
+                raise UnknownConfigurationError(
+                    "UnknownConfigurationError: {}".format(e)
                 )
 
             self.configfile = configfile
@@ -119,8 +136,10 @@ class QuitConfiguration:
 
                 try:
                     tmpgraph.parse(source=absfile, format=format)
-                except:
-                    logger.warning('Could not parse graphfile ' + absfile + ' skipped.')
+                except Exception:
+                    logger.error(
+                        "Could not parse graphfile {}. File skipped.".format(absfile)
+                    )
                     continue
 
                 namedgraphs = tmpgraph.contexts()
@@ -146,17 +165,22 @@ class QuitConfiguration:
                 else:
                     logger.warning('No .graph file found. ' + absfile + ' skipped.')
 
-        self.__setgraphsfromconf()
+        try:
+            self.__setgraphsfromconf()
+        except InvalidConfigurationError as e:
+            raise e
 
     def __initgraphsfromconf(self, configfile):
         """Init graphs with setting from config.ttl."""
         if not isfile(configfile):
-            raise MissingConfigurationError('Configfile is missing', configfile)
+            raise MissingConfigurationError("Configfile is missing {}".format(configfile))
 
         try:
             self.graphconf.parse(configfile, format='turtle')
         except Exception as e:
-            raise InvalidConfigurationError('Configfile could not be parsed', configfile, e)
+            raise InvalidConfigurationError(
+                "Configfile could not be parsed {} {}".format(configfile, e)
+            )
 
         # Get Graphs
         self.__setgraphsfromconf()
@@ -170,15 +194,22 @@ class QuitConfiguration:
         Returns:
             graphuri: String with the graph URI
         """
-        if isfile(graphfile):
+        try:
             f = open(graphfile, 'r')
-            graphuri = f.readline().strip()
-            try:
-                urlparse(graphuri)
-            except:
-                graphuri = None
+        except FileNotFoundError:
+            logger.debug("File not found {}".format(graphfile))
+            return ''
 
-            return graphuri
+        graphuri = f.readline().strip()
+
+        try:
+            urlparse(graphuri)
+            logger.debug("Graph URI {} found in {}".format(graphuri, graphfile))
+        except Exception:
+            graphuri = None
+            logger.debug("No graph URI found in {}".format(graphfile))
+
+        return graphuri
 
     def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
@@ -215,8 +246,13 @@ class QuitConfiguration:
                 else:
                     try:
                         open(absfile, 'a').close()
-                    except:
-                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                    except FileNotFoundError:
+                        raise InvalidConfigurationError(
+                            "File not found. Can't create file {} in repo {}".format(
+                                absfile,
+                                self.getRepoPath()
+                            )
+                        )
                 filename = relpath(repopath, absfile)
             else:
                 if isfile(joinedabsfile):
@@ -225,8 +261,29 @@ class QuitConfiguration:
                 else:
                     try:
                         open(joinedabsfile, 'a').close()
-                    except:
-                        raise('Can\'t create file', absfile, 'in repo', self.getRepoPath())
+                    except PermissionError:
+                        raise InvalidConfigurationError(
+                            "Permission denied. Can't create file {} in repo {}".format(
+                                absfile,
+                                self.getRepoPath()
+                            )
+                        )
+                    except FileNotFoundError:
+                        raise InvalidConfigurationError(
+                            "File not found. Can't create file {} in repo {}".format(
+                                absfile,
+                                self.getRepoPath()
+                            )
+                        )
+                    except Exception as e:
+                        raise UnknownConfigurationError(
+                            "Can't create file {} in repo {}. Error: {}".format(
+                                absfile,
+                                self.getRepoPath(),
+                                e
+                            )
+                        )
+
                 filename = relpath(joinedabsfile, repopath)
 
             # we store which named graph is serialized in which file

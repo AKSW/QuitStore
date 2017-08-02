@@ -5,6 +5,8 @@ import logging
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 
+logger = logging.getLogger('quit.helpers')
+
 
 class QueryAnalyzer:
     """A class that provides methods for received sparql query strings.
@@ -13,13 +15,14 @@ class QueryAnalyzer:
     At the moment the class distinguishes between SPARQL Update and Select queries.
     """
 
+    logger = logging.getLogger('quit.helpers.QueryAnalyzer')
+
     def __init__(self, querystring, graph=None):
         """Initialize a check for a given query string.
 
         Args:
             querystring: A string containing a query.
         """
-        self.logger = logging.getLogger('query_analyzer_helpers.quit')
         self.query = querystring
         self.parsedQuery = None
         self.queryType = None
@@ -71,7 +74,7 @@ class QueryAnalyzer:
         """
         try:
             self.parsedQuery = sparql.prepareQuery(querystring)
-            self.logger.debug(str(self.parsedQuery.algebra.name))
+            logger.debug(str(self.parsedQuery.algebra.name))
             if str(self.parsedQuery.algebra.name) == 'DescribeQuery':
                 self.queryType = 'DESCRIBE'
             elif str(self.parsedQuery.algebra.name) == 'ConstructQuery':
@@ -81,7 +84,7 @@ class QueryAnalyzer:
             elif str(self.parsedQuery.algebra.name) == 'AskQuery':
                 self.queryType = 'ASK'
             return True
-        except:
+        except Exception as e:
             return False
 
     def evalUpdate(self, querystring, graph):

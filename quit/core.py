@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 from os import makedirs
 from os.path import abspath, exists, isdir, join
+from quit.exceptions import QuitGitRepoError
 from quit.update import evalUpdate
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
@@ -70,10 +71,7 @@ class FileReference:
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
             logger.debug('Success: File', self.path, 'parsed')
-            # quadstring = graph.serialize(format="nquads").decode('UTF-8')
-            # quadlist = quadstring.splitlines()
-            # self.__setcontent(quadlist)
-        except:
+        except KeyError as e:
             # Given file contains non valid rdf data
             # logger.debug('Error: File', self.path, 'not parsed')
             # self.__setcontent([[None][None][None][None]])
@@ -238,12 +236,16 @@ class MemoryStore:
         """
         try:
             self.store.parse(source=filename, format=serialization)
-        except:
-            logger.debug('Could not import', filename, '.')
-            logger.debug('Make sure the file exists and contains data in', serialization)
+        except Exception as e:
+            logger.debug(e)
+            logger.debug(
+                "Could not import file: {}. " +
+                "Make sure the file exists and contains data in  {}".format(
+                    filename,
+                    serialization
+                )
+            )
             pass
-
-        return
 
     def addquads(self, quads):
         """Add quads to the MemoryStore.
@@ -253,8 +255,6 @@ class MemoryStore:
         """
         self.store.addN(quads)
         self.store.commit()
-
-        return
 
     def query(self, querystring):
         """Execute a SPARQL select query.
@@ -333,7 +333,9 @@ class GitRepo:
 
         try:
             self.repo = Repository(path)
-        except:
+        except KeyError:
+            pass
+        except AttributeError:
             pass
 
         if origin:
@@ -341,7 +343,7 @@ class GitRepo:
 
         if self.repo:
             if self.repo.is_bare:
-                raise Exception('Bare repositories not supported, yet')
+                raise QuitGitRepoError('Bare repositories not supported, yet')
 
             if origin:
                 # set remote
@@ -363,8 +365,13 @@ class GitRepo:
             )
             self.addRemote('origin', origin)
             return repo
-        except:
-            raise Exception('Could not clone from', origin)
+        except Exception as e:
+            raise QuitGitRepoError(
+                "Could not clone from: {} origin. {}".format(
+                    origin,
+                    e
+                )
+            )
 
     def addall(self):
         """Add all (newly created|changed) files to index."""
@@ -384,8 +391,9 @@ class GitRepo:
         try:
             index.add(filename)
             index.write()
-        except:
-            logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
+        except Exception as e:
+            logger.info("GitRepo, addfile, Could not add file  {}.".format(filename))
+            logger.debug(e)
 
     def addRemote(self, name, url):
         """Add a remote.
@@ -396,15 +404,17 @@ class GitRepo:
         """
         try:
             self.repo.remotes.create(name, url)
-            logger.debug('GitRepo, addRemote, successfully added remote', name, url)
-        except:
-            logger.debug('GitRepo, addRemote, could not add remote', name, url)
+            logger.info("Successfully added remote: {} - {}".format(name, url))
+        except Exception as e:
+            logger.info("Could not add remote: {} - {}".format(name, url))
+            logger.debug(e)
 
         try:
             self.repo.remotes.set_push_url(name, url)
             self.repo.remotes.set_url(name, url)
-        except:
-            logger.debug('GitRepo, addRemote, could not set urls', name, url)
+        except Exception as e:
+            logger.info("Could not set push/fetch urls: {} - {}".format(name, url))
+            logger.debug(e)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -416,9 +426,10 @@ class GitRepo:
             commit = self.repo.revparse_single(commitid)
             self.repo.set_head(commit.oid)
             self.repo.reset(commit.oid, GIT_RESET_HARD)
-            logger.debug('GitRepo, checkout, Checked out commit:', commitid)
-        except:
-            logger.debug('GitRepo, checkout, Commit-ID (' + commitid + ') does not exist')
+            logger.info("Checked out commit: {}".format(commitid))
+        except Exception as e:
+            logger.info("Could not check out commit: {}".format(commitid))
+            logger.debug(e)
 
     def commit(self, message=None):
         """Commit staged files.
@@ -431,8 +442,6 @@ class GitRepo:
         if self.isstagingareaclean():
             # nothing to commit
             return
-
-        # tree = self.repo.TreeBuilder().write()
 
         index = self.repo.index
         index.read()
@@ -458,9 +467,10 @@ class GitRepo:
                                         tree,
                                         [self.repo.head.get_object().hex]
                                         )
-            logger.debug('GitRepo, commit, Updates commited')
-        except:
-            logger.debug('GitRepo, commit, Nothing to commit')
+            logger.info('GitRepo, commit, Updates commited')
+        except Exception as e:
+            logger.info('GitRepo, commit, Nothing to commit')
+            logger.debug(e)
 
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
@@ -489,8 +499,8 @@ class GitRepo:
                 # which imidietly terminates, if it is not necessary
                 self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
         except Exception as e:
-            logger.debug('Git garbage collection failed to spawn', e)
-        return
+            logger.debug('Git garbage collection failed to spawn')
+            logger.debug(e)
 
     def getpath(self):
         """Return the path of the git repository.
@@ -568,8 +578,9 @@ class GitRepo:
         """
         try:
             self.repo.remotes[remote].fetch()
-        except:
-            logger.debug('GitRepo, pull,  No remote', remote)
+        except Exception as e:
+            logger.info("Can not pull:  Remote {} not found.".format(remote))
+            logger.debug(e)
 
         ref = 'refs/remotes/' + remote + '/' + branch
         remoteid = self.repo.lookup_reference(ref).target
@@ -598,7 +609,7 @@ class GitRepo:
                                     [self.repo.head.target, remoteid])
             self.repo.state_cleanup()
         else:
-            logger.debug('GitRepo, pull, Unknown merge analysis result')
+            logger.debug('Can not pull. Unknown merge analysis result')
 
     def push(self, remote='origin', branch='master'):
         """Push if possible.
@@ -611,14 +622,16 @@ class GitRepo:
 
         try:
             remo = self.repo.remotes[remote]
-        except:
-            logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
+        except Exception as e:
+            logger.info("Can not push. Remote: {} does not exist.".format(remote))
+            logger.debug(e)
             return
 
         try:
             remo.push(ref, callbacks=self.callback)
-        except:
-            logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
+        except Exception as e:
+            logger.info("Can not push to {} with ref {}".format(remote, str(ref)))
+            logger.debug(e)
 
     def getRemotes(self):
         remotes = {}
@@ -626,7 +639,9 @@ class GitRepo:
         try:
             for remote in self.repo.remotes:
                 remotes[remote.name] = [remote.url, remote.push_url]
-        except:
+        except Exception as e:
+            logger.info('No remotes found.')
+            logger.debug(e)
             return {}
 
         return remotes
@@ -658,8 +673,9 @@ class GitRepo:
 
         try:
             credentials = Keypair(username, pubkey, privkey, passphrase)
-        except:
-            logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
+        except Exception as e:
+            logger.info('GitRepo, setcallback: Something went wrong with Keypair')
+            logger.debug(e)
             return
 
         return RemoteCallbacks(credentials=credentials)

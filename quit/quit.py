@@ -74,7 +74,8 @@ def __commit(self, message=None):
     """Private method to commit the changes."""
     try:
         self.gitrepo.commit(message)
-    except:
+    except Exception as e:
+        logger.debug(e)
         pass
 
     return
@@ -227,15 +228,23 @@ def initialize(args):
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
 
-    config = QuitConfiguration(
-        versioning=v,
-        gc=gc,
-        configfile=args.configfile,
-        targetdir=args.targetdir,
-        repository=args.repourl,
-        configmode=args.configmode,
-    )
+    try:
+        config = QuitConfiguration(
+            versioning=v,
+            gc=gc,
+            configfile=args.configfile,
+            targetdir=args.targetdir,
+            repository=args.repourl,
+            configmode=args.configmode,
+        )
+    except InvalidConfigurationError as e:
+        logger.error(e)
+        sys.exit('Exiting quit')
 
+    gitrepo = GitRepo(
+        path=config.getRepoPath(),
+        origin=config.getOrigin()
+    )
     try:
         gitrepo = GitRepo(
             path=config.getRepoPath(),
@@ -290,8 +299,9 @@ def initializeMemoryStore(config):
             logger.info(
                 'Success: Graph with URI: ' + graphstring + ' added to my known graphs list'
             )
-        except:
+        except Exception as e:
             logger.info('Error: Graph with URI: ' + graphstring + ' not added')
+            logger.debug(e)
             pass
 
     return store
@@ -314,8 +324,8 @@ def checkrequest(request):
 
     try:
         graph.parse(data=reqdata, format='nquads')
-    except:
-        raise
+    except Exception as e:
+        raise e
 
     quads = graph.quads((None, None, None, None))
     data = splitinformation(quads, graph)
@@ -340,8 +350,10 @@ def processsparql(querystring):
     except NotAcceptable as e:
         logger.error("This is not acceptable:", e)
         exit(1)
-    except:
-        raise
+    except Exception as e:
+        logger.info('This is not acceptable')
+        logger.debug(e)
+        exit(1)
 
     store = app.config['store']
     config = app.config['config']
@@ -481,8 +493,9 @@ def sparql():
         else:
             logger.debug("unknown request method:", request.method)
             return '', status.HTTP_400_BAD_REQUEST
-    except:
-        logger.debug('Query is missing in request')
+    except Exception as e:
+        logger.info('Query is missing in request')
+        logger.debug(e)
         return '', status.HTTP_400_BAD_REQUEST
 
     try:
@@ -566,7 +579,9 @@ def addTriple():
     if request.method == 'POST':
         try:
             data = checkrequest(request)
-        except:
+        except Exception as e:
+            logger.info('This request is not allowed')
+            logger.debug(e)
             return '', status.HTTP_403_FORBIDDEN
 
         store = app.config['store']
@@ -595,7 +610,8 @@ def deleteTriple():
     if request.method == 'POST':
         try:
             values = checkrequest(request)
-        except:
+        except Exception as e:
+            logger.debug(e)
             return '', status.HTTP_403_FORBIDDEN
 
         store = app.config['store']

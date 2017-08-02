@@ -15,3 +15,11 @@ class MissingConfigurationError(Error):
 
 class MissingFileError(Error):
     pass
+
+
+class UnknownConfigurationError(Error):
+    pass
+
+
+class QuitGitRepoError(Error):
+    pass
