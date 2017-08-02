@@ -153,10 +153,12 @@ class QuitConfiguration:
                 if len(founduris) == 1:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 elif len(founduris) > 1:
-                    logger.warning('No named graph found. ' + absfile + ' skipped.')
+                    logger.info("No named graph found. {} skipped.".format(absfile))
                 elif len(founduris) < 1:
-                    logger.warning(
-                        'More than one named graphs found. Can\'t decide. ' + absfile + ' skipped.'
+                    logger.info(
+                        "More than one named graphs found. Can't decide. {} skipped.".format(
+                            absfile
+                        )
                     )
 
             elif format == 'nt':

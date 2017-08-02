@@ -245,7 +245,6 @@ class MemoryStore:
                     serialization
                 )
             )
-            pass
 
     def addquads(self, quads):
         """Add quads to the MemoryStore.
@@ -467,9 +466,9 @@ class GitRepo:
                                         tree,
                                         [self.repo.head.get_object().hex]
                                         )
-            logger.info('GitRepo, commit, Updates commited')
+            logger.info('Updates commited')
         except Exception as e:
-            logger.info('GitRepo, commit, Nothing to commit')
+            logger.info('Nothing to commit')
             logger.debug(e)
 
     def commitexists(self, commitid):

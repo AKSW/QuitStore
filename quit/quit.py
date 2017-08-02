@@ -192,12 +192,12 @@ def initialize(args):
             fh.setLevel(logging.DEBUG)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
-            logger.debug('Logfile: ' + args.logfile)
+            logger.debug("Logfile: {}".format(args.logfile))
         except FileNotFoundError:
-            logger.error('Logfile not found: ' + args.logfile)
+            logger.error("Logfile not found: {}".format(args.logfile))
             sys.exit('Exiting quit')
         except PermissionError:
-            logger.error('Can not create logfile: ' + args.logfile)
+            logger.error("Can not create logfile: {}".format(args.logfile))
             sys.exit('Exiting quit')
 
     if args.disableversioning:
@@ -216,11 +216,14 @@ def initialize(args):
                 if not gcAutoThreshold:
                     gcAutoThreshold = 256
                     subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
-                    logger.info('Set default gc.auto threshold ' + str(gcAutoThreshold))
+                    logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
 
                 gc = True
-                logger.info('Garbage Collection is enabled with gc.auto threshold ' +
-                            str(gcAutoThreshold))
+                logger.info(
+                    "Garbage Collection is enabled with gc.auto threshold {}".format(
+                        gcAutoThreshold
+                    )
+                )
             except Exception as e:
                 # Disable garbage collection for the rest of the run because it
                 # is likely that git is not available

@@ -84,7 +84,7 @@ class QueryAnalyzer:
             elif str(self.parsedQuery.algebra.name) == 'AskQuery':
                 self.queryType = 'ASK'
             return True
-        except Exception as e:
+        except Exception:
             return False
 
     def evalUpdate(self, querystring, graph):
@@ -95,7 +95,5 @@ class QueryAnalyzer:
             Else, if not.
         """
         self.parsedQuery = self.prepareUpdate(querystring)
-        query = self.parsedQuery
         self.queryType = 'UPDATE'
-        # self.actions = update2.evalUpdate(graph, query)
         return
