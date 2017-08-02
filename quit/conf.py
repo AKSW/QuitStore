@@ -200,7 +200,7 @@ class QuitConfiguration:
             f = open(graphfile, 'r')
         except FileNotFoundError:
             logger.debug("File not found {}".format(graphfile))
-            return ''
+            return
 
         graphuri = f.readline().strip()
 
