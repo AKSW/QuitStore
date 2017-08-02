@@ -38,6 +38,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
 ch.setFormatter(formatter)
 
+
 def __savefiles():
     """Update the files after a update query was executed on the store."""
     config = app.config['config']
@@ -47,7 +48,7 @@ def __savefiles():
         graphs = config.getgraphuriforfile(file)
         content = []
         for graph in graphs:
-            content+= store.getgraphcontent(graph)
+            content += store.getgraphcontent(graph)
         fileobject = FileReference(file)
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
@@ -73,7 +74,8 @@ def __commit(self, message=None):
     """Private method to commit the changes."""
     try:
         self.gitrepo.commit(message)
-    except:
+    except Exception as e:
+        logger.debug(e)
         pass
 
     return
@@ -190,12 +192,12 @@ def initialize(args):
             fh.setLevel(logging.DEBUG)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
-            logger.debug('Logfile: '+ args.logfile)
+            logger.debug("Logfile: {}".format(args.logfile))
         except FileNotFoundError:
-            logger.error('Logfile not found: ' + args.logfile)
+            logger.error("Logfile not found: {}".format(args.logfile))
             sys.exit('Exiting quit')
         except PermissionError:
-            logger.error('Can not create logfile: ' + args.logfile)
+            logger.error("Can not create logfile: {}".format(args.logfile))
             sys.exit('Exiting quit')
 
     if args.disableversioning:
@@ -207,30 +209,45 @@ def initialize(args):
 
         if args.garbagecollection:
             try:
-                gcAutoThreshold = subprocess.check_output(["git", "config", "gc.auto"]).decode("UTF-8").strip()
+                gcAutoThreshold = subprocess.check_output(
+                    ["git", "config", "gc.auto"]
+                ).decode("UTF-8").strip()
+
                 if not gcAutoThreshold:
                     gcAutoThreshold = 256
                     subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
-                    logger.info('Set default gc.auto threshold ' + str(gcAutoThreshold))
+                    logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
+
                 gc = True
-                logger.info('Garbage Collection is enabled with gc.auto threshold ' + str(gcAutoThreshold))
+                logger.info(
+                    "Garbage Collection is enabled with gc.auto threshold {}".format(
+                        gcAutoThreshold
+                    )
+                )
             except Exception as e:
-                """
-                Disable garbage collection for the rest of the run because it is likely that git is not available
-                """
+                # Disable garbage collection for the rest of the run because it
+                # is likely that git is not available
                 gc = False
                 logger.info('Git garbage collection could not be configured and was disabled')
                 logger.debug(e)
 
-    config = QuitConfiguration(
-        versioning=v,
-        gc=gc,
-        configfile=args.configfile,
-        targetdir=args.targetdir,
-        repository=args.repourl,
-        configmode=args.configmode,
-    )
+    try:
+        config = QuitConfiguration(
+            versioning=v,
+            gc=gc,
+            configfile=args.configfile,
+            targetdir=args.targetdir,
+            repository=args.repourl,
+            configmode=args.configmode,
+        )
+    except InvalidConfigurationError as e:
+        logger.error(e)
+        sys.exit('Exiting quit')
 
+    gitrepo = GitRepo(
+        path=config.getRepoPath(),
+        origin=config.getOrigin()
+    )
     try:
         gitrepo = GitRepo(
             path=config.getRepoPath(),
@@ -251,7 +268,7 @@ def initialize(args):
         graphs = config.getgraphuriforfile(file)
         content = []
         for graph in graphs:
-            content+= store.getgraphcontent(graph)
+            content += store.getgraphcontent(graph)
         fileobject = FileReference(join(config.getRepoPath(), file))
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
@@ -278,13 +295,16 @@ def initializeMemoryStore(config):
         graphstring = ''
 
         for graph in graphs:
-            graphstring+= str(graph)
+            graphstring += str(graph)
 
         try:
             store.addfile(filepath, config.getserializationoffile(filename))
-            logger.info('Success: Graph with URI: ' + graphstring + ' added to my known graphs list')
-        except:
+            logger.info(
+                'Success: Graph with URI: ' + graphstring + ' added to my known graphs list'
+            )
+        except Exception as e:
             logger.info('Error: Graph with URI: ' + graphstring + ' not added')
+            logger.debug(e)
             pass
 
     return store
@@ -307,8 +327,8 @@ def checkrequest(request):
 
     try:
         graph.parse(data=reqdata, format='nquads')
-    except:
-        raise
+    except Exception as e:
+        raise e
 
     quads = graph.quads((None, None, None, None))
     data = splitinformation(quads, graph)
@@ -333,8 +353,10 @@ def processsparql(querystring):
     except NotAcceptable as e:
         logger.error("This is not acceptable:", e)
         exit(1)
-    except:
-        raise
+    except Exception as e:
+        logger.info('This is not acceptable')
+        logger.debug(e)
+        exit(1)
 
     store = app.config['store']
     config = app.config['config']
@@ -474,8 +496,9 @@ def sparql():
         else:
             logger.debug("unknown request method:", request.method)
             return '', status.HTTP_400_BAD_REQUEST
-    except:
-        logger.debug('Query is missing in request')
+    except Exception as e:
+        logger.info('Query is missing in request')
+        logger.debug(e)
         return '', status.HTTP_400_BAD_REQUEST
 
     try:
@@ -559,7 +582,9 @@ def addTriple():
     if request.method == 'POST':
         try:
             data = checkrequest(request)
-        except:
+        except Exception as e:
+            logger.info('This request is not allowed')
+            logger.debug(e)
             return '', status.HTTP_403_FORBIDDEN
 
         store = app.config['store']
@@ -588,7 +613,8 @@ def deleteTriple():
     if request.method == 'POST':
         try:
             values = checkrequest(request)
-        except:
+        except Exception as e:
+            logger.debug(e)
             return '', status.HTTP_403_FORBIDDEN
 
         store = app.config['store']
@@ -654,7 +680,13 @@ def resultFormat():
         'application/n-quads': 'nquads'
     }
     best = request.accept_mimetypes.best_match(
-        ['application/sparql-results+json', 'application/sparql-results+xml', 'application/rdf+xml', 'text/turtle', 'application/nquads']
+        [
+            'application/sparql-results+json',
+            'application/sparql-results+xml',
+            'application/rdf+xml',
+            'text/turtle',
+            'application/nquads'
+        ]
     )
     # Return json as default, if no mime type is matching
     if best is None:
@@ -671,6 +703,7 @@ def parseArgs(args):
                 "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
+    targethelp = 'The directory of the local store repository.'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
@@ -680,7 +713,7 @@ def parseArgs(args):
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
     parser.add_argument('-l', '--logfile', type=str, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
-    parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
+    parser.add_argument('-t', '--targetdir', type=str, help=targethelp)
     parser.add_argument('-cm', '--configmode', type=str, choices=[
         'graphfiles',
         'localconfig',
