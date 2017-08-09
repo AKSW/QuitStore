@@ -1,6 +1,6 @@
-Flask-API==0.6.4
+Flask-API
 pyyaml
-rdflib==4.2.2
+rdflib
 rfc3987
 flask-cors
-pygit2==0.25.0
+pygit2

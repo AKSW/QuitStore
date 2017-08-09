@@ -7,7 +7,6 @@ import sys
 from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InMemoryGraphAggregate
 
-
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
 

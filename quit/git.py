@@ -7,10 +7,16 @@ from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset, BNode
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a, XSD
 from quit.utils import graphdiff, clean_path
+from quit.cache import Cache
+from quit.benchmark import benchmark
+
+PROPERTY_REGEX = r"^((?P<key>([\w0-9_]+))\s*:\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\".*\"|'[^']*'))))"
 
 # roles
 role_author = QUIT['author']
 role_committer = QUIT['committer']
+
+CACHE = Cache()
 
 def _git_timestamp(ts, offset):
     import quit.utils as tzinfo
@@ -22,15 +28,7 @@ def _git_timestamp(ts, offset):
         tz = tzinfo.TZ(offset, tzname)
     return datetime.fromtimestamp(ts, tz)
 
-class Base(object):
-    def __init__(self):
-        pass
-
-    def __prov__(self):
-        pass
-
-
-class Repository(Base):
+class Repository(object):
     def __init__(self, path, **params):
         origin = params.get('origin', None)
 
@@ -213,22 +211,15 @@ class Repository(Base):
         pass
 
 
-class Revision(Base):
-    re_parser = re.compile(
-        r'(?P<key>[\w\-_]+): ((?P<value>[^"\n]+)|"(?P<multiline>.+)")',
-        re.DOTALL
-    )
+class Revision(object):
+    
 
-    def __init__(self, repository, commit):
-
-        message = commit.message.strip()
-        properties, message = self._parse_message(commit.message)
+    def __init__(self, repository, commit):        
         author = Signature(commit.author.name, commit.author.email, _git_timestamp(commit.author.time, commit.author.offset), commit.author.offset)
         committer = Signature(commit.committer.name, commit.committer.email, _git_timestamp(commit.committer.time, commit.committer.offset), commit.committer.offset)
 
         self.id = commit.hex
         self.short_id = self.id[:10]
-        self.message = message
         self.author = author
         self.author_date = author.datetime
         self.committer = committer
@@ -237,24 +228,38 @@ class Revision(Base):
         self._repository = repository
         self._commit = commit
         self._parents = None
-        self._properties = properties
+        self._parsed_message = None
+    
+    @benchmark
+    def _extract(self, message):
+        captures = {}
 
-    def _parse_message(self, message):
-        found = dict()
-        idx=-1
-        lines = message.splitlines()
-        for line in lines:
-            idx += 1
-            m = re.match(self.re_parser, line)
-            if m is not None:
-                found[m.group('key')] = m.group('value') or m.group('multiline')
-            else:
-                break
-        return (found, '\n'.join(lines[idx:]))
+        matches = re.finditer(PROPERTY_REGEX, message, re.DOTALL | re.MULTILINE)
+            
+        if matches:
+            for _, match in enumerate(matches):
+                if match.group('key') and match.group('value'):
+                    key, value = match.group('key'), match.group('value')
+
+                if match.group('key') and match.group('quoted'):
+                    key, value = match.group('key'), match.group('quoted')
+                    value = value[1 : len(value)-1] #remove quotes            
+
+                captures[key] = value
+            message = re.sub(PROPERTY_REGEX, "", message, 0, re.DOTALL | re.MULTILINE).strip(" \n")               
+        return captures, message
 
     @property
     def properties(self):
-        return self._properties
+        if not self._parsed_message:
+            self._parsed_message = self._extract(self._commit.message)
+        return self._parsed_message[0]
+
+    @property
+    def message(self):
+        if not self._parsed_message:
+            self._parsed_message = self._extract(self._commit.message)
+        return self._parsed_message[1]
 
     @property
     def parents(self):
@@ -354,7 +359,7 @@ class Revision(Base):
         return (uri, g)
 
 
-class Signature(Base):
+class Signature(object):
 
     def __init__(self, name, email, datetime, offset):
         self.name = name
@@ -382,7 +387,7 @@ class Signature(Base):
         return (uri,g)
 
 
-class Node(Base):
+class Node(object):
     
     DIRECTORY = "dir"
     FILE = "file"
@@ -410,6 +415,10 @@ class Node(Base):
 
         self._repository = repository
         self._commit = commit
+
+    @property
+    def hex(self) :
+        return self.obj.hex
 
     @property
     def is_dir(self) :
@@ -487,13 +496,11 @@ class Node(Base):
 
 from heapq import heappush, heappop
 
-
 class Index(object):
     def __init__(self, repository):
         self.repository = repository
         self.revision = None
         self.stash = {}
-        self.contents = set()
         self.dirty = False
 
     def set_revision(self, revision):
@@ -508,7 +515,6 @@ class Index(object):
         oid = self.repository._repository.create_blob(contents)
 
         self.stash[path] = (oid, mode or pygit2.GIT_FILEMODE_BLOB)
-        self.contents.add(contents)
 
     def remove(self, path):
         path = clean_path(path)
@@ -529,7 +535,6 @@ class Index(object):
 
         # Sort index items
         items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
-        print(items)
 
         # Create tree
         tree = IndexTree(self)

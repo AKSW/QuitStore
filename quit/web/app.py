@@ -80,8 +80,8 @@ def register_app(app, config):
     for line in (content.splitlines()):
         print(line)
 
-    for e in quit.config.getgraphs():
-        print(e)
+    for k,v in quit.config.getgraphurifilemap().items():
+        print("%s  ===>  %s" % (k,v))        
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
