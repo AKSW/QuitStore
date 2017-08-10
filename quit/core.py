@@ -464,11 +464,11 @@ class Quit(object):
 
                     if entity.hex in self.cache:
                         print("took '%r' from cache" % (entity.basename))
-                        tmp = self.cache[entity.hex]                       
+                        tmp = self.cache.get(entity.hex)
                     else:
                         print("parsed '%r'" % (entity.basename))
                         tmp = parse(entity.content)
-                        self.cache.update(entity.hex, tmp)
+                        self.cache.set(entity.hex, tmp)
     
                     for context in (context for context in tmp.contexts()):                    
 
@@ -600,7 +600,7 @@ class Quit(object):
                         continue
 
                     tmp = parse(entity.content)
-                    self.cache.update(entity.hex, tmp)
+                    self.cache.set(entity.hex, tmp)
                     
                     for context in [context for context in tmp.contexts()]:
 

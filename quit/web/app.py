@@ -1,3 +1,4 @@
+import sys
 import os
 import urllib
 import hashlib
@@ -52,17 +53,28 @@ def storemode_required(mode):
         return decorated_view
     return wrapper
 
-def create_app(config):
+def create_app(config, enable_profiler=False, profiler_quiet=False):
     """Create a Flask app."""
 
     app = Flask(__name__.split('.')[0], template_folder='web/templates', static_folder='web/static')
+    register_logging(app)
     register_app(app, config)
     register_hook(app)
     register_blueprints(app)
     register_extensions(app)
-    register_logging(app)
     register_errorhandlers(app)
     register_template_helpers(app)
+
+    if enable_profiler:
+        from werkzeug.contrib.profiler import ProfilerMiddleware, MergeStream
+        
+        f = open('profiler.log', 'w')
+        
+        if profiler_quiet:            
+            app.wsgi_app = ProfilerMiddleware(app.wsgi_app, f, profile_dir="d:/tmp")
+        else:
+            stream = MergeStream(sys.stdout, f)           
+            app.wsgi_app = ProfilerMiddleware(app.wsgi_app, stream, profile_dir="d:/tmp")
   
     return app
 
@@ -156,6 +168,19 @@ def register_errorhandlers(app):
     def page_not_found(error):
         return render_template("404.html"), 404
 
+    from flask import request
+
+    def shutdown_server():
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+    @app.route('/shutdown', methods=['GET'])
+    def shutdown():
+        shutdown_server()
+        return 'Server shutting down...'
+
 def register_template_helpers(app):
 
     @app.template_filter('gravatar')
@@ -213,4 +238,3 @@ def render_template(template_name_or_list, **kwargs):
     context.update(kwargs)
 
     return rt(template_name_or_list, **context)
-

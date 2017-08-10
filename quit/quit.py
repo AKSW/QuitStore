@@ -442,9 +442,11 @@ def resultFormat():
 
 
 def main(config):
-    """Start the app."""
-    app = create_app(config)
-    app.run(debug=True, use_reloader=False)
+    """
+    Start the app.
+    """
+    app = create_app(config, True)
+    app.run(debug = True, use_reloader=False)
 
 
 if __name__ == '__main__':
