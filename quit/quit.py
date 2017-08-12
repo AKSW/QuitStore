@@ -109,6 +109,7 @@ def updateConfig(store, config, gitrepo, references):
 
 def applyupdates(actions):
     """Update files after store was updated."""
+    store = app.config['store']
     config = app.config['config']
     references = app.config['references']
     graphsandfiles = config.getgraphurifilemap()

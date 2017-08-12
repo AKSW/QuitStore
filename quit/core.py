@@ -173,6 +173,18 @@ class MemoryStore:
     def getAtomicGraphs(self):
         return self.atomicgraphs
 
+    def getatomicgraph(self, node, graph):
+        """
+        Get the complete atomic graph containing the given node.
+
+        Args:
+            node: the node, for which the atomic graph is wanted
+            graph: the graph context of the given node
+        Return:
+            A set of all triples of the atomic graph which contains this node
+        """
+        raise Exception("Not yet implemented: get atomic graph")
+
     def getgraphuris(self):
         """Method to get all available named graphs.
 
