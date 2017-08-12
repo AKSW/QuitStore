@@ -340,6 +340,7 @@ class MemoryStore:
 
 class AtomicGraph:
     """A Class to store atomic graphs that contain a blank node."""
+
     def __init__(self, bnode, context):
         if isinstance(bnode, BNode) is False:
             return
@@ -474,8 +475,8 @@ class AtomicGraph:
         graphString = ''
         for triple in self.triples:
             quad = triple['s'].n3() + ' ' + triple['p'].n3() + ' ' + triple['o'].n3()
-            quad+= ' <' + str(self.context.identifier) + '> .\n'
-            graphString+= quad
+            quad += ' <' + str(self.context.identifier) + '> .\n'
+            graphString += quad
 
         return graphString
 
