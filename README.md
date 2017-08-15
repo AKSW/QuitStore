@@ -102,26 +102,24 @@ If you want to convert an N-Triples file to N-Quads where all data is in the sam
 
 ## Docker
 
-You can also build a docker image and run a container of the Quit-Store. The Image will expose port 80 by default and expects an existing git repository including a config.ttl  ([see](#configuration-of-config.ttl)). Make sure to change the setting for the path to the git repository to the following value.
+We also provide a [Docker image for the Quit Store](https://hub.docker.com/r/aksw/quitstore/) on the public docker hub.
+The Image will expose port 80 by default.
+An existing repository can be linked to the volume `/data`.
+The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
+
+To run the image execute the following command:
 
 ```
-conf:store <pathOfGitRepo> "." .
-```
-To build the image and start your Quit-Store container insert:
-
-```
-cd /path/to/this/repo
-docker build . -t imagename
-docker run --name containername -v /existing/store/repo:/data imagename
+docker run --name containername -v /existing/store/repo:/data aksw/quitstore
 ```
 
-Optionally you can change the container port by adding the variable QUIT_PORT (default: 80).
-
-The following example will change the container port and will map the new port to the host port 80.
+The following example will map the quit store port to the host port 8080.
 
 ```
-docker run --name containername -e QUIT_HOST=172.16.1.2 -e QUIT_PORT=8080 -p 80:8080 -v /existing/store.repo:/data imagename
+docker run --name containername -p 8080:80 -v /existing/store.repo:/data aksw/quitstore
 ```
+
+There is also the `QUIT_PORT` environment variable, which changes the port, to which the Quit Store binds inside the docker container.
 
 ## TODO:
 
