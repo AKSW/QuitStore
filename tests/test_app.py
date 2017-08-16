@@ -8,6 +8,7 @@ from os.path import join, isdir
 from quit import quit as quitApp
 import unittest
 import tempfile
+import subprocess
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -116,6 +117,22 @@ class QuitAppTestCase(unittest.TestCase):
 
         response= self.app.get('/git/log')
         self.assertEqual(response.status, '200 OK')
+
+    def testGCConfiguration(self):
+        """Test Garbage Collection configuration."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-gc'])
+        quitApp.initialize(args)
+
+        with subprocess.Popen(
+            ["git", "config", "gc.auto"],
+            stdout=subprocess.PIPE,
+            cwd=self.local
+        ) as getGCAuto:
+            stdout, stderr = getGCAuto.communicate()
+            response = stdout.decode("UTF-8").strip()
+
+        self.assertNotEqual(response, '')
+        self.assertEqual(response, '256')
 
 
 if __name__ == '__main__':
