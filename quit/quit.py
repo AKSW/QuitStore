@@ -207,30 +207,6 @@ def initialize(args):
         logger.info('Versioning: enabled')
         v = True
 
-        if args.garbagecollection:
-            try:
-                gcAutoThreshold = subprocess.check_output(
-                    ["git", "config", "gc.auto"]
-                ).decode("UTF-8").strip()
-
-                if not gcAutoThreshold:
-                    gcAutoThreshold = 256
-                    subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
-                    logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
-
-                gc = True
-                logger.info(
-                    "Garbage Collection is enabled with gc.auto threshold {}".format(
-                        gcAutoThreshold
-                    )
-                )
-            except Exception as e:
-                # Disable garbage collection for the rest of the run because it
-                # is likely that git is not available
-                gc = False
-                logger.info('Git garbage collection could not be configured and was disabled')
-                logger.debug(e)
-
     try:
         config = QuitConfiguration(
             versioning=v,
@@ -255,6 +231,37 @@ def initialize(args):
         )
     except Exception as e:
         raise InvalidConfigurationError(e)
+
+    if args.garbagecollection:
+        try:
+            with subprocess.Popen(
+                ["git", "config", "gc.auto"],
+                stdout=subprocess.PIPE,
+                cwd=config.getRepoPath()
+            ) as gcAutoThresholdProcess:
+                stdout, stderr = gcAutoThresholdProcess.communicate()
+                gcAutoThreshold = stdout.decode("UTF-8").strip()
+
+            if not gcAutoThreshold:
+                gcAutoThreshold = 256
+                subprocess.Popen(
+                    ["git", "config", "gc.auto", str(gcAutoThreshold)],
+                    cwd=config.getRepoPath()
+                )
+                logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
+
+            gc = True
+            logger.info(
+                "Garbage Collection is enabled with gc.auto threshold {}".format(
+                    gcAutoThreshold
+                )
+            )
+        except Exception as e:
+            # Disable garbage collection for the rest of the run because it
+            # is likely that git is not available
+            gc = False
+            logger.info('Git garbage collection could not be configured and was disabled')
+            logger.debug(e)
 
     # since repo is handled, we can add graphs to config
     config.initgraphconfig()
