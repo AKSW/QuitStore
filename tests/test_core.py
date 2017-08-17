@@ -354,6 +354,20 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(log[0]['parents'], [])
         self.assertEqual(log[0]['author_name'], 'QuitStoreTest')
 
+    def testGCConfiguration(self):
+        """Test gc settings."""
+        repo = GitRepo(self.dir.name)
+        self.assertFalse(repo.isgarbagecollectionon())
+
+        repo.gc = True
+        self.assertTrue(repo.isgarbagecollectionon())
+
+        repo.gc = False
+        self.assertFalse(repo.isgarbagecollectionon())
+
+        repo = GitRepo(self.dir.name, gc=True)
+        self.assertTrue(repo.isgarbagecollectionon())
+
     def testCommitExists(self):
         """Test if a commit exists."""
         self.getrepowithcommit()
