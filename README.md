@@ -80,6 +80,16 @@ Run Quit-Store without versioning activated
 
 Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
 
+`-v`, `--verbose` and `-vv`, `--verboseverbose`
+
+Set the loglevel for the standard output to verbose (INFO) respective extra verbose (DEBUG).
+
+`-l`, `--logfile`
+
+Write the log output to the given path.
+The path is interpreted relative to the current working directory.
+The loglevel for the logfile is always extra verbose (DEBUG).
+
 ## API
 
 Execute a query with curl
