@@ -502,7 +502,7 @@ class GitRepo:
             if self.gcProcess is None or self.gcProcess.poll() is not None:
                 # Start garbage collection with "--auto" option,
                 # which imidietly terminates, if it is not necessary
-                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
+                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"], cwd=self.path)
                 logger.debug('Spawn garbage collection')
         except Exception as e:
             logger.debug('Git garbage collection failed to spawn')
