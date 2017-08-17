@@ -59,15 +59,9 @@ def __savefiles():
 
 def __updategit():
     """Private method to add all updated tracked files."""
-    config = app.config['config']
     gitrepo = app.config['gitrepo']
     gitrepo.addall()
     gitrepo.commit()
-
-    if config.isgarbagecollectionon():
-        gitrepo.garbagecollection()
-
-    return
 
 
 def __commit(self, message=None):
@@ -172,8 +166,6 @@ def initialize(args):
         A dictionary containing the store object and git repo object.
 
     """
-    gc = False
-
     if args.verbose:
         ch.setLevel(logging.INFO)
         logger.addHandler(ch)
@@ -210,7 +202,6 @@ def initialize(args):
     try:
         config = QuitConfiguration(
             versioning=v,
-            gc=gc,
             configfile=args.configfile,
             targetdir=args.targetdir,
             repository=args.repourl,
@@ -250,7 +241,7 @@ def initialize(args):
                 )
                 logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
 
-            gc = True
+            gitrepo.gc = True
             logger.info(
                 "Garbage Collection is enabled with gc.auto threshold {}".format(
                     gcAutoThreshold
@@ -259,7 +250,6 @@ def initialize(args):
         except Exception as e:
             # Disable garbage collection for the rest of the run because it
             # is likely that git is not available
-            gc = False
             logger.info('Git garbage collection could not be configured and was disabled')
             logger.debug(e)
 

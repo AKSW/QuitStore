@@ -316,7 +316,7 @@ class GitRepo:
     author_email = 'quit@quit.aksw.org'
     gcProcess = None
 
-    def __init__(self, path, origin=None):
+    def __init__(self, path, origin=None, gc=False):
         """Initialize a new repository from an existing directory.
 
         Args:
@@ -326,6 +326,7 @@ class GitRepo:
         logger = logging.getLogger('quit.core.GitRepo')
         logger.debug('GitRepo, init, Create an instance of GitStore')
         self.path = path
+        self.gc = gc
 
         if not exists(path):
             try:
@@ -473,6 +474,9 @@ class GitRepo:
             logger.info('Nothing to commit')
             logger.debug(e)
 
+        if self.gc:
+            self.garbagecollection()
+
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
 
@@ -499,6 +503,7 @@ class GitRepo:
                 # Start garbage collection with "--auto" option,
                 # which imidietly terminates, if it is not necessary
                 self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
+                logger.debug('Spawn garbage collection')
         except Exception as e:
             logger.debug('Git garbage collection failed to spawn')
             logger.debug(e)
@@ -543,6 +548,15 @@ class GitRepo:
             for commit in self.repo.walk(self.repo.head.target, GIT_SORT_REVERSE):
                 ids.append(str(commit.oid))
         return ids
+
+    def isgarbagecollectionon(self):
+        """Return if gc is activated or not.
+
+        Returns:
+            True, if activated
+            False, if not
+        """
+        return self.gc
 
     def isstagingareaclean(self):
         """Check if staging area is clean.

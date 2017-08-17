@@ -21,7 +21,6 @@ class QuitConfiguration:
         configfile='config.ttl',
         repository=None,
         targetdir=None,
-        gc=False,
         versioning=True
     ):
         """The init method.
@@ -36,7 +35,6 @@ class QuitConfiguration:
         self.sysconf = Graph()
         self.graphconf = None
         self.versioning = versioning
-        self.gc = gc
         self.origin = None
         self.graphs = {}
         self.files = {}
@@ -444,9 +442,6 @@ class QuitConfiguration:
                 graphfiles[file] = format
 
         return graphfiles
-
-    def isgarbagecollectionon(self):
-        return self.gc
 
     def isversioningon(self):
         return self.versioning
