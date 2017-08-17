@@ -86,8 +86,9 @@ class QuitAppTestCase(unittest.TestCase):
         infomsg = 'QuitStore successfully running.'
         check = False
 
-        if infomsg in open(self.logfile).read():
-            check = True
+        with open(self.logfile) as logFile:
+            if infomsg in logFile.read():
+                check = True
 
         self.assertTrue(check)
 
