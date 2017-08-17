@@ -197,12 +197,11 @@ class QuitConfiguration:
             graphuri: String with the graph URI
         """
         try:
-            f = open(graphfile, 'r')
+            with open(graphfile, 'r') as f:
+                graphuri = f.readline().strip()
         except FileNotFoundError:
             logger.debug("File not found {}".format(graphfile))
             return
-
-        graphuri = f.readline().strip()
 
         try:
             urlparse(graphuri)
