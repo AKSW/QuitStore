@@ -1,9 +1,38 @@
 from __future__ import with_statement
 from flask import Response
+import os
 import contextlib
 import signal
 import sys
+from datetime import tzinfo, timedelta, datetime
+from quit.graphs import InMemoryGraphAggregate
 
+
+ZERO = timedelta(0)
+HOUR = timedelta(hours=1)
+
+class TZ(tzinfo):
+    """Fixed offset in minutes east from UTC."""
+
+    def __init__(self, offset, name):
+        self.__offset = timedelta(minutes = offset)
+        self.__name = name
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return self.__name
+
+    def dst(self, dt):
+        return ZERO
+
+def clean_path(path):
+    path = os.path.normpath(path)
+    if path.startswith(os.sep):
+        path = path[len(os.sep):]
+
+    return path
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
@@ -38,6 +67,43 @@ def splitinformation(quads, GraphObject):
                         )
     return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
 
+
+def graphdiff(first, second):
+    """
+    Diff between graph instances, should be replaced/included in quit diff
+    """
+    from rdflib.compare import to_isomorphic, graph_diff
+
+    diffs = {}
+    uris = set()
+
+    if first is not None and isinstance(first, InMemoryGraphAggregate):
+        first_identifiers = list((g.identifier for g in first.graphs()))
+        uris = uris.union(first_identifiers)
+    if second is not None and isinstance(second, InMemoryGraphAggregate):
+        second_identifiers = list((g.identifier for g in second.graphs()))
+        uris = uris.union(second_identifiers)       
+    
+    for uri in uris:
+        id = None
+        changes = diffs.get((uri, id), [])
+
+        if (first is not None and uri in first_identifiers) and (second is not None and uri in second_identifiers):
+            in_both, in_first, in_second = graph_diff(to_isomorphic(first.graph(uri)), to_isomorphic(second.graph(uri)))
+
+            if len(in_second) > 0:
+                changes.append(('additions', in_second))
+            if len(in_first) > 0:
+                changes.append(('removals', in_first))
+        elif first is not None and uri in first_identifiers:
+            changes.append(('removals', first.graph(uri)))
+        elif second is not None and uri in second_identifiers:
+            changes.append(('additions', second.graph(uri)))
+        else: 
+            continue
+                        
+        diffs[(uri, id)] = changes
+    return diffs
 
 def _sigterm_handler(signum, frame):
     sys.exit(0)

@@ -8,11 +8,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath
 import argparse
 from os.path import join
 from quit.core import FileReference, MemoryStore, GitRepo
-from quit.conf import QuitConfiguration
+from quit.conf import QuitConfiguration, STORE_ALL, STORE_DATA, STORE_PROVENANCE
 from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
-from quit.parsers import NQuadsParser
 from quit.utils import splitinformation, sparqlresponse, handle_exit
+from quit.web.app import create_app
 import logging
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
@@ -22,9 +22,6 @@ from flask.ext.cors import CORS
 from rdflib import ConjunctiveGraph, Graph, Literal
 import json
 import subprocess
-
-app = FlaskAPI(__name__)
-CORS(app)
 
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
@@ -56,7 +53,6 @@ def __savefiles():
 
     return
 
-
 def __updategit():
     """Private method to add all updated tracked files."""
     gitrepo = app.config['gitrepo']
@@ -73,7 +69,6 @@ def __commit(self, message=None):
         pass
 
     return
-
 
 def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
@@ -199,6 +194,12 @@ def initialize(args):
         logger.info('Versioning: enabled')
         v = True
 
+    storemode = STORE_ALL
+    if args.disable_data_store:
+        storemode &= ~STORE_DATA
+    if args.disable_provenance_store:
+        storemode &= ~STORE_PROVENANCE
+
     try:
         config = QuitConfiguration(
             versioning=v,
@@ -206,6 +207,7 @@ def initialize(args):
             targetdir=args.targetdir,
             repository=args.repourl,
             configmode=args.configmode,
+            storemode=storemode
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -256,21 +258,6 @@ def initialize(args):
     # since repo is handled, we can add graphs to config
     config.initgraphconfig()
 
-    store = initializeMemoryStore(config)
-
-    # Save file objects per file
-    filereferences = {}
-
-    for file in config.getfiles():
-        graphs = config.getgraphuriforfile(file)
-        content = []
-        for graph in graphs:
-            content += store.getgraphcontent(graph)
-        fileobject = FileReference(join(config.getRepoPath(), file))
-        # TODO: Quick Fix, add sorting to FileReference
-        fileobject.setcontent(sorted(content))
-        filereferences[file] = fileobject
-
     logger.info('QuitStore successfully running.')
     logger.info('Known graphs: ' + str(config.getgraphs()))
     logger.info('Known files: ' + str(config.getfiles()))
@@ -278,33 +265,7 @@ def initialize(args):
     logger.debug('Config mode: ' + str(config.getConfigMode()))
     logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
-    updateConfig(store, config, gitrepo, filereferences)
-
-
-def initializeMemoryStore(config):
-    """Create and return a MemoryStore object with all known graphs."""
-    store = MemoryStore()
-
-    files = config.getfiles()
-    for filename in files:
-        filepath = join(config.getRepoPath(), filename)
-        graphs = config.getgraphuriforfile(filename)
-        graphstring = ''
-
-        for graph in graphs:
-            graphstring += str(graph)
-
-        try:
-            store.addfile(filepath, config.getserializationoffile(filename))
-            logger.info(
-                'Success: Graph with URI: ' + graphstring + ' added to my known graphs list'
-            )
-        except Exception as e:
-            logger.info('Error: Graph with URI: ' + graphstring + ' not added')
-            logger.debug(e)
-            pass
-
-    return store
+    return {'config': config}
 
 
 def checkrequest(request):
@@ -457,8 +418,7 @@ def savedexit():
     Add methods you want to call on unexpected shutdown.
     """
     logger.info("Exiting store")
-    store = app.config['store']
-    store.exit()
+    #store.exit()
     logger.info("Store exited")
 
     return
@@ -468,8 +428,6 @@ def savedexit():
 API
 '''
 
-
-@app.route("/sparql", methods=['POST', 'GET'])
 def sparql():
     """Process a SPARQL query (Select or Update).
 
@@ -515,153 +473,6 @@ def sparql():
                         content_type=resultFormat()['mime']
                         )
         # return '', status.HTTP_200_OK
-
-
-@app.route("/git/checkout/", methods=['POST', 'GET'], defaults={'commitid': None})
-@app.route('/git/checkout/<string:commitid>')
-def checkoutVersion(commitid):
-    """Receive a HTTP request with a commit id and initialize store with data from this commit.
-
-    Returns:
-        HTTP Response 200: If commit id is valid and store is reinitialized with the data.
-        HTTP Response 400: If commit id is not valid.
-    """
-    if request.method == 'GET':
-        if 'commitid' in request.args:
-            commitid = request.args['commitid']
-    elif request.method == 'POST':
-        if 'commitid' in request.form:
-            commitid = request.form['commitid']
-
-    if commitid is None:
-        msg = 'Commit id is missing in request'
-        logger.debug(msg)
-        return msg, status.HTTP_400_BAD_REQUEST
-
-    gitrepo = app.config['gitrepo']
-
-    if gitrepo.commitexists(commitid) is True:
-        gitrepo.checkout(commitid)
-        # TODO store has to be reinitialized with old data
-        # Maybe a working copy of quit config, containing file to graph mappings
-        # would do the job
-        reloadstore()
-    else:
-        msg = 'Not a valid commit id'
-        logger.debug(msg)
-        return msg, status.HTTP_400_BAD_REQUEST
-
-    return '', status.HTTP_200_OK
-
-
-@app.route("/git/log", methods=['GET'])
-def getCommits():
-    """Receive a HTTP request and reply with all known commits.
-
-    Returns:
-        HTTP Response: json containing id, committeddate and message.
-    """
-    gitrepo = app.config['gitrepo']
-    data = gitrepo.getcommits()
-    resp = Response(json.dumps(data), status=200, mimetype='application/json')
-    return resp
-
-
-@app.route("/add", methods=['POST'])
-@set_parsers(NQuadsParser)
-def addTriple():
-    """Add nquads to the store.
-
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was added)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
-    if request.method == 'POST':
-        try:
-            data = checkrequest(request)
-        except Exception as e:
-            logger.info('This request is not allowed')
-            logger.debug(e)
-            return '', status.HTTP_403_FORBIDDEN
-
-        store = app.config['store']
-
-        for graphuri in data['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
-
-        addtriples(data)
-
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-
-@app.route("/delete", methods=['POST', 'GET'])
-@set_parsers(NQuadsParser)
-def deleteTriple():
-    """Delete nquads from the store.
-
-    Returns:
-        HTTP Response 201: If data was processed (even if no data was deleted)
-        HTTP Response: 403: If Request contains non valid nquads
-    """
-    if request.method == 'POST':
-        try:
-            values = checkrequest(request)
-        except Exception as e:
-            logger.debug(e)
-            return '', status.HTTP_403_FORBIDDEN
-
-        store = app.config['store']
-
-        for graphuri in values['graphs']:
-            if not store.graphexists(graphuri):
-                logger.debug('Graph ' + graphuri + ' is not part of the store')
-                return '', status.HTTP_403_FORBIDDEN
-
-        deletetriples(values)
-
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-
-@app.route("/pull", methods=['POST', 'GET'])
-def pull():
-    """Pull from remote.
-
-    Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
-    """
-    store = app.config['store']
-
-    if store.pull():
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-    return
-
-
-@app.route("/push", methods=['POST', 'GET'])
-def push():
-    """Pull from remote.
-
-    Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
-    """
-    gitrepo = app.config['gitrepo']
-
-    if gitrepo.push():
-        return '', status.HTTP_201_CREATED
-    else:
-        return '', status.HTTP_403_FORBIDDEN
-
-    return
 
 
 def resultFormat():
@@ -716,23 +527,27 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('--disable-data-store', action='store_true')
+    parser.add_argument('--disable-provenance-store', action='store_true')
     parser.add_argument('-p', '--port', default=5000, type=int)
     parser.add_argument('--host', default='0.0.0.0', type=str)
 
     return parser.parse_args(args)
 
 
-def main():
+def main(config):
     """Start the app."""
+    app = create_app(config)
     app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
 
 
 if __name__ == '__main__':
     args = parseArgs(sys.argv[1:])
+    objects = initialize(args)
 
-    initialize(args)
+    config = objects['config']
     sys.setrecursionlimit(2 ** 15)
 
     # The app is started with an exit handler
     with handle_exit(savedexit):
-        main()
+        main(config)

@@ -1,5 +1,6 @@
 import logging
-from os import listdir
+
+from os import walk
 from os.path import join, isfile, abspath, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import UnknownConfigurationError
@@ -8,9 +9,14 @@ from rdflib.plugins.parsers import notation3, nquads, ntriples
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse, urlencode
+from quit.utils import clean_path
 
 logger = logging.getLogger('quit.conf')
 
+STORE_NONE       = 0
+STORE_PROVENANCE = (1 << 0)
+STORE_DATA       = (1 << 1)
+STORE_ALL        = STORE_DATA | STORE_PROVENANCE
 
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
@@ -19,6 +25,7 @@ class QuitConfiguration:
         self,
         configmode=None,
         configfile='config.ttl',
+        storemode=None,
         repository=None,
         targetdir=None,
         versioning=True
@@ -31,6 +38,8 @@ class QuitConfiguration:
         """
         logger = logging.getLogger('quit.conf.QuitConfiguration')
         logger.debug('Initializing configuration object.')
+
+        self.storemode = storemode
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -106,6 +115,7 @@ class QuitConfiguration:
         """Initialize graph settings."""
         self.graphconf = Graph()
         configmode = self.getConfigMode()
+        logger.debug("Graph Config mode is: {}".format(configmode))
 
         if configmode == 'localconfig':
             self.__initgraphsfromconf(self.configfile)
@@ -123,8 +133,7 @@ class QuitConfiguration:
         graphs = self.getgraphsfromdir(repodir)
 
         for file, format in graphs.items():
-            absfile = join(self.getRepoPath(), file)
-            absgraphfile = absfile + '.graph'
+            absgraphfile = file + '.graph'
             graphuri = self.__readGraphIriFile(absgraphfile)
 
             if graphuri and format == 'nquads':
@@ -133,10 +142,10 @@ class QuitConfiguration:
                 tmpgraph = ConjunctiveGraph(identifier='default')
 
                 try:
-                    tmpgraph.parse(source=absfile, format=format)
+                    tmpgraph.parse(source=file, format=format)
                 except Exception:
                     logger.error(
-                        "Could not parse graphfile {}. File skipped.".format(absfile)
+                        "Could not parse graphfile {}. File skipped.".format(file)
                     )
                     continue
 
@@ -151,11 +160,12 @@ class QuitConfiguration:
                 if len(founduris) == 1:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 elif len(founduris) > 1:
-                    logger.info("No named graph found. {} skipped.".format(absfile))
+                    logger.info("No named graph found. {} skipped.".format(file))
+
                 elif len(founduris) < 1:
                     logger.info(
                         "More than one named graphs found. Can't decide. {} skipped.".format(
-                            absfile
+                            file
                         )
                     )
 
@@ -163,7 +173,7 @@ class QuitConfiguration:
                 if graphuri:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
                 else:
-                    logger.warning('No .graph file found. ' + absfile + ' skipped.')
+                    logger.warning('No *.graph file found. ' + file + ' skipped.')
 
         try:
             self.__setgraphsfromconf()
@@ -210,6 +220,7 @@ class QuitConfiguration:
 
         return graphuri
 
+
     def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org/'
@@ -244,7 +255,7 @@ class QuitConfiguration:
                     pass
                 else:
                     try:
-                        open(absfile, 'a').close()
+                        open(absfile, 'a+').close()
                     except FileNotFoundError:
                         raise InvalidConfigurationError(
                             "File not found. Can't create file {} in repo {}".format(
@@ -252,38 +263,42 @@ class QuitConfiguration:
                                 self.getRepoPath()
                             )
                         )
-                filename = relpath(repopath, absfile)
+                filename = relpath(absfile, start=repopath)
             else:
                 if isfile(joinedabsfile):
                     # everything is fine
                     pass
                 else:
                     try:
-                        open(joinedabsfile, 'a').close()
+                        open(joinedabsfile, 'a+').close()
                     except PermissionError:
                         raise InvalidConfigurationError(
                             "Permission denied. Can't create file {} in repo {}".format(
-                                absfile,
+                                joinedabsfile,
                                 self.getRepoPath()
                             )
                         )
                     except FileNotFoundError:
                         raise InvalidConfigurationError(
                             "File not found. Can't create file {} in repo {}".format(
-                                absfile,
+                                joinedabsfile,
                                 self.getRepoPath()
                             )
                         )
                     except Exception as e:
                         raise UnknownConfigurationError(
                             "Can't create file {} in repo {}. Error: {}".format(
-                                absfile,
+                                joinedabsfile,
                                 self.getRepoPath(),
                                 e
                             )
                         )
 
-                filename = relpath(joinedabsfile, repopath)
+                filename = relpath(joinedabsfile, start=repopath)
+
+
+            filename = clean_path(filename)
+            graphuri = URIRef(graphuri)
 
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
@@ -336,6 +351,32 @@ class QuitConfiguration:
         nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'pathOfGitRepo')
+
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
+
+    def getDefaultBranch(self):
+        """Get the path of Git repository from configuration.
+
+        Returns:
+            A string containig the path of the git repo.
+        """
+        nsQuit = 'http://quit.aksw.org/'
+        storeuri = URIRef('http://my.quit.conf/store')
+        property = URIRef(nsQuit + 'defaultBranch')
+
+        for s, p, o in self.sysconf.triples((None, property, None)):
+            return str(o)
+
+    def getGlobalFile(self):
+        """Get the path of Git repository from configuration.
+
+        Returns:
+            A string containig the path of the git repo.
+        """
+        nsQuit = 'http://quit.aksw.org/'
+        storeuri = URIRef('http://my.quit.conf/store')
+        property = URIRef(nsQuit + 'globalFile')
 
         for s, p, o in self.sysconf.triples((None, property, None)):
             return str(o)
@@ -433,17 +474,27 @@ class QuitConfiguration:
         """
         if path is None:
             path = self.getRepoPath()
-        files = [f for f in listdir(path) if isfile(join(path, f))]
+
+        exclude = set(['.git'])
+
         graphfiles = {}
-        for file in files:
-            format = guess_format(file)
-            if format is not None:
-                graphfiles[file] = format
+        for dirpath, dirs, files in walk(path):
+            dirs[:] = [d for d in dirs if d not in exclude]
+            for file in files:
+                filename = join(dirpath, file)
+
+                format = guess_format(filename)
+                if format is not None:
+                    graphfiles[filename] = format
 
         return graphfiles
 
+
     def isversioningon(self):
         return self.versioning
+
+    def checkStoremode (self, flags):
+        return (self.storemode & flags) == flags
 
     def setConfigMode(self, mode):
         self.sysconf.remove((None, self.quit.configMode, None))
@@ -462,3 +513,16 @@ class QuitConfiguration:
         self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
 
         return
+
+    def getBindings(self):
+        ns = Namespace('http://quit.aksw.org/')
+        q = """SELECT DISTINCT ?prefix ?namespace WHERE {{
+            {{
+                ?ns a <{binding}> ;
+                    <{predicate_prefix}> ?prefix ;
+                    <{predicate_namespace}> ?namespace .
+            }}
+        }}""".format(binding=ns['Binding'], predicate_prefix=ns['prefix'], predicate_namespace=ns['namespace'])
+
+        result = self.sysconf.query(q)
+        return [(row['prefix'], row['namespace']) for row in result]

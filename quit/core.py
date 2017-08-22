@@ -1,9 +1,14 @@
+import pygit2
+
 from datetime import datetime
 import logging
 from os import makedirs, environ
 from os.path import abspath, exists, isdir, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
-from quit.update import evalUpdate
+from subprocess import Popen
+from functools import lru_cache
+
+import pygit2
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
@@ -12,7 +17,17 @@ from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks
 from pygit2 import KeypairFromAgent, Keypair, UserPass
 from pygit2 import credentials
-from rdflib import ConjunctiveGraph, Graph, URIRef, BNode
+from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal
+
+from rdflib import plugin
+from rdflib.store import Store as DefaultStore
+from rdflib.graph import ReadOnlyGraphAggregate
+
+from quit.conf import STORE_NONE, STORE_DATA, STORE_PROVENANCE, STORE_ALL
+from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
+from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
+from quit.utils import graphdiff
+
 from subprocess import Popen
 
 logger = logging.getLogger('quit.core')
@@ -153,8 +168,34 @@ class FileReference:
         """Check if a File is part of version control system."""
         return(self.versioning)
 
+class Queryable:
+    """
+    A class that represents a querable graph-like object.
+    """
+    def __init__(self, **kwargs):
+        self.store = ConjunctiveGraph(identifier='default')
 
-class MemoryStore:
+    def query(self, querystring):
+        """Execute a SPARQL select query.
+
+        Args:
+            querystring: A string containing a SPARQL ask or select query.
+        Returns:
+            The SPARQL result set
+        """
+        pass
+
+    def update(self, querystring, versioning=True):
+        """Execute a SPARQL update query and update the store.
+
+        This method executes a SPARQL update query and updates and commits all affected files.
+
+        Args:
+            querystring: A string containing a SPARQL upate query.
+        """
+        pass
+
+class Store(Queryable):
     """A class that combines and syncronieses n-quad files and an in-memory quad store.
 
     This class contains information about all graphs, their corresponding URIs and
@@ -162,11 +203,11 @@ class MemoryStore:
     FileReference object (n-quad) that enables versioning (with git) and persistence.
     """
 
-    def __init__(self):
+    def __init__(self, store):
         """Initialize a new MemoryStore instance."""
         logger = logging.getLogger('quit.core.MemoryStore')
         logger.debug('Create an instance of MemoryStore')
-        self.store = ConjunctiveGraph(identifier='default')
+        self.store = store
 
         return
 
@@ -300,6 +341,290 @@ class MemoryStore:
         """Execute actions on API shutdown."""
         return
 
+class MemoryStore(Store):
+    def __init__(self, additional_bindings=list()):
+        store = ConjunctiveGraph(identifier='default')
+        for prefix, namespace in [('quit', QUIT), ('foaf', FOAF)]:
+            store.bind(prefix, namespace)
+        for prefix, namespace in additional_bindings:
+            store.bind(prefix, namespace)
+        super().__init__(store=store)
+
+class VirtualGraph(Queryable):
+    def __init__(self, store):
+        if not isinstance(store, InMemoryGraphAggregate):
+            raise Exception()
+        self.store = store
+
+    def query(self, querystring):
+        return self.store.query(querystring)
+
+    def update(self, querystring, versioning=True):
+        return self.store.update(querystring)
+
+class Quit(object):
+    def __init__(self, config, repository, store):
+        self.config = config
+        self.repository = repository
+        self.store = store
+
+    def sync(self, rebuild = False):
+        """
+        Synchronizes store with repository data.
+        """
+        if rebuild:
+            for c in self.store.contexts():
+                self.store.remove((None,None,None), c)
+
+        def exists(id):
+            uri = QUIT['commit-' + id]
+            for _ in self.store.store.quads((uri, None, None, QUIT.default)):
+                return True
+            return False
+
+        def traverse(commit, seen):
+            commits = []
+            merges = []
+
+            while True:
+                id = commit.id
+                if id in seen:
+                    break
+                seen.add(id)
+                if exists(id):
+                    break
+                commits.append(commit)
+                parents = commit.parents
+                if not parents:
+                    break
+                commit = parents[0]
+                if len(parents) > 1:
+                    merges.append((len(commits), parents[1:]))
+            for idx, parents in reversed(merges):
+                for parent in parents:
+                    commits[idx:idx] = traverse(parent, seen)
+            return commits
+
+        seen = set()
+
+        for name in self.repository.tags_or_branches:
+            initial_commit = self.repository.revision(name);
+            commits = traverse(initial_commit, seen)
+
+            prov = self.changesets(commits)
+            self.store.addquads((s, p, o, c) for s, p, o, c in prov.quads())
+
+            #for commit in commits:
+                #(_, g) = commit.__prov__()
+                #self.store += g
+
+    @lru_cache()
+    def instance(self, id=None, force=False):
+        default_graphs = list()
+
+        if id:
+            commit = self.repository.revision(id)
+
+            _m = self.config.getgraphurifilemap()
+
+            for entity in commit.node().entries(recursive=True):
+                # todo check if file was changed
+                if entity.is_file:
+                    if entity.name not in _m.values():
+                        continue
+
+                    tmp = ConjunctiveGraph()
+                    tmp.parse(data=entity.content, format='nquads')
+
+                    for context in (c.identifier for c in tmp.contexts()):
+
+                        # Todo: why?
+                        if context not in _m:
+                            continue
+
+                        identifier = context + '-' + entity.blob.hex
+                        rewritten_identifier = context
+
+                        if force or not self.config.checkStoremode(STORE_DATA):
+                            g = Graph(identifier=rewritten_identifier)
+                            g += tmp.triples((None, None, None))
+                        else:
+                            g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
+                        default_graphs.append(g)
+
+        instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')
+
+        return VirtualGraph(instance)
+
+    def changesets(self, commits=None):
+        g = ConjunctiveGraph(identifier=QUIT.default)
+
+        if not commits or (not self.config.checkStoremode(STORE_DATA) and not self.config.checkStoremode(STORE_PROVENANCE)):
+            return g
+
+        last = None
+
+        if self.config.checkStoremode(STORE_PROVENANCE):
+            role_author_uri = QUIT['author']
+            role_committer_uri = QUIT['committer']
+
+            g.add((role_author_uri, is_a, PROV['Role']))
+            g.add((role_committer_uri, is_a, PROV['Role']))
+
+        while commits:
+            commit = commits.pop()
+            rev = commit.id
+
+            # Create the commit
+            commit_graph = self.instance(commit.id, True)
+            commit_uri = QUIT['commit-' + commit.id]
+
+            if self.config.checkStoremode(STORE_PROVENANCE):
+                g.add((commit_uri, is_a, PROV['Activity']))
+
+                if 'Source' in commit.properties.keys():
+                    g.add((commit_uri, is_a, QUIT['Import']))
+                    g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
+                if 'Query' in commit.properties.keys():
+                    g.add((commit_uri, is_a, QUIT['Transformation']))
+                    g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
+
+                g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
+                g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
+                g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
+                g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
+
+                # Author
+                hash = pygit2.hash(commit.author.email).hex
+                author_uri = QUIT['user-' + hash]
+                g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
+
+                g.add((author_uri, is_a, PROV['Agent']))
+                g.add((author_uri, RDFS.label, Literal(commit.author.name)))
+                g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
+
+                q_author_uri = BNode()
+                g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
+                g.add((q_author_uri, is_a, PROV['Association']))
+                g.add((q_author_uri, PROV['agent'], author_uri))
+                g.add((q_author_uri, PROV['role'], role_author_uri))
+
+                if commit.author.name != commit.committer.name:
+                    # Committer
+                    hash = pygit2.hash(commit.committer.email).hex
+                    committer_uri = QUIT['user-' + hash]
+                    g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
+
+                    g.add((committer_uri, is_a, PROV['Agent']))
+                    g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
+                    g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
+
+                    q_committer_uri = BNode()
+                    g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
+                    g.add((q_committer_uri, is_a, PROV['Association']))
+                    g.add((q_committer_uri, PROV['agent'], author_uri))
+                    g.add((q_committer_uri, PROV['role'], role_committer_uri))
+                else:
+                    g.add((q_author_uri, PROV['role'], role_committer_uri))
+
+                # Parents
+                parent = None
+                parent_graph = None
+
+                if commit.parents:
+                    parent = commit.parents[0]
+                    parent_graph = self.instance(parent.id, True)
+
+                    for parent in commit.parents:
+                        parent_uri = QUIT['commit-' + parent.id]
+                        g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
+
+                # Diff
+                diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
+                for ((resource_uri, _), changesets) in diff.items():
+                    for (op, update_graph) in changesets:
+                        update_uri = QUIT['update-' + commit.id]
+                        op_uri = QUIT[op + '-' + commit.id]
+                        g.add((commit_uri, QUIT['updates'], update_uri))
+                        g.add((update_uri, QUIT['graph'], resource_uri))
+                        g.add((update_uri, QUIT[op], op_uri))
+                        g.addN((s, p, o, op_uri) for s, p, o in update_graph)
+
+            # Entities
+            _m = self.config.getgraphurifilemap()
+
+            for entity in commit.node().entries(recursive=True):
+                # todo check if file was changed
+                if entity.is_file:
+
+                    if entity.name not in _m.values():
+                        continue
+
+                    tmp = ConjunctiveGraph()
+                    tmp.parse(data=entity.content, format='nquads')
+
+                    for context in [c.identifier for c in tmp.contexts()]:
+
+                        # Todo: why?
+                        if context not in _m:
+                            continue
+
+                        public_uri = context
+                        private_uri = context + '-' + entity.blob.hex
+
+                        if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
+                            g.add((private_uri, PROV['specializationOf'], public_uri))
+                            g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
+                        if self.config.checkStoremode(STORE_DATA):
+                            g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
+
+        return g
+
+    def commit(self, graph, message, index, ref, **kwargs):
+        if not graph.store.is_dirty:
+            return
+
+        seen = set()
+
+        index = self.repository.index(index)
+
+        files = {}
+
+        for context in graph.store.graphs():
+            file = self.config.getfileforgraphuri(context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
+
+            graphs = files.get(file, [])
+            graphs.append(context)
+            files[file] = graphs
+
+        for file, graphs in files.items():
+            g = ReadOnlyGraphAggregate(graphs)
+
+            if len(g) == 0:
+                index.remove(file)
+            else:
+                content = g.serialize(format='nquad-ordered').decode('UTF-8')
+                index.add(file, content)
+
+        out = list()
+        for k,v in kwargs.items():
+            if '\n' in v:
+                out.append('%s: "%s"' % (k, v))
+            else:
+                out.pre('%s: %s' % (k, v))
+        out.append('')
+        if message:
+            out.append(message)
+        #message = "\n".join(out)
+
+        author = self.repository._repository.default_signature
+        id = index.commit(message, author.name, author.email, ref=ref)
+
+        if id:
+            self.repository._repository.set_head(id)
+            if not self.repository.is_bare:
+                self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
+            self.sync()
 
 class GitRepo:
     """A class that manages a git repository.
