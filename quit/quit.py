@@ -213,6 +213,10 @@ def initialize(args):
         logger.error(e)
         sys.exit('Exiting quit')
 
+    gitrepo = GitRepo(
+        path=config.getRepoPath(),
+        origin=config.getOrigin()
+    )
     try:
         gitrepo = GitRepo(
             path=config.getRepoPath(),

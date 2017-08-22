@@ -219,6 +219,7 @@ class QuitConfiguration:
 
         return graphuri
 
+
     def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org/'
@@ -485,6 +486,7 @@ class QuitConfiguration:
                     graphfiles[filename] = format
 
         return graphfiles
+
 
     def isversioningon(self):
         return self.versioning
