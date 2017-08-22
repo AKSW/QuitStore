@@ -115,6 +115,7 @@ class QuitConfiguration:
         """Initialize graph settings."""
         self.graphconf = Graph()
         configmode = self.getConfigMode()
+        logger.debug("Graph Config mode is: {}".format(configmode))
 
         if configmode == 'localconfig':
             self.__initgraphsfromconf(self.configfile)
@@ -262,7 +263,7 @@ class QuitConfiguration:
                                 self.getRepoPath()
                             )
                         )
-                filename = relpath(repopath, absfile)
+                filename = relpath(absfile, start=repopath)
             else:
                 if isfile(joinedabsfile):
                     # everything is fine
@@ -293,7 +294,8 @@ class QuitConfiguration:
                             )
                         )
 
-                filename = relpath(joinedabsfile, repopath)
+                filename = relpath(joinedabsfile, start=repopath)
+
 
             filename = clean_path(filename)
             graphuri = URIRef(graphuri)
