@@ -17,6 +17,8 @@ addons:
     packages:
       - git
       - cmake
+      - libssl-dev
+      - libssh2-1-dev
 
 env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
 
@@ -28,11 +30,16 @@ before_install:
 install:
     - pip install -r requirements.txt
     - pip install coveralls
+    - pip install pylama
+
+before_script:
+    - "pylama"
 
 # command to run tests
 script:
     - coverage run -a --source=quit tests/test_core.py
     - coverage run -a --source=quit tests/test_conf.py
+    - coverage run -a --source=quit tests/test_app.py
 
 after_success:
     coveralls

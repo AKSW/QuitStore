@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
+
 class Error(Exception):
     pass
+
 
 class InvalidConfigurationError(Error):
     pass
 
+
 class MissingConfigurationError(Error):
     pass
+
 
 class MissingFileError(Error):
     pass
@@ -57,3 +61,11 @@ class UnSupportedQueryType(Exception):
 
     def __str__(self):
         return ("This query is not allowed by this endpoint")
+
+
+class UnknownConfigurationError(Error):
+    pass
+
+
+class QuitGitRepoError(Error):
+    pass

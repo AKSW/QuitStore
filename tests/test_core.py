@@ -3,7 +3,7 @@
 import unittest
 from context import quit
 from quit.core import MemoryStore, GitRepo
-from os import path
+from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
@@ -196,6 +196,38 @@ class GitRepoTests(unittest.TestCase):
         self.assertTrue(path.exists(path.join(dir.name, 'quit', 'core.py')))
         dir.cleanup()
 
+    def testCloneRepoViaSSH(self):
+        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/sshkey/"
+
+        REMOTE_URL = 'git@github.com:AKSW/QuitStore.git'
+
+        dir = TemporaryDirectory()
+        repo = GitRepo(dir.name, origin=REMOTE_URL)
+        self.assertTrue(path.exists(path.join(dir.name, 'quit', 'core.py')))
+        dir.cleanup()
+
+    def testCloneRepoViaSSHNoKeyFiles(self):
+        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/nosshkey/"
+        if "SSH_AUTH_SOCK" in environ:
+            del environ["SSH_AUTH_SOCK"]
+
+        REMOTE_URL = 'git@github.com:AKSW/QuitStore.git'
+
+        dir = TemporaryDirectory()
+        with self.assertRaises(Exception) as context:
+            repo = GitRepo(dir.name, origin=REMOTE_URL)
+        dir.cleanup()
+
+    def testCloneNotExistingRepo(self):
+        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/sshkey/"
+
+        REMOTE_URL = 'git@github.com:AKSW/ThereIsNoQuitStoreRepo.git'
+
+        dir = TemporaryDirectory()
+        with self.assertRaises(Exception) as context:
+            repo = GitRepo(dir.name, origin=REMOTE_URL)
+        dir.cleanup()
+
     def testCommit(self):
         self.getrepowithaddedfile()
 
@@ -321,6 +353,20 @@ class GitRepoTests(unittest.TestCase):
         self.assertEqual(log[0]['author_email'], 'quit@quit.aksw.org')
         self.assertEqual(log[0]['parents'], [])
         self.assertEqual(log[0]['author_name'], 'QuitStoreTest')
+
+    def testGCConfiguration(self):
+        """Test gc settings."""
+        repo = GitRepo(self.dir.name)
+        self.assertFalse(repo.isgarbagecollectionon())
+
+        repo.gc = True
+        self.assertTrue(repo.isgarbagecollectionon())
+
+        repo.gc = False
+        self.assertFalse(repo.isgarbagecollectionon())
+
+        repo = GitRepo(self.dir.name, gc=True)
+        self.assertTrue(repo.isgarbagecollectionon())
 
     def testCommitExists(self):
         """Test if a commit exists."""

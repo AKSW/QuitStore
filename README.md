@@ -29,10 +29,10 @@ conf:store a <YourQuitStore> ;
 conf:example a <Graph> ; # Define a Graph resource for a named graph
     <graphUri> <http://example.org/> ; # Set the URI of named graph
     <isVersioned> 1 ; # Defaults to True, future work
-    <hasQuadFile> "example.nq" . # Set the filename
+    <graphFile> "example.nq" . # Set the filename
 ```
 
-The `config.ttl` could as well be put under version controll for collaboration, but this is not neccessary.
+The `config.ttl` could as well be put under version control for collaboration, but this is not necessary.
 
 ## Run from command line
 
@@ -56,9 +56,9 @@ pip install -r requirements.txt
 Quit-Store can be started in three different modes.
 These modes differ in how the store choses the named graphs and the corresponding files that will be part of the store.
 
-1. localconfig - Use the graphs specified in a local config file (e.g. `config.ttl`).
-2. repoconfig - Search for a `config.ttl` file in the specified repository.
-3. graphfiles - Use `*.graph` files for each RDF file or analyze found N-Quads files to get the URI of named graphs.
+1. `localconfig` - Use the graphs specified in a local config file (e.g. `config.ttl`).
+2. `repoconfig` - Search for a `config.ttl` file in the specified repository.
+3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)), furthermore found N-Quads files are analyzed to get the URI of named graphs from the used context.
 
 `-t`, `--targetdir`
 
@@ -80,6 +80,16 @@ Run Quit-Store without versioning activated
 
 Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
 
+`-v`, `--verbose` and `-vv`, `--verboseverbose`
+
+Set the loglevel for the standard output to verbose (INFO) respective extra verbose (DEBUG).
+
+`-l`, `--logfile`
+
+Write the log output to the given path.
+The path is interpreted relative to the current working directory.
+The loglevel for the logfile is always extra verbose (DEBUG).
+
 ## API
 
 Execute a query with curl
@@ -99,6 +109,27 @@ http://your.host/git/log
 If you want to convert an N-Triples file to N-Quads where all data is in the same graph, the following line might help.
 
     sed "s/.$/<http:\/\/example.org\/> ./g" data.nt > data.nq
+
+## Docker
+
+We also provide a [Docker image for the Quit Store](https://hub.docker.com/r/aksw/quitstore/) on the public docker hub.
+The Image will expose port 80 by default.
+An existing repository can be linked to the volume `/data`.
+The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
+
+To run the image execute the following command:
+
+```
+docker run --name containername -v /existing/store/repo:/data aksw/quitstore
+```
+
+The following example will map the quit store port to the host port 8080.
+
+```
+docker run --name containername -p 8080:80 -v /existing/store.repo:/data aksw/quitstore
+```
+
+There is also the `QUIT_PORT` environment variable, which changes the port, to which the Quit Store binds inside the docker container.
 
 ## TODO:
 

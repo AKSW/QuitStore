@@ -11,9 +11,8 @@ from quit.core import FileReference, MemoryStore, GitRepo
 from quit.conf import QuitConfiguration, STORE_ALL, STORE_DATA, STORE_PROVENANCE
 from quit.exceptions import InvalidConfigurationError
 from quit.helpers import QueryAnalyzer
-from quit.utils import splitinformation, sparqlresponse
+from quit.utils import splitinformation, sparqlresponse, handle_exit
 from quit.web.app import create_app
-import handleexit
 import logging
 from flask import request, Response
 from flask.ext.api import FlaskAPI, status
@@ -27,28 +26,26 @@ import subprocess
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
 
-logger = logging.getLogger('core')
+logger = logging.getLogger('quit')
 logger.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
-fh = logging.FileHandler('quit.log')
-fh.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 # create console handler with a higher log level
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
 ch.setFormatter(formatter)
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+
 
 def __savefiles():
     """Update the files after a update query was executed on the store."""
+    config = app.config['config']
+    store = app.config['store']
+
     for file in config.getfiles():
         graphs = config.getgraphuriforfile(file)
         content = []
         for graph in graphs:
-            content+= store.getgraphcontent(graph)
+            content += store.getgraphcontent(graph)
         fileobject = FileReference(file)
         # TODO: Quick Fix, add sorting to FileReference
         fileobject.setcontent(sorted(content))
@@ -58,57 +55,51 @@ def __savefiles():
 
 def __updategit():
     """Private method to add all updated tracked files."""
+    gitrepo = app.config['gitrepo']
     gitrepo.addall()
     gitrepo.commit()
-    if config.isgarbagecollectionon():
-        gitrepo.garbagecollection()
 
-    return
-
-def __removefile(self, graphuri):
-    # TODO actions needed to remove file also from
-    # - directory and
-    # - git repository
-    try:
-        del self.files[graphuri]
-    except:
-        return
-
-    try:
-        self.store.remove((None, None, None, graphuri))
-    except:
-        return
-
-    return
 
 def __commit(self, message=None):
     """Private method to commit the changes."""
     try:
         self.gitrepo.commit(message)
-    except:
+    except Exception as e:
+        logger.debug(e)
         pass
 
     return
 
 def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
-    store = MemoryStore
-    files = config.getfiles()
-    for filename in files:
-        filepath = join(config.getRepoPath(), filename)
-        graphs = config.getgraphuriforfile(filename)
-        graphstring = ''
-        for graph in graphs:
-            graphstring+= str(graph)
-        try:
-            store.addfile(filepath, config.getserializationoffile(filename))
-        except:
-            pass
+    oldStore = app.config['store']
+    config = app.config['config']
+    filereferences = app.config['references']
+    gitrepo = app.config['gitrepo']
+
+    store = initializeMemoryStore(config)
+    oldStore = None
+
+    updateConfig(store, config, gitrepo, filereferences)
 
     return
 
+
+def updateConfig(store, config, gitrepo, references):
+    """Update configuration."""
+    app.config.update(dict(
+        store=store,
+        config=config,
+        gitrepo=gitrepo,
+        references=references
+        )
+    )
+
+
 def applyupdates(actions):
     """Update files after store was updated."""
+    config = app.config['config']
+    references = app.config['references']
     graphsandfiles = config.getgraphurifilemap()
     savefiles = {}
 
@@ -170,31 +161,38 @@ def initialize(args):
         A dictionary containing the store object and git repo object.
 
     """
-    gc = False
+    if args.verbose:
+        ch.setLevel(logging.INFO)
+        logger.addHandler(ch)
+        logger.debug('Loglevel: INFO')
+
+    if args.verboseverbose:
+        ch.setLevel(logging.DEBUG)
+        logger.addHandler(ch)
+        logger.debug('Loglevel: DEBUG')
+
+    # add the handlers to the logger
+
+    if args.logfile:
+        try:
+            fh = logging.FileHandler(args.logfile)
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+            logger.debug("Logfile: {}".format(args.logfile))
+        except FileNotFoundError:
+            logger.error("Logfile not found: {}".format(args.logfile))
+            sys.exit('Exiting quit')
+        except PermissionError:
+            logger.error("Can not create logfile: {}".format(args.logfile))
+            sys.exit('Exiting quit')
 
     if args.disableversioning:
-        logger.info('Versioning is disabled')
+        logger.info('Versioning: disabled')
         v = False
     else:
-        logger.info('Versioning is enabled')
+        logger.info('Versioning: enabled')
         v = True
-
-        if args.garbagecollection:
-            try:
-                gcAutoThreshold = subprocess.check_output(["git", "config", "gc.auto"]).decode("UTF-8").strip()
-                if not gcAutoThreshold:
-                    gcAutoThreshold = 256
-                    subprocess.check_output(["git", "config", "gc.auto", str(gcAutoThreshold)])
-                    logger.info('Set default gc.auto threshold ' + str(gcAutoThreshold))
-                gc = True
-                logger.info('Garbage Collection is enabled with gc.auto threshold ' + str(gcAutoThreshold))
-            except Exception as e:
-                """
-                Disable garbage collection for the rest of the run because it is likely that git is not available
-                """
-                gc = False
-                logger.info('Git garbage collection could not be configured and was disabled')
-                logger.debug(e)
 
     storemode = STORE_ALL
     if args.disable_data_store:
@@ -202,16 +200,58 @@ def initialize(args):
     if args.disable_provenance_store:
         storemode &= ~STORE_PROVENANCE
 
-    config = QuitConfiguration(
-        versioning=v,
-        gc=gc,
-        configfile=args.configfile,
-        targetdir=args.targetdir,
-        repository=args.repourl,
-        configmode=args.configmode,
-        storemode=storemode
-    )
+    try:
+        config = QuitConfiguration(
+            versioning=v,
+            configfile=args.configfile,
+            targetdir=args.targetdir,
+            repository=args.repourl,
+            configmode=args.configmode,
+            storemode=storemode
+        )
+    except InvalidConfigurationError as e:
+        logger.error(e)
+        sys.exit('Exiting quit')
 
+    try:
+        gitrepo = GitRepo(
+            path=config.getRepoPath(),
+            origin=config.getOrigin()
+        )
+    except Exception as e:
+        raise InvalidConfigurationError(e)
+
+    if args.garbagecollection:
+        try:
+            with subprocess.Popen(
+                ["git", "config", "gc.auto"],
+                stdout=subprocess.PIPE,
+                cwd=config.getRepoPath()
+            ) as gcAutoThresholdProcess:
+                stdout, stderr = gcAutoThresholdProcess.communicate()
+                gcAutoThreshold = stdout.decode("UTF-8").strip()
+
+            if not gcAutoThreshold:
+                gcAutoThreshold = 256
+                subprocess.Popen(
+                    ["git", "config", "gc.auto", str(gcAutoThreshold)],
+                    cwd=config.getRepoPath()
+                )
+                logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
+
+            gitrepo.gc = True
+            logger.info(
+                "Garbage Collection is enabled with gc.auto threshold {}".format(
+                    gcAutoThreshold
+                )
+            )
+        except Exception as e:
+            # Disable garbage collection for the rest of the run because it
+            # is likely that git is not available
+            logger.info('Git garbage collection could not be configured and was disabled')
+            logger.debug(e)
+
+    # since repo is handled, we can add graphs to config
     config.initgraphconfig()
 
     logger.info('QuitStore successfully running.')
@@ -222,6 +262,7 @@ def initialize(args):
     logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'config': config}
+
 
 def checkrequest(request):
     """Analyze RDF data contained in a POST request.
@@ -240,8 +281,8 @@ def checkrequest(request):
 
     try:
         graph.parse(data=reqdata, format='nquads')
-    except:
-        raise
+    except Exception as e:
+        raise e
 
     quads = graph.quads((None, None, None, None))
     data = splitinformation(quads, graph)
@@ -266,22 +307,28 @@ def processsparql(querystring):
     except NotAcceptable as e:
         logger.error("This is not acceptable:", e)
         exit(1)
-    except:
-        raise
+    except Exception as e:
+        logger.info('This is not acceptable')
+        logger.debug(e)
+        exit(1)
 
-    if query.getType() == 'SELECT':
+    store = app.config['store']
+    config = app.config['config']
+    querytype = query.getType()
+
+    if querytype == 'SELECT':
         logger.debug('Execute select query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'DESCRIBE':
+    elif querytype == 'DESCRIBE':
         logger.debug('Skip describe query')
         result = None
-    elif query.getType() == 'CONSTRUCT':
+    elif querytype == 'CONSTRUCT':
         logger.debug('Execute construct query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'ASK':
+    elif querytype == 'ASK':
         logger.debug('Execute ask query')
         result = store.query(query.getParsedQuery())
-    elif query.getType() == 'UPDATE':
+    elif querytype == 'UPDATE':
         if query.getParsedQuery() is None:
             query = querystring
         else:
@@ -309,6 +356,8 @@ def addtriples(values):
     Raises:
         Exception: If contained data is not valid.
     """
+    store = app.config['store']
+
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -339,6 +388,8 @@ def deletetriples(values):
     Raises:
         Exception: If contained data is not valid.
     """
+    store = app.config['store']
+
     for data in values['data']:
         # delete all triples that should be added
         currentgraph = store.getgraphobject(data['graph'])
@@ -396,13 +447,13 @@ def sparql():
         else:
             logger.debug("unknown request method:", request.method)
             return '', status.HTTP_400_BAD_REQUEST
-    except:
-        logger.debug('Query is missing in request')
+    except Exception as e:
+        logger.info('Query is missing in request')
+        logger.debug(e)
         return '', status.HTTP_400_BAD_REQUEST
 
     try:
         result = processsparql(query)
-        pass
     except Exception as e:
         logger.debug('Something is wrong with received query:', e)
         import traceback
@@ -419,6 +470,7 @@ def sparql():
                         )
         # return '', status.HTTP_200_OK
 
+
 def resultFormat():
     """Get the mime type and result format for a Accept Header."""
     formats = {
@@ -432,7 +484,13 @@ def resultFormat():
         'application/n-quads': 'nquads'
     }
     best = request.accept_mimetypes.best_match(
-        ['application/sparql-results+json', 'application/sparql-results+xml', 'application/rdf+xml', 'text/turtle', 'application/nquads']
+        [
+            'application/sparql-results+json',
+            'application/sparql-results+xml',
+            'application/rdf+xml',
+            'text/turtle',
+            'application/nquads'
+        ]
     )
     # Return json as default, if no mime type is matching
     if best is None:
@@ -441,25 +499,25 @@ def resultFormat():
     return {"mime": best, "format": formats[best]}
 
 
-def main(config):
-    """Start the app."""
-    app = create_app(config)
-    app.run(debug=True, use_reloader=False)
-
-
-if __name__ == '__main__':
+def parseArgs(args):
+    """Parse command line arguments."""
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
                 "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
+    loghelp = """Path to the log file."""
+    targethelp = 'The directory of the local store repository.'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-vv', '--verboseverbose', action='store_true')
     parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
+    parser.add_argument('-l', '--logfile', type=str, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
-    parser.add_argument('-t', '--targetdir', type=str, help='The directory of the local store repository.')
+    parser.add_argument('-t', '--targetdir', type=str, help=targethelp)
     parser.add_argument('-cm', '--configmode', type=str, choices=[
         'graphfiles',
         'localconfig',
@@ -467,12 +525,25 @@ if __name__ == '__main__':
     ], help=graphhelp)
     parser.add_argument('--disable-data-store', action='store_true')
     parser.add_argument('--disable-provenance-store', action='store_true')
-    args = parser.parse_args()
+    parser.add_argument('-p', '--port', default=5000, type=int)
+    parser.add_argument('--host', default='0.0.0.0', type=str)
 
+    return parser.parse_args(args)
+
+
+def main(config):
+    """Start the app."""
+    app = create_app(config)
+    app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
+
+
+if __name__ == '__main__':
+    args = parseArgs(sys.argv[1:])
     objects = initialize(args)
+
     config = objects['config']
     sys.setrecursionlimit(2 ** 15)
 
     # The app is started with an exit handler
-    with handleexit.handle_exit(savedexit):
+    with handle_exit(savedexit):
         main(config)

@@ -61,17 +61,14 @@ class TestConfiguration(unittest.TestCase):
         # no params given
         conf = QuitConfiguration(configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
-        self.assertTrue(conf.isgarbagecollectionon)
 
         # all params set
-        conf = QuitConfiguration(gc=True, versioning=True, configfile=self.localConfigFile)
+        conf = QuitConfiguration(versioning=True, configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
-        self.assertTrue(conf.isgarbagecollectionon)
 
         # all params unset
-        conf = QuitConfiguration(gc=False, versioning=False, configfile=self.localConfigFile)
+        conf = QuitConfiguration(versioning=False, configfile=self.localConfigFile)
         self.assertTrue(conf.isversioningon)
-        self.assertTrue(conf.isgarbagecollectionon)
 
     def testInitExistingFolder(self):
         conf = QuitConfiguration(configfile=self.localConfigFile)
@@ -91,7 +88,7 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='remoteconfig'
+            configmode='repoconfig'
         )
 
         conf.initgraphconfig()
@@ -153,7 +150,7 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='remoteconfig'
+            configmode='repoconfig'
         )
         conf.initgraphconfig()
 
@@ -227,7 +224,7 @@ class TestConfiguration(unittest.TestCase):
 
     def testGraphConfigRemoteConfig(self):
         conf = QuitConfiguration(
-                    configmode='remoteconfig',
+                    configmode='repoconfig',
                     configfile=self.localConfigFile
                 )
 

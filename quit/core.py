@@ -2,18 +2,25 @@ import pygit2
 
 from datetime import datetime
 import logging
-from os import makedirs
-from os.path import abspath, exists, isdir, join
+from os import makedirs, environ
+from os.path import abspath, exists, isdir, isfile, join, expanduser
+from quit.exceptions import QuitGitRepoError
+from quit.update import evalUpdate
+from quit.exceptions import QuitGitRepoError
 from subprocess import Popen
 from functools import lru_cache
 
 import pygit2
-from pygit2 import GIT_MERGE_ANALYSIS_NORMAL, GIT_MERGE_ANALYSIS_UP_TO_DATE, GIT_MERGE_ANALYSIS_FASTFORWARD
+from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
+from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
+from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 from pygit2 import init_repository, clone_repository
-from pygit2 import Repository, Signature, RemoteCallbacks, Keypair, UserPass
+from pygit2 import Repository, Signature, RemoteCallbacks
+from pygit2 import KeypairFromAgent, Keypair, UserPass
+from pygit2 import credentials
+from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal
 
-from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal, BNode, Namespace
 from rdflib import plugin
 from rdflib.store import Store as DefaultStore
 from rdflib.graph import ReadOnlyGraphAggregate
@@ -23,7 +30,10 @@ from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
 from quit.utils import graphdiff
 
-corelogger = logging.getLogger('core.quit')
+from subprocess import Popen
+
+logger = logging.getLogger('quit.core')
+
 
 class FileReference:
     """A class that manages n-quad files.
@@ -44,8 +54,8 @@ class FileReference:
         Raises:
             ValueError: If no file at the filelocation, or in the given directory + filelocation.
         """
-        self.logger = logging.getLogger('file_reference_core.quit')
-        self.logger.debug('Create an instance of FileReference')
+        logger = logging.getLogger('quit.core.FileReference')
+        logger.debug('Create an instance of FileReference')
         self.content = None
         self.path = abspath(filelocation)
         self.modified = False
@@ -79,13 +89,10 @@ class FileReference:
 
         try:
             graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
-            self.logger.debug('Success: File', self.path, 'parsed')
-            # quadstring = graph.serialize(format="nquads").decode('UTF-8')
-            # quadlist = quadstring.splitlines()
-            # self.__setcontent(quadlist)
-        except:
+            logger.debug('Success: File', self.path, 'parsed')
+        except KeyError as e:
             # Given file contains non valid rdf data
-            # self.logger.debug('Error: File', self.path, 'not parsed')
+            # logger.debug('Error: File', self.path, 'not parsed')
             # self.__setcontent([[None][None][None][None]])
             pass
 
@@ -112,52 +119,34 @@ class FileReference:
         """Save the file."""
         f = open(self.path, "w")
 
-        self.logger.debug('Saving file:', self.path)
+        logger.debug('Saving file:', self.path)
         content = self.__getcontent()
         for line in content:
             f.write(line + '\n')
         f.close
 
-        self.logger.debug('File saved')
+        logger.debug('File saved')
 
     def sortcontent(self):
         """Order file content."""
         content = self.__getcontent()
 
         try:
-            self.__setcontent(sorted(content))
+            self.__setcontent(sorted(set(content)))
         except AttributeError:
             pass
 
     def addquads(self, quads):
         """Add quads to the file content."""
         self.content.append(quads)
-        self.content = list(set(self.content))
         self.sortcontent()
 
         return
 
     def addquad(self, quad):
         """Add a quad to the file content."""
-        if(self.quadexists(quad)):
-            return
 
         self.content.append(quad)
-
-        return
-
-    def quadexists(self, quad):
-        """Look if a quad is in the file content.
-
-        Returns:
-            True if quad was found, False else
-        """
-        searchPattern = quad
-
-        if searchPattern in self.content:
-            return True
-
-        return False
 
     def deletequads(self, quads):
         """Remove quads from the file content."""
@@ -218,8 +207,8 @@ class Store(Queryable):
 
     def __init__(self, store):
         """Initialize a new MemoryStore instance."""
-        self.logger = logging.getLogger('memory_store.core.quit')
-        self.logger.debug('Create an instance of MemoryStore')
+        logger = logging.getLogger('quit.core.MemoryStore')
+        logger.debug('Create an instance of MemoryStore')
         self.store = store
 
         return
@@ -292,12 +281,15 @@ class Store(Queryable):
         """
         try:
             self.store.parse(source=filename, format=serialization)
-        except:
-            self.logger.debug('Could not import', filename, '.')
-            self.logger.debug('Make sure the file exists and contains data in', serialization)
-            pass
-
-        return
+        except Exception as e:
+            logger.debug(e)
+            logger.debug(
+                "Could not import file: {}. " +
+                "Make sure the file exists and contains data in  {}".format(
+                    filename,
+                    serialization
+                )
+            )
 
     def addquads(self, quads):
         """Add quads to the MemoryStore.
@@ -307,8 +299,6 @@ class Store(Queryable):
         """
         self.store.addN(quads)
         self.store.commit()
-
-        return
 
     def query(self, querystring):
         """Execute a SPARQL select query.
@@ -381,12 +371,12 @@ class Quit(object):
         self.store = store
 
     def sync(self, rebuild = False):
-        """ 
+        """
         Synchronizes store with repository data.
         """
         if rebuild:
             for c in self.store.contexts():
-                self.store.remove((None,None,None), c) 
+                self.store.remove((None,None,None), c)
 
         def exists(id):
             uri = QUIT['commit-' + id]
@@ -420,25 +410,25 @@ class Quit(object):
         seen = set()
 
         for name in self.repository.tags_or_branches:
-            initial_commit = self.repository.revision(name);            
+            initial_commit = self.repository.revision(name);
             commits = traverse(initial_commit, seen)
 
-            prov = self.changesets(commits)                          
+            prov = self.changesets(commits)
             self.store.addquads((s, p, o, c) for s, p, o, c in prov.quads())
 
             #for commit in commits:
                 #(_, g) = commit.__prov__()
                 #self.store += g
-            
+
     @lru_cache()
-    def instance(self, id=None, force=False):                
+    def instance(self, id=None, force=False):
         default_graphs = list()
 
         if id:
             commit = self.repository.revision(id)
-        
+
             _m = self.config.getgraphurifilemap()
-        
+
             for entity in commit.node().entries(recursive=True):
                 # todo check if file was changed
                 if entity.is_file:
@@ -446,9 +436,9 @@ class Quit(object):
                         continue
 
                     tmp = ConjunctiveGraph()
-                    tmp.parse(data=entity.content, format='nquads')  
+                    tmp.parse(data=entity.content, format='nquads')
 
-                    for context in (c.identifier for c in tmp.contexts()):                    
+                    for context in (c.identifier for c in tmp.contexts()):
 
                         # Todo: why?
                         if context not in _m:
@@ -464,9 +454,9 @@ class Quit(object):
                             g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
                         default_graphs.append(g)
 
-        instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')    
+        instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')
 
-        return VirtualGraph(instance) 
+        return VirtualGraph(instance)
 
     def changesets(self, commits=None):
         g = ConjunctiveGraph(identifier=QUIT.default)
@@ -475,7 +465,7 @@ class Quit(object):
             return g
 
         last = None
-                 
+
         if self.config.checkStoremode(STORE_PROVENANCE):
             role_author_uri = QUIT['author']
             role_committer_uri = QUIT['committer']
@@ -487,19 +477,19 @@ class Quit(object):
             commit = commits.pop()
             rev = commit.id
 
-            # Create the commit            
-            commit_graph = self.instance(commit.id, True)               
+            # Create the commit
+            commit_graph = self.instance(commit.id, True)
             commit_uri = QUIT['commit-' + commit.id]
 
             if self.config.checkStoremode(STORE_PROVENANCE):
                 g.add((commit_uri, is_a, PROV['Activity']))
 
-                if 'Source' in commit.properties.keys(): 
+                if 'Source' in commit.properties.keys():
                     g.add((commit_uri, is_a, QUIT['Import']))
                     g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
-                if 'Query' in commit.properties.keys(): 
+                if 'Query' in commit.properties.keys():
                     g.add((commit_uri, is_a, QUIT['Transformation']))
-                    g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))            
+                    g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
 
                 g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
                 g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
@@ -510,7 +500,7 @@ class Quit(object):
                 hash = pygit2.hash(commit.author.email).hex
                 author_uri = QUIT['user-' + hash]
                 g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
-            
+
                 g.add((author_uri, is_a, PROV['Agent']))
                 g.add((author_uri, RDFS.label, Literal(commit.author.name)))
                 g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
@@ -545,36 +535,36 @@ class Quit(object):
 
                 if commit.parents:
                     parent = commit.parents[0]
-                    parent_graph = self.instance(parent.id, True) 
+                    parent_graph = self.instance(parent.id, True)
 
                     for parent in commit.parents:
                         parent_uri = QUIT['commit-' + parent.id]
-                        g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))            
+                        g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
 
                 # Diff
                 diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
-                for ((resource_uri, _), changesets) in diff.items():                
-                    for (op, update_graph) in changesets: 
+                for ((resource_uri, _), changesets) in diff.items():
+                    for (op, update_graph) in changesets:
                         update_uri = QUIT['update-' + commit.id]
                         op_uri = QUIT[op + '-' + commit.id]
                         g.add((commit_uri, QUIT['updates'], update_uri))
                         g.add((update_uri, QUIT['graph'], resource_uri))
-                        g.add((update_uri, QUIT[op], op_uri))                    
+                        g.add((update_uri, QUIT[op], op_uri))
                         g.addN((s, p, o, op_uri) for s, p, o in update_graph)
 
             # Entities
             _m = self.config.getgraphurifilemap()
-            
+
             for entity in commit.node().entries(recursive=True):
                 # todo check if file was changed
                 if entity.is_file:
-                    
+
                     if entity.name not in _m.values():
                         continue
 
                     tmp = ConjunctiveGraph()
-                    tmp.parse(data=entity.content, format='nquads')  
-                    
+                    tmp.parse(data=entity.content, format='nquads')
+
                     for context in [c.identifier for c in tmp.contexts()]:
 
                         # Todo: why?
@@ -589,16 +579,16 @@ class Quit(object):
                             g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
                         if self.config.checkStoremode(STORE_DATA):
                             g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
-                                                                       
+
         return g
-   
+
     def commit(self, graph, message, index, ref, **kwargs):
         if not graph.store.is_dirty:
             return
-        
+
         seen = set()
 
-        index = self.repository.index(index)        
+        index = self.repository.index(index)
 
         files = {}
 
@@ -609,9 +599,9 @@ class Quit(object):
             graphs.append(context)
             files[file] = graphs
 
-        for file, graphs in files.items():                
+        for file, graphs in files.items():
             g = ReadOnlyGraphAggregate(graphs)
-    
+
             if len(g) == 0:
                 index.remove(file)
             else:
@@ -622,7 +612,7 @@ class Quit(object):
         for k,v in kwargs.items():
             if '\n' in v:
                 out.append('%s: "%s"' % (k, v))
-            else: 
+            else:
                 out.pre('%s: %s' % (k, v))
         out.append('')
         if message:
@@ -632,9 +622,9 @@ class Quit(object):
         author = self.repository._repository.default_signature
         id = index.commit(message, author.name, author.email, ref=ref)
 
-        if id:            
-            self.repository._repository.set_head(id)            
-            if not self.repository.is_bare:                            
+        if id:
+            self.repository._repository.set_head(id)
+            if not self.repository.is_bare:
                 self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.sync()
 
@@ -653,15 +643,17 @@ class GitRepo:
     author_email = 'quit@quit.aksw.org'
     gcProcess = None
 
-    def __init__(self, path, origin=None):
+    def __init__(self, path, origin=None, gc=False):
         """Initialize a new repository from an existing directory.
 
         Args:
             path: A string containing the path to the repository.
+            origin: The remote URL where to clone and fetch from and push to
         """
-        self.logger = logging.getLogger('git_repo.core.quit')
-        self.logger.debug('GitRepo, init, Create an instance of GitStore')
+        logger = logging.getLogger('quit.core.GitRepo')
+        logger.debug('GitRepo, init, Create an instance of GitStore')
         self.path = path
+        self.gc = gc
 
         if not exists(path):
             try:
@@ -671,15 +663,17 @@ class GitRepo:
 
         try:
             self.repo = Repository(path)
-        except:
+        except KeyError:
+            pass
+        except AttributeError:
             pass
 
         if origin:
-            self.callback = self.setCallback(origin)
+            self.callback = QuitRemoteCallbacks()
 
         if self.repo:
             if self.repo.is_bare:
-                raise Exception('Bare repositories not supported, yet')
+                raise QuitGitRepoError('Bare repositories not supported, yet')
 
             if origin:
                 # set remote
@@ -687,7 +681,7 @@ class GitRepo:
         else:
             if origin:
                 # clone
-                self.cloneRepository(origin, path, self.callback)
+                self.repo = self.cloneRepository(origin, path, self.callback)
             else:
                 self.repo = init_repository(path=path, bare=False)
 
@@ -699,10 +693,14 @@ class GitRepo:
                 bare=False,
                 callbacks=callback
             )
-            self.addRemote('origin', origin)
             return repo
-        except:
-            raise Exception('Could not clone from', origin)
+        except Exception as e:
+            raise QuitGitRepoError(
+                "Could not clone from: {} origin. {}".format(
+                    origin,
+                    e
+                )
+            )
 
     def addall(self):
         """Add all (newly created|changed) files to index."""
@@ -722,8 +720,9 @@ class GitRepo:
         try:
             index.add(filename)
             index.write()
-        except:
-            self.logger.debug('GitRepo, addfile, Couldn\'t add file', filename)
+        except Exception as e:
+            logger.info("GitRepo, addfile, Could not add file  {}.".format(filename))
+            logger.debug(e)
 
     def addRemote(self, name, url):
         """Add a remote.
@@ -734,15 +733,17 @@ class GitRepo:
         """
         try:
             self.repo.remotes.create(name, url)
-            self.logger.debug('GitRepo, addRemote, successfully added remote', name, url)
-        except:
-            self.logger.debug('GitRepo, addRemote, could not add remote', name, url)
+            logger.info("Successfully added remote: {} - {}".format(name, url))
+        except Exception as e:
+            logger.info("Could not add remote: {} - {}".format(name, url))
+            logger.debug(e)
 
         try:
             self.repo.remotes.set_push_url(name, url)
             self.repo.remotes.set_url(name, url)
-        except:
-            self.logger.debug('GitRepo, addRemote, could not set urls', name, url)
+        except Exception as e:
+            logger.info("Could not set push/fetch urls: {} - {}".format(name, url))
+            logger.debug(e)
 
     def checkout(self, commitid):
         """Checkout a commit by a commit id.
@@ -754,9 +755,10 @@ class GitRepo:
             commit = self.repo.revparse_single(commitid)
             self.repo.set_head(commit.oid)
             self.repo.reset(commit.oid, GIT_RESET_HARD)
-            self.logger.debug('GitRepo, checkout, Checked out commit:', commitid)
-        except:
-            self.logger.debug('GitRepo, checkout, Commit-ID (' + commitid + ') does not exist')
+            logger.info("Checked out commit: {}".format(commitid))
+        except Exception as e:
+            logger.info("Could not check out commit: {}".format(commitid))
+            logger.debug(e)
 
     def commit(self, message=None):
         """Commit staged files.
@@ -769,8 +771,6 @@ class GitRepo:
         if self.isstagingareaclean():
             # nothing to commit
             return
-
-        # tree = self.repo.TreeBuilder().write()
 
         index = self.repo.index
         index.read()
@@ -796,9 +796,13 @@ class GitRepo:
                                         tree,
                                         [self.repo.head.get_object().hex]
                                         )
-            self.logger.debug('GitRepo, commit, Updates commited')
-        except:
-            self.logger.debug('GitRepo, commit, Nothing to commit')
+            logger.info('Updates commited')
+        except Exception as e:
+            logger.info('Nothing to commit')
+            logger.debug(e)
+
+        if self.gc:
+            self.garbagecollection()
 
     def commitexists(self, commitid):
         """Check if a commit id is part of the repository history.
@@ -821,17 +825,15 @@ class GitRepo:
             commitid: A string cotaining a commitid.
         """
         try:
-            """
-            Check if the garbage collection process is still running
-            """
+            # Check if the garbage collection process is still running
             if self.gcProcess is None or self.gcProcess.poll() is not None:
-                """
-                Start garbage collection with "--auto" option, which imidietly terminates, if it is not necessary
-                """
-                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"])
+                # Start garbage collection with "--auto" option,
+                # which imidietly terminates, if it is not necessary
+                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"], cwd=self.path)
+                logger.debug('Spawn garbage collection')
         except Exception as e:
-            self.logger.debug('Git garbage collection failed to spawn')
-        return
+            logger.debug('Git garbage collection failed to spawn')
+            logger.debug(e)
 
     def getpath(self):
         """Return the path of the git repository.
@@ -850,7 +852,6 @@ class GitRepo:
         commits = []
         if len(self.repo.listall_reference_objects()) > 0:
             for commit in self.repo.walk(self.repo.head.target, GIT_SORT_REVERSE):
-                # commitdate = datetime.fromtimestamp(float(commit.date)).strftime('%Y-%m-%d %H:%M:%S')
                 commits.append({
                     'id': str(commit.oid),
                     'message': str(commit.message),
@@ -875,16 +876,14 @@ class GitRepo:
                 ids.append(str(commit.oid))
         return ids
 
-    def isCallbackSet(self):
-        """Checks if an authentication callback is already defined in the current GitRepo object.
+    def isgarbagecollectionon(self):
+        """Return if gc is activated or not.
 
         Returns:
-            True if callback is set, else False
+            True, if activated
+            False, if not
         """
-        if self.callback is None:
-            return False
-
-        return True
+        return self.gc
 
     def isstagingareaclean(self):
         """Check if staging area is clean.
@@ -910,8 +909,9 @@ class GitRepo:
         """
         try:
             self.repo.remotes[remote].fetch()
-        except:
-            self.logger.debug('GitRepo, pull,  No remote', remote)
+        except Exception as e:
+            logger.info("Can not pull:  Remote {} not found.".format(remote))
+            logger.debug(e)
 
         ref = 'refs/remotes/' + remote + '/' + branch
         remoteid = self.repo.lookup_reference(ref).target
@@ -940,7 +940,7 @@ class GitRepo:
                                     [self.repo.head.target, remoteid])
             self.repo.state_cleanup()
         else:
-            self.logger.debug('GitRepo, pull, Unknown merge analysis result')
+            logger.debug('Can not pull. Unknown merge analysis result')
 
     def push(self, remote='origin', branch='master'):
         """Push if possible.
@@ -953,14 +953,16 @@ class GitRepo:
 
         try:
             remo = self.repo.remotes[remote]
-        except:
-            self.logger.debug('GitRepo, push, Remote:', remote, 'does not exist')
+        except Exception as e:
+            logger.info("Can not push. Remote: {} does not exist.".format(remote))
+            logger.debug(e)
             return
 
         try:
             remo.push(ref, callbacks=self.callback)
-        except:
-            self.logger.debug('GitRepo, push, Can not push to', remote, 'with ref', ref)
+        except Exception as e:
+            logger.info("Can not push to {} with ref {}".format(remote, str(ref)))
+            logger.debug(e)
 
     def getRemotes(self):
         remotes = {}
@@ -968,40 +970,55 @@ class GitRepo:
         try:
             for remote in self.repo.remotes:
                 remotes[remote.name] = [remote.url, remote.push_url]
-        except:
+        except Exception as e:
+            logger.info('No remotes found.')
+            logger.debug(e)
             return {}
 
         return remotes
 
-    def setCallback(self, origin):
-        """Set a pygit callback for user authentication when acting with remotes.
 
-        This method uses the private-public-keypair of the ssh host configuration.
-        The keys are expected to be found at ~/.ssh/
-        Warning: Create a keypair that will be used only in QuitStore and do not use
-        existing keypairs.
+class QuitRemoteCallbacks (RemoteCallbacks):
+    """Set a pygit callback for user authentication when acting with remotes."""
 
-        Args:
-            username: The git username (mostly) given in the adress.
-            passphrase: The passphrase of the private key.
+    def credentials(self, url, username_from_url, allowed_types):
         """
-        from os.path import expanduser
-        ssh = join(expanduser('~'), '.ssh')
-        pubkey = join(ssh, 'id_quit.pub')
-        privkey = join(ssh, 'id_quit')
+        The callback to return a suitable authentication method.
 
-        from re import search
-        # regex to match username in web git adresses
-        regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
-        p = search(regex, origin)
-        username = p.group(3)
-
-        passphrase = ''
-
-        try:
-            credentials = Keypair(username, pubkey, privkey, passphrase)
-        except:
-            self.logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
-            return
-
-        return RemoteCallbacks(credentials=credentials)
+        it supports GIT_CREDTYPE_SSH_KEY and GIT_CREDTYPE_USERPASS_PLAINTEXT
+        GIT_CREDTYPE_SSH_KEY with an ssh agent configured in the env variable SSH_AUTH_SOCK
+          or with id_rsa and id_rsa.pub in ~/.ssh (password must be the empty string)
+        GIT_CREDTYPE_USERPASS_PLAINTEXT from the env variables GIT_USERNAME and GIT_PASSWORD
+        """
+        if credentials.GIT_CREDTYPE_SSH_KEY & allowed_types:
+            if "SSH_AUTH_SOCK" in environ:
+                # Use ssh agent for authentication
+                return KeypairFromAgent(username_from_url)
+            else:
+                ssh = join(expanduser('~'), '.ssh')
+                if "QUIT_SSH_KEY_HOME" in environ:
+                    ssh = environ["QUIT_SSH_KEY_HOME"]
+                # public key is still needed because:
+                # _pygit2.GitError: Failed to authenticate SSH session:
+                # Unable to extract public key from private key file:
+                # Method unimplemented in libgcrypt backend
+                pubkey = join(ssh, 'id_rsa.pub')
+                privkey = join(ssh, 'id_rsa')
+                # check if ssh key is available in the directory
+                if isfile(pubkey) and isfile(privkey):
+                    return Keypair(username_from_url, pubkey, privkey, "")
+                else:
+                    raise Exception(
+                        "No SSH keys could be found, please specify SSH_AUTH_SOCK or add keys to " +
+                        "your ~/.ssh/"
+                    )
+        elif credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
+            if "GIT_USERNAME" in environ and "GIT_PASSWORD" in environ:
+                return UserPass(environ["GIT_USERNAME"], environ["GIT_PASSWORD"])
+            else:
+                raise Exception(
+                    "Remote requested plaintext username and password authentication but " +
+                    "GIT_USERNAME or GIT_PASSWORD are not set."
+                )
+        else:
+            raise Exception("Only unsupported credential types allowed by remote end")
