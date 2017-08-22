@@ -15,7 +15,7 @@ role_committer = QUIT['committer']
 def _git_timestamp(ts, offset):
     import quit.utils as tzinfo
     if offset == 0:
-        tz = utc
+        tz = tzinfo.TZ(0, "UTC")
     else:
         hours, rem = divmod(abs(offset), 60)
         tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
@@ -39,7 +39,7 @@ class Repository(Base):
         except KeyError:
             if not params.get('create', False):
                 raise RepositoryNotFound('Repository "%s" does not exist' % path)
-                        
+
             if origin:
                 self.callback = self._callback(origin)
                 pygit2.clone_repository(url=origin, path=path, bare=False)
@@ -115,12 +115,12 @@ class Repository(Base):
 
         def lookup(name):
             for template in ['refs/heads/%s', 'refs/tags/%s']:
-                try:                                                           
+                try:
                     return self._repository.lookup_reference(template % name)
-                except KeyError:                                                        
+                except KeyError:
                     pass
             raise RevisionNotFound(ref)
-        
+
         def traverse(ref, seen):
             for commit in self._repository.walk(ref.target, order):
                 oid = commit.oid
@@ -130,7 +130,7 @@ class Repository(Base):
 
         def iter_commits(name, seen):
             commits = []
-            
+
             if not name:
                 for name in self.branches:
                     ref = self._repository.lookup_reference(name)
@@ -139,7 +139,7 @@ class Repository(Base):
                 ref = lookup(name)
                 commits += traverse(ref, seen)
             return commits
-        
+
         return iter_commits(name, seen)
 
     @property
@@ -166,7 +166,7 @@ class Repository(Base):
                 remote.fetch()
                 remote_master_id = self._repository.lookup_reference('refs/remotes/origin/%s' % (branch)).target
                 merge_result, _ = self._repository.merge_analysis(remote_master_id)
-                
+
                 # Up to date, do nothing
                 if merge_result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
                     return
@@ -180,7 +180,7 @@ class Repository(Base):
                     except KeyError:
                         self._repository.create_branch(branch, repo.get(remote_master_id))
                     self._repository.head.set_target(remote_master_id)
-                
+
                 elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
                     self._repository.merge(remote_master_id)
 
@@ -271,14 +271,14 @@ class Revision(Base):
         for entry in self.node().entries(recursive=True):
             if not entry.is_file:
                 continue
-            
+
             for (public_uri, g) in entry.graph(store):
                 if public_uri is None:
                     continue
 
-                mapping[public_uri] = g 
-            
-        return InstanceGraph(mapping) 
+                mapping[public_uri] = g
+
+        return InstanceGraph(mapping)
 
     def __prov__(self):
 
@@ -290,7 +290,7 @@ class Revision(Base):
         g.add((uri, is_a, PROV['Activity']))
 
         # special activity
-        if 'import' in self.properties.keys(): 
+        if 'import' in self.properties.keys():
             g.add((uri, is_a, QUIT['Import']))
             g.add((uri, QUIT['dataSource'], URIRef(self.properties['import'].strip())))
 
@@ -302,7 +302,7 @@ class Revision(Base):
         # parents
         for parent in self.parents:
             parent_uri = QUIT['commit-' + parent.id]
-            g.add((uri, QUIT["preceedingCommit"], parent_uri))               
+            g.add((uri, QUIT["preceedingCommit"], parent_uri))
 
         g.add((role_author, is_a, PROV['Role']))
         g.add((role_committer, is_a, PROV['Role']))
@@ -342,7 +342,7 @@ class Revision(Base):
                 op_uri = QUIT[op + '-' + hex]
                 g.add((uri, QUIT['updates'], update_uri))
                 g.add((update_uri, QUIT['graph'], resource_uri))
-                g.add((update_uri, QUIT[op], op_uri))                    
+                g.add((update_uri, QUIT[op], op_uri))
                 g.addN((s, p, o, op_uri) for s, p, o in update_graph)
 
         # entities
@@ -372,7 +372,7 @@ class Signature(Base):
 
         hash = pygit2.hash(self.email).hex
         uri = QUIT['user-' + hash]
-        
+
         g = ConjunctiveGraph(identifier=QUIT.default)
 
         g.add((uri, is_a, PROV['Agent']))
@@ -383,7 +383,7 @@ class Signature(Base):
 
 
 class Node(Base):
-    
+
     DIRECTORY = "dir"
     FILE = "file"
 
@@ -434,7 +434,7 @@ class Node(Base):
         return self.blob.data.decode("utf-8")
 
     def entries(self, recursive=False):
-        if isinstance(self.obj, pygit2.Tree):            
+        if isinstance(self.obj, pygit2.Tree):
             for entry in self.obj:
                 dirname = self.is_dir and self.name or self.dirname
                 node = Node(self._repository, self._commit, '/'.join(x for x in [dirname, entry.name] if x))
@@ -454,28 +454,28 @@ class Node(Base):
         if self.is_file:
 
             tmp = ConjunctiveGraph()
-            tmp.parse(data=self.content, format='nquads')  
+            tmp.parse(data=self.content, format='nquads')
 
             for context in tmp.context():
 
                 public_uri = QUIT[context]
                 private_uri = QUIT[context + '-' + self.blob.hex]
-            
+
                 g = ReadOnlyRewriteGraph(entry.blob.hex, identifier=private_uri)
                 g.parse(data=entry.content, format='nquads')
 
                 yield (public_uri, g)
 
 
-    def __prov__(self):       
+    def __prov__(self):
         if self.is_file:
 
             tmp = ConjunctiveGraph()
-            tmp.parse(data=self.content, format='nquads')  
+            tmp.parse(data=self.content, format='nquads')
 
             for context in tmp.context():
                 g = ConjunctiveGraph(identifier=QUIT.default)
-                
+
                 public_uri = QUIT[context]
                 private_uri = QUIT[context + '-' + self.blob.hex]
 

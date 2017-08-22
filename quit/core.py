@@ -5,8 +5,6 @@ import logging
 from os import makedirs, environ
 from os.path import abspath, exists, isdir, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
-from quit.update import evalUpdate
-from quit.exceptions import QuitGitRepoError
 from subprocess import Popen
 from functools import lru_cache
 
