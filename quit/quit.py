@@ -53,6 +53,7 @@ def __savefiles():
 
     return
 
+
 def __updategit():
     """Private method to add all updated tracked files."""
     gitrepo = app.config['gitrepo']
@@ -69,6 +70,7 @@ def __commit(self, message=None):
         pass
 
     return
+
 
 def reloadstore():
     """Create a new (empty) store and parse all known files into it."""
@@ -418,7 +420,7 @@ def savedexit():
     Add methods you want to call on unexpected shutdown.
     """
     logger.info("Exiting store")
-    #store.exit()
+    # store.exit()
     logger.info("Store exited")
 
     return
@@ -427,6 +429,7 @@ def savedexit():
 '''
 API
 '''
+
 
 def sparql():
     """Process a SPARQL query (Select or Update).

@@ -12,6 +12,7 @@ from quit.utils import graphdiff, clean_path
 role_author = QUIT['author']
 role_committer = QUIT['committer']
 
+
 def _git_timestamp(ts, offset):
     import quit.utils as tzinfo
     if offset == 0:
@@ -21,6 +22,7 @@ def _git_timestamp(ts, offset):
         tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
         tz = tzinfo.TZ(offset, tzname)
     return datetime.fromtimestamp(ts, tz)
+
 
 class Base(object):
     def __init__(self):
@@ -77,7 +79,7 @@ class Repository(Base):
 
         try:
             credentials = Keypair(username, pubkey, privkey, passphrase)
-        except:
+        except Exception:
             self.logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
             return
 
@@ -86,9 +88,11 @@ class Repository(Base):
     def _clone(self, origin, path):
         try:
             self.addRemote('origin', origin)
-            repo = pygit2.clone_repository(url=origin, path=path, bare=False, callbacks=self.callback)
+            repo = pygit2.clone_repository(
+                url=origin, path=path, bare=False, callbacks=self.callback
+            )
             return repo
-        except:
+        except Exception:
             raise Exception('Could not clone from', origin)
 
     @property
@@ -152,7 +156,10 @@ class Repository(Base):
 
     @property
     def tags_or_branches(self):
-        return [x for x in self._repository.listall_references() if x.startswith('refs/tags/') or x.startswith('refs/heads/')]
+        return [
+            x for x in self._repository.listall_references()
+            if x.startswith('refs/tags/') or x.startswith('refs/heads/')
+        ]
 
     def index(self, revision=None):
         index = Index(self)
@@ -164,7 +171,9 @@ class Repository(Base):
         for remote in self._repository.remotes:
             if remote.name == remote_name:
                 remote.fetch()
-                remote_master_id = self._repository.lookup_reference('refs/remotes/origin/%s' % (branch)).target
+                remote_master_id = self._repository.lookup_reference(
+                    'refs/remotes/origin/{}'.format(branch)
+                ).target
                 merge_result, _ = self._repository.merge_analysis(remote_master_id)
 
                 # Up to date, do nothing
@@ -191,12 +200,10 @@ class Repository(Base):
 
                     user = self._repository.default_signature
                     tree = self._repository.index.write_tree()
-                    commit = self._repository.create_commit('HEAD',
-                                                user,
-                                                user,
-                                                'Merge!',
-                                                tree,
-                                                [self._repository.head.target, remote_master_id])
+                    commit = self._repository.create_commit(
+                        'HEAD', user, user, 'Merge!', tree,
+                        [self._repository.head.target, remote_master_id]
+                    )
                     # We need to do this or git CLI will think we are still merging.
                     self._repository.state_cleanup()
                 else:
@@ -223,8 +230,16 @@ class Revision(Base):
 
         message = commit.message.strip()
         properties, message = self._parse_message(commit.message)
-        author = Signature(commit.author.name, commit.author.email, _git_timestamp(commit.author.time, commit.author.offset), commit.author.offset)
-        committer = Signature(commit.committer.name, commit.committer.email, _git_timestamp(commit.committer.time, commit.committer.offset), commit.committer.offset)
+        author = Signature(
+            commit.author.name, commit.author.email,
+            _git_timestamp(commit.author.time, commit.author.offset),
+            commit.author.offset
+        )
+        committer = Signature(
+            commit.committer.name, commit.committer.email,
+            _git_timestamp(commit.committer.time, commit.committer.offset),
+            commit.committer.offset
+        )
 
         self.id = commit.hex
         self.short_id = self.id[:10]
@@ -241,7 +256,7 @@ class Revision(Base):
 
     def _parse_message(self, message):
         found = dict()
-        idx=-1
+        idx = -1
         lines = message.splitlines()
         for line in lines:
             idx += 1
@@ -295,8 +310,8 @@ class Revision(Base):
             g.add((uri, QUIT['dataSource'], URIRef(self.properties['import'].strip())))
 
         # properties
-        g.add((uri, PROV['startedAtTime'], Literal(self.author_date, datatype = XSD.dateTime)))
-        g.add((uri, PROV['endedAtTime'], Literal(self.committer_date, datatype = XSD.dateTime)))
+        g.add((uri, PROV['startedAtTime'], Literal(self.author_date, datatype=XSD.dateTime)))
+        g.add((uri, PROV['endedAtTime'], Literal(self.committer_date, datatype=XSD.dateTime)))
         g.add((uri, RDFS['comment'], Literal(self.message)))
 
         # parents
@@ -379,7 +394,7 @@ class Signature(Base):
         g.add((uri, RDFS.label, Literal(self.name)))
         g.add((uri, FOAF.mbox, Literal(self.email)))
 
-        return (uri,g)
+        return (uri, g)
 
 
 class Node(Base):
@@ -412,11 +427,11 @@ class Node(Base):
         self._commit = commit
 
     @property
-    def is_dir(self) :
+    def is_dir(self):
         return self.kind == Node.DIRECTORY
 
     @property
-    def is_file(self) :
+    def is_file(self):
         return self.kind == Node.FILE
 
     @property
@@ -437,7 +452,9 @@ class Node(Base):
         if isinstance(self.obj, pygit2.Tree):
             for entry in self.obj:
                 dirname = self.is_dir and self.name or self.dirname
-                node = Node(self._repository, self._commit, '/'.join(x for x in [dirname, entry.name] if x))
+                node = Node(
+                    self._repository, self._commit, '/'.join(x for x in [dirname, entry.name] if x)
+                )
 
                 yield node
                 if recursive and node.is_dir and node.obj is not None:
@@ -466,7 +483,6 @@ class Node(Base):
 
                 yield (public_uri, g)
 
-
     def __prov__(self):
         if self.is_file:
 
@@ -481,9 +497,12 @@ class Node(Base):
 
                 g.add((private_uri, is_a, PROV['Entity']))
                 g.add((private_uri, PROV['specializationOf'], public_uri))
-                g.addN((s, p, o, private_uri) for s, p, o, _ in tmp.quads(None, None, None, context))
+                g.addN(
+                    (s, p, o, private_uri) for s, p, o, _ in tmp.quads(None, None, None, context)
+                )
 
                 yield (private_uri, g)
+
 
 from heapq import heappush, heappop
 
@@ -545,7 +564,9 @@ class Index(object):
         self.dirty = True
 
         try:
-            return self.repository._repository.create_commit(ref, author, commiter, message, oid, parents)
+            return self.repository._repository.create_commit(
+                ref, author, commiter, message, oid, parents
+            )
         except Exception as e:
             print(e)
             return None
@@ -581,7 +602,9 @@ class IndexTree(object):
         self.revision = index.revision
         self.builders = IndexHeap()
         if self.revision:
-            self.builders[''] = (None, self.repository._repository.TreeBuilder(self.revision._commit.tree))
+            self.builders[''] = (
+                None, self.repository._repository.TreeBuilder(self.revision._commit.tree)
+            )
         else:
             self.builders[''] = (None, self.repository._repository.TreeBuilder())
 
@@ -600,7 +623,9 @@ class IndexTree(object):
                 if self.revision:
                     node = self.revision.node(_path)
                     if node.is_file:
-                        raise IndexError('Cannot create a tree builder. "{0}" is a file'.format(node.name))
+                        raise IndexError(
+                            'Cannot create a tree builder. "{}" is a file'.format(node.name)
+                        )
                     args.append(node.obj.oid)
             except NodeNotFound:
                 pass
