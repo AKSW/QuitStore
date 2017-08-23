@@ -43,6 +43,5 @@ class HTMLResultSerializer(ResultSerializer):
             stream.write("<strong>true</strong>".encode(encoding))
             return
         if self.result.type == 'SELECT':
-            print("hello")
             template = env.from_string(RESULT_TEMPLATE)
             stream.write(template.render(result=self.result))

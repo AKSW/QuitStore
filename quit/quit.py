@@ -462,9 +462,8 @@ def sparql():
     try:
         result = processsparql(query)
     except Exception as e:
-        logger.debug('Something is wrong with received query:', e)
-        import traceback
-        traceback.print_tb(e.__traceback__, limit=20)
+        logger.debug('Something is wrong with received query, exception occurred.')
+        logger.exception(e)
         return '', status.HTTP_400_BAD_REQUEST
 
     # Check weather we have a result (SELECT) or not (UPDATE) and respond correspondingly

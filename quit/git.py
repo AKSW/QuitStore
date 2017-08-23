@@ -1,12 +1,15 @@
 import os
 import pygit2
 import re
+import logging
 
 from datetime import datetime
 from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset, BNode
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a, XSD
 from quit.utils import graphdiff, clean_path
+
+logger = logging.getLogger('quit.git')
 
 # roles
 role_author = QUIT['author']
@@ -195,7 +198,7 @@ class Repository(Base):
 
                     if self._repository.index.conflicts is not None:
                         for conflict in repo.index.conflicts:
-                            print('Conflicts found in:', conflict[0].path)
+                            logging.error('Conflicts found in: {}'.format(conflict[0].path))
                         raise AssertionError('Conflicts, ahhhhh!!')
 
                     user = self._repository.default_signature
@@ -548,7 +551,7 @@ class Index(object):
 
         # Sort index items
         items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
-        print(items)
+        logger.debug("commit items: {}".format(items))
 
         # Create tree
         tree = IndexTree(self)
@@ -568,7 +571,7 @@ class Index(object):
                 ref, author, commiter, message, oid, parents
             )
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return None
 
 

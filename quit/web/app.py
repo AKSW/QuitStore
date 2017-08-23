@@ -2,6 +2,7 @@ import os
 import urllib
 import hashlib
 import rdflib
+import logging
 
 from functools import wraps
 
@@ -18,6 +19,8 @@ from quit.git import Repository
 from quit.namespace import QUIT
 from quit.web.service import register
 from quit.provenance import Blame
+
+logger = logging.getLogger('quit.web.app')
 
 # For import *
 __all__ = ['create_app']
@@ -84,11 +87,8 @@ def register_app(app, config):
     quit.sync()
 
     content = quit.store.store.serialize(format='trig').decode()
-    for line in (content.splitlines()):
-        print(line)
-
-    for e in quit.config.getgraphs():
-        print(e)
+    logger.debug("Initialize store with following content: {}".format(content))
+    logger.debug("Initialize store with following graphs: {}".format(quit.config.getgraphs()))
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
@@ -185,7 +185,6 @@ def register_template_helpers(app):
                 link = config['quit'].store.store.compute_qname(t, False)
                 return u'%s:%s' % (link[0], link[2])
             except Exception as e:
-                print("Error: " + str(e))
                 return t
 
         if isinstance(t, rdflib.URIRef):

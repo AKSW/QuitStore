@@ -2,12 +2,15 @@ import sys
 import traceback
 import re
 
+import logging
 from werkzeug.http import parse_accept_header
 from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
 from rdflib import ConjunctiveGraph
 from quit.conf import STORE_PROVENANCE, STORE_DATA
 from quit.web.app import render_template, storemode_required
 from quit.exceptions import UnSupportedQueryType
+
+logger = logging.getLogger('quit.modules.endpoint')
 
 __all__ = ['endpoint']
 
@@ -84,12 +87,12 @@ def sparql(branch_or_ref):
                 return '', 200
 
         except UnSupportedQueryType as e:
-            current_app.logger.error(e)
-            current_app.logger.error(traceback.format_exc())
+            logger.error(e)
+            logger.error(traceback.format_exc())
             return "Unsupported Query Type: <pre>{}</pre>".format(traceback.format_exc()), 200
         except Exception as e:
-            current_app.logger.error(e)
-            current_app.logger.error(traceback.format_exc())
+            logger.error(e)
+            logger.error(traceback.format_exc())
             return "<pre>" + traceback.format_exc() + "</pre>", 400
     else:
         return render_template('sparql.html')
@@ -146,8 +149,8 @@ def provenance():
                 raise UnSupportedQueryType()
 
         except Exception as e:
-            current_app.logger.error(e)
-            current_app.logger.error(traceback.format_exc())
+            logger.error(e)
+            logger.error(traceback.format_exc())
             return "<pre>" + traceback.format_exc() + "</pre>", 400
     else:
         return render_template('provenance.html')
@@ -224,7 +227,6 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
             content_type, format = negotiate(accept_header)
             if content_type.startswith('text/'):
                 content_type += "; charset=utf-8"
-            print(format)
             headers = {"Content-type": content_type}
             response = (200, headers, get_where(graph, args).serialize(format=format))
 
@@ -255,8 +257,8 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
                         "Method %s not supported" % method)
 
     except Exception as e:
-        current_app.logger.error(e)
-        current_app.logger.error(traceback.format_exc())
+        logger.error(e)
+        logger.error(traceback.format_exc())
         response = (400, dict(), "<pre>" + traceback.format_exc() + "</pre>")
 
     return response
@@ -282,7 +284,7 @@ def statements(branch_or_ref):
     args = request.args
     body = request.data.decode('utf-8')
 
-    print('%s %s %s %s' % (method, mimetype, args, body))
+    logger.debug("{} {} {} {}".format(method, mimetype, args, body))
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
