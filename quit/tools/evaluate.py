@@ -30,6 +30,7 @@ from rdflib.plugins.sparql.aggregates import Aggregator
 from rdflib.plugins.sparql.algebra import Join, ToMultiSet, Values
 
 from quit.web import service
+from quit.exceptions import UnSupportedQuery, UnSupportedQueryType
 
 def evalBGP(ctx, bgp):
 
@@ -263,19 +264,19 @@ def evalPart(ctx, part):
         return evalAskQuery(ctx, part)
     elif part.name == 'ConstructQuery':
         return evalConstructQuery(ctx, part)
-    
-    elif part.name == 'Service':		
+
+    elif part.name == 'Service':
         return evalService(ctx, part)
 
     elif part.name == 'ServiceGraphPattern':
-        raise Exception('ServiceGraphPattern not implemented')
+        raise UnSupportedQuery('ServiceGraphPattern not implemented')
 
     elif part.name == 'DescribeQuery':
-        raise Exception('DESCRIBE not implemented')
+        raise UnSupportedQueryType('DESCRIBE not implemented')
 
     else:
         # import pdb ; pdb.set_trace()
-        raise Exception('I dont know: %s' % part.name)
+        raise UnSupportedQuery('I dont know: %s' % part.name)
 
 
 def evalGroup(ctx, group):
@@ -439,16 +440,16 @@ def evalConstructQuery(ctx, query):
 
     return res
 
-def evalService(ctx, part):		
-    		
-    srv = service.get(part.term)		
-    if srv is None:		
-         raise Exception('SERVICE not implemented')		
-    else:		
-        c = ctx.pushGraph(srv)		
-        c._dataset = srv		
-        for x in evalPart(c, part.p): 		
-            yield x  
+def evalService(ctx, part):
+
+    srv = service.get(part.term)
+    if srv is None:
+         raise Exception('SERVICE not implemented')
+    else:
+        c = ctx.pushGraph(srv)
+        c._dataset = srv
+        for x in evalPart(c, part.p):
+            yield x
 
 def evalQuery(graph, query, initBindings, base=None):
 

@@ -83,6 +83,10 @@ def sparql(branch_or_ref):
                 quit.commit(graph, 'New Commit from QuitStore', branch_or_ref, ref, query=q)
                 return '', 200
 
+        except UnSupportedQueryType as e:
+            current_app.logger.error(e)
+            current_app.logger.error(traceback.format_exc())
+            return "Unsupported Query Type: <pre>{}</pre>".format(traceback.format_exc()), 200
         except Exception as e:
             current_app.logger.error(e)
             current_app.logger.error(traceback.format_exc())

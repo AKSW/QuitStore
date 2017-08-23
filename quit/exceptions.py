@@ -61,16 +61,23 @@ class ServiceException(Error):
     pass
 
 
-class UnSupportedQueryType(Exception):
+class UnSupportedQuery(Exception):
     """
-    Thrown when providing an unsupported query type
+    Thrown when providing a query which includes an unsupported keyword
     """
 
     def __init__(self):
         pass
 
     def __str__(self):
-        return ("This query is not allowed by this endpoint")
+        return ("This query is not supported by this endpoint")
+
+
+class UnSupportedQueryType(UnSupportedQuery):
+    """
+    Thrown when providing an unsupported query type
+    """
+    pass
 
 
 class UnknownConfigurationError(Error):
