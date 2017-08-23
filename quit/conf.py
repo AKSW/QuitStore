@@ -520,7 +520,10 @@ class QuitConfiguration:
                     <{predicate_prefix}> ?prefix ;
                     <{predicate_namespace}> ?namespace .
             }}
-        }}""".format(binding=ns['Binding'], predicate_prefix=ns['prefix'], predicate_namespace=ns['namespace'])
+        }}""".format(
+            binding=ns['Binding'], predicate_prefix=ns['prefix'],
+            predicate_namespace=ns['namespace']
+        )
 
         result = self.sysconf.query(q)
         return [(row['prefix'], row['namespace']) for row in result]

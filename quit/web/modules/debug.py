@@ -42,7 +42,9 @@ def blame(branch_or_ref):
             response = make_response(res.serialize(format='json'), 200)
             response.headers['Content-Type'] = 'application/json'
             return response
-        elif mimetype in ['application/rdf+xml', 'application/xml', 'application/sparql-results+xml']:
+        elif mimetype in [
+            'application/rdf+xml', 'application/xml', 'application/sparql-results+xml'
+        ]:
             response = make_response(res.serialize(format='xml'), 200)
             response.headers['Content-Type'] = 'application/rdf+xml'
             return response

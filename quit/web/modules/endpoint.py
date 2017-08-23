@@ -68,7 +68,9 @@ def sparql(branch_or_ref):
                     response = make_response(res.serialize(format='json'), 200)
                     response.headers['Content-Type'] = 'application/json'
                     return response
-                elif mimetype in ['application/rdf+xml', 'application/xml', 'application/sparql-results+xml']:
+                elif mimetype in [
+                    'application/rdf+xml', 'application/xml', 'application/sparql-results+xml'
+                ]:
                     response = make_response(res.serialize(format='xml'), 200)
                     response.headers['Content-Type'] = 'application/rdf+xml'
                     return response
@@ -126,7 +128,9 @@ def provenance():
                     response = make_response(res.serialize(format='json'), 200)
                     response.headers['Content-Type'] = 'application/json'
                     return response
-                elif mimetype in ['application/rdf+xml', 'application/xml', 'application/sparql-results+xml']:
+                elif mimetype in [
+                    'application/rdf+xml', 'application/xml', 'application/sparql-results+xml'
+                ]:
                     response = make_response(res.serialize(format='xml'), 200)
                     response.headers['Content-Type'] = 'application/rdf+xml'
                     return response
@@ -170,7 +174,9 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
 
         result = ConjunctiveGraph()
 
-        for subgraph in (x for x in graph.store.contexts((s, p, o)) if c is None or x.identifier == c):
+        for subgraph in (
+            x for x in graph.store.contexts((s, p, o)) if c is None or x.identifier == c
+        ):
             result.addN((s, p, o, subgraph.identifier)
                         for s, p, o in subgraph.triples((None, None, None)))
         return result
@@ -208,8 +214,8 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
 
     try:
         if method in ['GET', 'HEAD']:
-            #format, content_type = self.negotiate(self.RESULT_GRAPH, accept_header)
-            #if content_type.startswith('text/'): content_type += "; charset=utf-8"
+            # format, content_type = self.negotiate(self.RESULT_GRAPH, accept_header)
+            # if content_type.startswith('text/'): content_type += "; charset=utf-8"
 
             content_type, format = negotiate(accept_header)
             if content_type.startswith('text/'):
@@ -252,7 +258,10 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
     return response
 
 
-@endpoint.route("/statements", defaults={'branch_or_ref': None}, methods=['GET', 'POST', 'PUT', 'DELETE'])
+@endpoint.route(
+    "/statements", defaults={'branch_or_ref': None},
+    methods=['GET', 'POST', 'PUT', 'DELETE']
+)
 @endpoint.route("/statements/<branch_or_ref>", methods=['GET', 'POST', 'PUT', 'DELETE'])
 def statements(branch_or_ref):
 

@@ -93,4 +93,10 @@ class Blame(object):
             }
             """ % values_string
 
-        return list(self.quit.store.store.query(q, initNs={'foaf': FOAF, 'prov': PROV, 'quit': QUIT}, initBindings={'commit': QUIT['commit-' + commit.id]}))
+        return list(
+            self.quit.store.store.query(
+                q,
+                initNs={'foaf': FOAF, 'prov': PROV, 'quit': QUIT},
+                initBindings={'commit': QUIT['commit-' + commit.id]}
+            )
+        )

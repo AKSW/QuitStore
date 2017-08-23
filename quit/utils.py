@@ -91,9 +91,14 @@ def graphdiff(first, second):
         id = None
         changes = diffs.get((uri, id), [])
 
-        if (first is not None and uri in first_identifiers) and (second is not None and uri in second_identifiers):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(
-                first.graph(uri)), to_isomorphic(second.graph(uri)))
+        if (
+            first is not None and uri in first_identifiers
+        ) and (
+            second is not None and uri in second_identifiers
+        ):
+            in_both, in_first, in_second = graph_diff(
+                to_isomorphic(first.graph(uri)), to_isomorphic(second.graph(uri))
+            )
 
             if len(in_second) > 0:
                 changes.append(('additions', in_second))

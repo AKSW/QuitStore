@@ -5,7 +5,8 @@ import rdflib
 
 from functools import wraps
 
-from flask import Flask, render_template as rt, render_template_string as rts, g, current_app, request, url_for, redirect, make_response
+from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
+from flask import request, url_for, redirect, make_response
 from flask.ext.cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
@@ -23,11 +24,15 @@ __all__ = ['create_app']
 
 DROPDOWN_TEMPLATE = """
 <div class="dropdown branch-select">
-    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-code-fork" aria-hidden="true"></i> Branches <span class="caret"></span></button>
+    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+        <i class="fa fa-code-fork" aria-hidden="true"></i> Branches <span class="caret"></span>
+    </button>
     <ul class="dropdown-menu">
         <li class="dropdown-header">Branches</li>
         {% for branch in branches %}
-            <li><a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a></li>
+            <li>
+                <a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a>
+            </li>
         {% endfor %}
         {% if tags %}
             <li class="divider"></li>
@@ -177,15 +182,15 @@ def register_template_helpers(app):
         def qname(ctx, t):
             try:
                 config = ctx.get('config')
-                l = config['quit'].store.store.compute_qname(t, False)
-                return u'%s:%s' % (l[0], l[2])
+                link = config['quit'].store.store.compute_qname(t, False)
+                return u'%s:%s' % (link[0], link[2])
             except Exception as e:
                 print("Error: " + str(e))
                 return t
 
         if isinstance(t, rdflib.URIRef):
-            l = qname(ctx, t)
-            return Markup("<a href='%s'>%s</a>" % (t, l))
+            link = qname(ctx, t)
+            return Markup("<a href='%s'>%s</a>" % (t, link))
         elif isinstance(t, rdflib.Literal):
             if t.language:
                 return '"%s"@%s' % (t, t.language)

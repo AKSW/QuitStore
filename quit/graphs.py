@@ -1,14 +1,19 @@
 import rdflib.plugin as plugin
 
 from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
-from rdflib.graph import Node, ReadOnlyGraphAggregate, ModificationException, UnSupportedAggregateOperation, Path
+from rdflib.graph import Node, ReadOnlyGraphAggregate, ModificationException
+from rdflib.graph import UnSupportedAggregateOperation, Path
 from rdflib.store import Store
 from rdflib.plugins.memory import IOMemory
 
 
 class ReadOnlyRewriteGraph(Graph):
-    def __init__(self, store='default', identifier=None, rewritten_identifier=None, namespace_manager=None):
-        super().__init__(store=store, identifier=rewritten_identifier, namespace_manager=namespace_manager)
+    def __init__(
+        self, store='default', identifier=None, rewritten_identifier=None, namespace_manager=None
+    ):
+        super().__init__(
+            store=store, identifier=rewritten_identifier, namespace_manager=namespace_manager
+        )
         self.__graph = Graph(store=store, identifier=identifier,
                              namespace_manager=namespace_manager)
 
@@ -180,4 +185,7 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
     def get_context(self, identifier, quoted=False):
         if not isinstance(identifier, Node):
             identifier = URIRef(identifier)
-        return InMemoryGraphAggregate.InMemoryGraph(store=self.__memory_store, identifier=identifier, namespace_manager=self, external=self._default(identifier))
+        return InMemoryGraphAggregate.InMemoryGraph(
+            store=self.__memory_store, identifier=identifier,
+            namespace_manager=self, external=self._default(identifier)
+        )
