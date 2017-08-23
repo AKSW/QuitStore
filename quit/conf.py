@@ -13,10 +13,11 @@ from quit.utils import clean_path
 
 logger = logging.getLogger('quit.conf')
 
-STORE_NONE       = 0
+STORE_NONE = 0
 STORE_PROVENANCE = (1 << 0)
-STORE_DATA       = (1 << 1)
-STORE_ALL        = STORE_DATA | STORE_PROVENANCE
+STORE_DATA = (1 << 1)
+STORE_ALL = STORE_DATA | STORE_PROVENANCE
+
 
 class QuitConfiguration:
     """A class that keeps track of the relation between named graphs and files."""
@@ -220,7 +221,6 @@ class QuitConfiguration:
 
         return graphuri
 
-
     def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org/'
@@ -296,7 +296,6 @@ class QuitConfiguration:
 
                 filename = relpath(joinedabsfile, start=repopath)
 
-
             filename = clean_path(filename)
             graphuri = URIRef(graphuri)
 
@@ -310,7 +309,7 @@ class QuitConfiguration:
                 self.files[filename] = {
                     'serialization': format,
                     'graphs': {graphuri}
-                    }
+                }
 
         return
 
@@ -489,11 +488,10 @@ class QuitConfiguration:
 
         return graphfiles
 
-
     def isversioningon(self):
         return self.versioning
 
-    def checkStoremode (self, flags):
+    def checkStoremode(self, flags):
         return (self.storemode & flags) == flags
 
     def setConfigMode(self, mode):

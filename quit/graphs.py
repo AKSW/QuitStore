@@ -5,14 +5,16 @@ from rdflib.graph import Node, ReadOnlyGraphAggregate, ModificationException, Un
 from rdflib.store import Store
 from rdflib.plugins.memory import IOMemory
 
+
 class ReadOnlyRewriteGraph(Graph):
-    def __init__(self, store='default', identifier = None, rewritten_identifier = None, namespace_manager = None):
+    def __init__(self, store='default', identifier=None, rewritten_identifier=None, namespace_manager=None):
         super().__init__(store=store, identifier=rewritten_identifier, namespace_manager=namespace_manager)
-        self.__graph = Graph(store=store, identifier=identifier, namespace_manager=namespace_manager)
+        self.__graph = Graph(store=store, identifier=identifier,
+                             namespace_manager=namespace_manager)
 
     def triples(self, triple):
         return self.__graph.triples(triple)
-   
+
     def __cmp__(self, other):
         if other is None:
             return -1
@@ -22,7 +24,7 @@ class ReadOnlyRewriteGraph(Graph):
             return cmp(self.__graph, other.__graph)
         else:
             return -1
-    
+
     def add(self, triple_or_quad):
         raise ModificationException()
 
@@ -46,22 +48,23 @@ class ReadOnlyRewriteGraph(Graph):
 
 
 class InMemoryGraphAggregate(ConjunctiveGraph):
-    def __init__(self, graphs=list(), identifier=None):                
-        self.__memory_store = IOMemory()        
+    def __init__(self, graphs=list(), identifier=None):
+        self.__memory_store = IOMemory()
         super().__init__(self.__memory_store, identifier)
-        
+
         assert isinstance(graphs, list), "graphs argument must be a list of Graphs!!"
         self.__graphs = graphs
 
     class InMemoryGraph(Graph):
-        def __init__(self, store = 'default', identifier = None, namespace_manager = None, external = None):            
+        def __init__(self, store='default', identifier=None, namespace_manager=None, external=None):
             super().__init__(store, identifier, namespace_manager)
             self.__external = external
 
         def force(self):
             if self.__external is not None and self not in self.store.contexts():
-                self.store.addN((s, p, o, self) for s, p, o in self.__external.triples((None, None, None)))
-        
+                self.store.addN((s, p, o, self)
+                                for s, p, o in self.__external.triples((None, None, None)))
+
         def add(self, triple_or_quad):
             self.force()
             super().add(triple_or_quad)
@@ -94,17 +97,18 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
         elif len(triple_or_quad) == 4:
             (s, p, o, c) = triple_or_quad
             c = self._graph(c)
-        return s,p,o,c
+        return s, p, o, c
 
     def _graph(self, c):
-        if c is None: return None
+        if c is None:
+            return None
         if not isinstance(c, Graph):
             return self.get_context(c)
         else:
             return c
 
     def add(self, triple_or_quad):
-        s,p,o,c = self._spoc(triple_or_quad, default=True)
+        s, p, o, c = self._spoc(triple_or_quad, default=True)
         if isinstance(c, InMemoryGraphAggregate.InMemoryGraph):
             c.force()
         self.store.add((s, p, o), context=c, quoted=False)
@@ -119,7 +123,7 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
         self.store.addN((s, p, o, do(c)) for s, p, o, c in quads)
 
     def remove(self, triple_or_quad):
-        s,p,o,c = self._spoc(triple_or_quad)
+        s, p, o, c = self._spoc(triple_or_quad)
         if isinstance(c, InMemoryGraphAggregate.InMemoryGraph):
             c.force()
         self.store.remove((s, p, o), context=c)
@@ -134,7 +138,7 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
     graphs = contexts
 
     def triples(self, triple_or_quad, context=None):
-        s,p,o,c = self._spoc(triple_or_quad)
+        s, p, o, c = self._spoc(triple_or_quad)
         context = self._graph(context or c)
 
         if isinstance(p, Path):
@@ -147,35 +151,33 @@ class InMemoryGraphAggregate(ConjunctiveGraph):
                         yield s, p, o
 
     def quads(self, triple_or_quad=None):
-        s,p,o,c = self._spoc(triple_or_quad)
+        s, p, o, c = self._spoc(triple_or_quad)
         context = self._graph(c)
 
         for graph in self.graphs():
-           if context is None or graph.identifier == context.identifier:
+            if context is None or graph.identifier == context.identifier:
                 for s1, p1, o1 in graph.triples((s, p, o)):
                     yield (s1, p1, o1, graph)
 
     def graph(self, identifier=None):
         for graph in self.graphs():
-           if str(graph.identifier) == str(identifier):
-               return graph
-        
+            if str(graph.identifier) == str(identifier):
+                return graph
+
         return self.get_context(identifier)
 
     def __contains__(self, triple_or_quad):
-        (_,_,_,context) = self._spoc(triple_or_quad)
+        (_, _, _, context) = self._spoc(triple_or_quad)
         for graph in self.graphs():
             if context is None or graph.identifier == context.identifier:
                 if triple_or_quad[:3] in graph:
                     return True
         return False
 
-    
-
     def _default(self, identifier):
-        return next( (x for x in self.__graphs if x.identifier == identifier), None)
+        return next((x for x in self.__graphs if x.identifier == identifier), None)
 
-    def get_context(self, identifier, quoted=False):   
+    def get_context(self, identifier, quoted=False):
         if not isinstance(identifier, Node):
-            identifier = URIRef(identifier)     
+            identifier = URIRef(identifier)
         return InMemoryGraphAggregate.InMemoryGraph(store=self.__memory_store, identifier=identifier, namespace_manager=self, external=self._default(identifier))

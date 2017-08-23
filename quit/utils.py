@@ -11,11 +11,12 @@ from quit.graphs import InMemoryGraphAggregate
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
 
+
 class TZ(tzinfo):
     """Fixed offset in minutes east from UTC."""
 
     def __init__(self, offset, name):
-        self.__offset = timedelta(minutes = offset)
+        self.__offset = timedelta(minutes=offset)
         self.__name = name
 
     def utcoffset(self, dt):
@@ -27,6 +28,7 @@ class TZ(tzinfo):
     def dst(self, dt):
         return ZERO
 
+
 def clean_path(path):
     path = os.path.normpath(path)
     if path.startswith(os.sep):
@@ -34,12 +36,13 @@ def clean_path(path):
 
     return path
 
+
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
     return Response(
-            result.serialize(format=format['format']).decode('utf-8'),
-            content_type=format['mime']
-            )
+        result.serialize(format=format['format']).decode('utf-8'),
+        content_type=format['mime']
+    )
 
 
 def splitinformation(quads, GraphObject):
@@ -57,14 +60,14 @@ def splitinformation(quads, GraphObject):
         else:
             graphsInRequest.add(graph.strip('<>'))
             data.append(
-                            {
-                                'graph': graph.strip('<>'),
-                                'quad': quad[0].n3() + ' ' +
-                                quad[1].n3() + ' ' +
-                                quad[2].n3() + ' ' +
-                                graph + ' .\n'
-                            }
-                        )
+                {
+                    'graph': graph.strip('<>'),
+                    'quad': quad[0].n3() + ' ' +
+                    quad[1].n3() + ' ' +
+                    quad[2].n3() + ' ' +
+                    graph + ' .\n'
+                }
+            )
     return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
 
 
@@ -82,14 +85,15 @@ def graphdiff(first, second):
         uris = uris.union(first_identifiers)
     if second is not None and isinstance(second, InMemoryGraphAggregate):
         second_identifiers = list((g.identifier for g in second.graphs()))
-        uris = uris.union(second_identifiers)       
-    
+        uris = uris.union(second_identifiers)
+
     for uri in uris:
         id = None
         changes = diffs.get((uri, id), [])
 
         if (first is not None and uri in first_identifiers) and (second is not None and uri in second_identifiers):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(first.graph(uri)), to_isomorphic(second.graph(uri)))
+            in_both, in_first, in_second = graph_diff(to_isomorphic(
+                first.graph(uri)), to_isomorphic(second.graph(uri)))
 
             if len(in_second) > 0:
                 changes.append(('additions', in_second))
@@ -99,11 +103,12 @@ def graphdiff(first, second):
             changes.append(('removals', first.graph(uri)))
         elif second is not None and uri in second_identifiers:
             changes.append(('additions', second.graph(uri)))
-        else: 
+        else:
             continue
-                        
+
         diffs[(uri, id)] = changes
     return diffs
+
 
 def _sigterm_handler(signum, frame):
     sys.exit(0)

@@ -21,7 +21,7 @@ from quit.provenance import Blame
 # For import *
 __all__ = ['create_app']
 
-DROPDOWN_TEMPLATE="""
+DROPDOWN_TEMPLATE = """
 <div class="dropdown branch-select">
     <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-code-fork" aria-hidden="true"></i> Branches <span class="caret"></span></button>
     <ul class="dropdown-menu">
@@ -35,12 +35,13 @@ DROPDOWN_TEMPLATE="""
             {% for tag in tags %}
                 <li><a href="{{ url_for(request.endpoint, branch_or_ref=tag) }}">{{ tag }}</a></li>
             {% endfor %}
-        {% endif %}        
+        {% endif %}
     </ul>
 </div>
 """
 
-env=Environment()
+env = Environment()
+
 
 def storemode_required(mode):
     def wrapper(f):
@@ -51,6 +52,7 @@ def storemode_required(mode):
             return f(*args, **kwargs)
         return decorated_view
     return wrapper
+
 
 def create_app(config):
     """Create a Flask app."""
@@ -63,7 +65,7 @@ def create_app(config):
     register_logging(app)
     register_errorhandlers(app)
     register_template_helpers(app)
-  
+
     return app
 
 
@@ -75,7 +77,7 @@ def register_app(app, config):
 
     quit = Quit(config, repository, MemoryStore(bindings))
     quit.sync()
-    
+
     content = quit.store.store.serialize(format='trig').decode()
     for line in (content.splitlines()):
         print(line)
@@ -87,11 +89,13 @@ def register_app(app, config):
     app.config['blame'] = Blame(quit)
     register(QUIT.service, quit.store.store)
 
+
 def register_extensions(app):
     """Register extensions."""
-    
+
     cors = CORS()
     cors.init_app(app)
+
 
 def register_blueprints(app):
     """Register blueprints in views."""
@@ -99,7 +103,7 @@ def register_blueprints(app):
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
-        
+
     for bp in [debug, endpoint, git]:
         app.register_blueprint(bp)
 
@@ -119,7 +123,7 @@ def register_logging(app):
     import os
 
     app.logger.setLevel(logging.DEBUG)
-    
+
     # logging format
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -132,17 +136,18 @@ def register_logging(app):
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
     ch.setFormatter(formatter)
-    
+
     # add the handlers to the logger
     app.logger.addHandler(fh)
     app.logger.addHandler(ch)
+
 
 def register_hook(app):
     import time
 
     @app.before_request
     def before_request():
-        g.start=time.time()
+        g.start = time.time()
 
     @app.after_request
     def after_request(response):
@@ -156,48 +161,53 @@ def register_errorhandlers(app):
     def page_not_found(error):
         return render_template("404.html"), 404
 
+
 def register_template_helpers(app):
 
     @app.template_filter('gravatar')
     def gravatar_lookup(email, size=36):
-        gravatar_url = "https://www.gravatar.com/avatar/" + hashlib.md5(email.lower().encode()).hexdigest() + "?"
-        gravatar_url += urllib.parse.urlencode({'s':str(size)})
+        gravatar_url = "https://www.gravatar.com/avatar/" + \
+            hashlib.md5(email.lower().encode()).hexdigest() + "?"
+        gravatar_url += urllib.parse.urlencode({'s': str(size)})
         return gravatar_url
 
     @contextfilter
     @app.template_filter('term_to_string')
-    def term_to_string(ctx, t): 
+    def term_to_string(ctx, t):
         def qname(ctx, t):
             try:
                 config = ctx.get('config')
-                l=config['quit'].store.store.compute_qname(t, False)
-                return u'%s:%s'%(l[0],l[2])
-            except Exception as e: 
+                l = config['quit'].store.store.compute_qname(t, False)
+                return u'%s:%s' % (l[0], l[2])
+            except Exception as e:
                 print("Error: " + str(e))
                 return t
-        
+
         if isinstance(t, rdflib.URIRef):
-            l=qname(ctx, t)
-            return Markup("<a href='%s'>%s</a>" % (t,l))
-        elif isinstance(t, rdflib.Literal): 
-            if t.language: 
-                return '"%s"@%s'%(t,t.language)
-            elif t.datatype: 
-                return '"%s"^^&lt;%s&gt;'%(t,qname(ctx,t.datatype))
+            l = qname(ctx, t)
+            return Markup("<a href='%s'>%s</a>" % (t, l))
+        elif isinstance(t, rdflib.Literal):
+            if t.language:
+                return '"%s"@%s' % (t, t.language)
+            elif t.datatype:
+                return '"%s"^^&lt;%s&gt;' % (t, qname(ctx, t.datatype))
             else:
-                return '"%s"'%t
+                return '"%s"' % t
         return t
 
     @app.context_processor
     def context_processor():
         def render_dropdown(available_branches, available_tags):
             branches_prefix = 'refs/heads/'
-            branches=[x[len(branches_prefix):] if x.startswith(branches_prefix) else x for x in available_branches]
+            branches = [x[len(branches_prefix):] if x.startswith(
+                branches_prefix) else x for x in available_branches]
             tags_prefix = 'refs/heads/'
-            tags=[x[len(tags_prefix):] if x.startswith(tags_prefix) else x for x in available_tags]
+            tags = [x[len(tags_prefix):] if x.startswith(
+                tags_prefix) else x for x in available_tags]
             return rts(DROPDOWN_TEMPLATE, branches=branches, tags=tags)
 
         return dict(render_dropdown=render_dropdown)
+
 
 def render_template(template_name_or_list, **kwargs):
 
@@ -205,7 +215,7 @@ def render_template(template_name_or_list, **kwargs):
 
     available_branches = quit.repository.branches
     available_tags = quit.repository.tags
-    
+
     context = {
         'available_branches': available_branches,
         'available_tags': available_tags
@@ -213,4 +223,3 @@ def render_template(template_name_or_list, **kwargs):
     context.update(kwargs)
 
     return rt(template_name_or_list, **context)
-

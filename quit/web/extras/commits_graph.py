@@ -16,6 +16,7 @@ from pygit2 import (
     GIT_SORT_REVERSE
 )
 
+
 class CommitGraph(object):
     def __init__(self, sha, parents):
         self.sha = sha
@@ -24,6 +25,7 @@ class CommitGraph(object):
     @classmethod
     def gets(cls, commits):
         return [cls(c.id, [p.id for p in c.parents]) for c in commits]
+
 
 def generate_graph_data(commits):
     """Generate graph data.

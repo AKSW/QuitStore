@@ -4,9 +4,10 @@ from rdflib.graph import ReadOnlyGraphAggregate
 
 import warnings
 
+
 class OrderedNQuadsSerializer(NQuadsSerializer):
 
-    def __init__(self, store): 
+    def __init__(self, store):
         Serializer.__init__(self, store)
 
     def serialize(self, stream, base=None, encoding=None, **args):
@@ -16,7 +17,8 @@ class OrderedNQuadsSerializer(NQuadsSerializer):
             warnings.warn("NQuadsSerializer does not use custom encoding.")
         encoding = self.encoding
 
-        contexts = self.store.graphs if isinstance(self.store, ReadOnlyGraphAggregate) else self.store.contexts()
+        contexts = self.store.graphs if isinstance(
+            self.store, ReadOnlyGraphAggregate) else self.store.contexts()
 
         for context in contexts:
             for triple in sorted(context):

@@ -168,10 +168,12 @@ class FileReference:
         """Check if a File is part of version control system."""
         return(self.versioning)
 
+
 class Queryable:
     """
     A class that represents a querable graph-like object.
     """
+
     def __init__(self, **kwargs):
         self.store = ConjunctiveGraph(identifier='default')
 
@@ -194,6 +196,7 @@ class Queryable:
             querystring: A string containing a SPARQL upate query.
         """
         pass
+
 
 class Store(Queryable):
     """A class that combines and syncronieses n-quad files and an in-memory quad store.
@@ -254,6 +257,7 @@ class Store(Queryable):
         Returns:
             graph: A list of strings where each string is a quad.
         """
+
     def graphexists(self, graphuri):
         """Ask if a named graph FileReference object for a named graph URI.
 
@@ -341,6 +345,7 @@ class Store(Queryable):
         """Execute actions on API shutdown."""
         return
 
+
 class MemoryStore(Store):
     def __init__(self, additional_bindings=list()):
         store = ConjunctiveGraph(identifier='default')
@@ -349,6 +354,7 @@ class MemoryStore(Store):
         for prefix, namespace in additional_bindings:
             store.bind(prefix, namespace)
         super().__init__(store=store)
+
 
 class VirtualGraph(Queryable):
     def __init__(self, store):
@@ -362,19 +368,20 @@ class VirtualGraph(Queryable):
     def update(self, querystring, versioning=True):
         return self.store.update(querystring)
 
+
 class Quit(object):
     def __init__(self, config, repository, store):
         self.config = config
         self.repository = repository
         self.store = store
 
-    def sync(self, rebuild = False):
+    def sync(self, rebuild=False):
         """
         Synchronizes store with repository data.
         """
         if rebuild:
             for c in self.store.contexts():
-                self.store.remove((None,None,None), c)
+                self.store.remove((None, None, None), c)
 
         def exists(id):
             uri = QUIT['commit-' + id]
@@ -408,15 +415,15 @@ class Quit(object):
         seen = set()
 
         for name in self.repository.tags_or_branches:
-            initial_commit = self.repository.revision(name);
+            initial_commit = self.repository.revision(name)
             commits = traverse(initial_commit, seen)
 
             prov = self.changesets(commits)
             self.store.addquads((s, p, o, c) for s, p, o, c in prov.quads())
 
-            #for commit in commits:
-                #(_, g) = commit.__prov__()
-                #self.store += g
+            # for commit in commits:
+            #     (_, g) = commit.__prov__()
+            #     self.store += g
 
     @lru_cache()
     def instance(self, id=None, force=False):
@@ -449,7 +456,8 @@ class Quit(object):
                             g = Graph(identifier=rewritten_identifier)
                             g += tmp.triples((None, None, None))
                         else:
-                            g = ReadOnlyRewriteGraph(self.store.store.store, identifier, rewritten_identifier)
+                            g = ReadOnlyRewriteGraph(self.store.store.store,
+                                                     identifier, rewritten_identifier)
                         default_graphs.append(g)
 
         instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')
@@ -459,7 +467,10 @@ class Quit(object):
     def changesets(self, commits=None):
         g = ConjunctiveGraph(identifier=QUIT.default)
 
-        if not commits or (not self.config.checkStoremode(STORE_DATA) and not self.config.checkStoremode(STORE_PROVENANCE)):
+        if not commits or (
+            not self.config.checkStoremode(STORE_DATA) and
+            not self.config.checkStoremode(STORE_PROVENANCE)
+        ):
             return g
 
         last = None
@@ -484,14 +495,17 @@ class Quit(object):
 
                 if 'Source' in commit.properties.keys():
                     g.add((commit_uri, is_a, QUIT['Import']))
-                    g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
+                    g.add((commit_uri, QUIT['dataSource'], Literal(
+                        commit.properties['Source'].strip())))
                 if 'Query' in commit.properties.keys():
                     g.add((commit_uri, is_a, QUIT['Transformation']))
                     g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
 
                 g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
-                g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
-                g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
+                g.add((commit_uri, PROV['startedAtTime'], Literal(
+                    commit.author_date, datatype=XSD.dateTime)))
+                g.add((commit_uri, PROV['endedAtTime'], Literal(
+                    commit.committer_date, datatype=XSD.dateTime)))
                 g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
 
                 # Author
@@ -540,7 +554,8 @@ class Quit(object):
                         g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
 
                 # Diff
-                diff = graphdiff(parent_graph.store if parent_graph else None, commit_graph.store if commit_graph else None)
+                diff = graphdiff(parent_graph.store if parent_graph else None,
+                                 commit_graph.store if commit_graph else None)
                 for ((resource_uri, _), changesets) in diff.items():
                     for (op, update_graph) in changesets:
                         update_uri = QUIT['update-' + commit.id]
@@ -576,7 +591,8 @@ class Quit(object):
                             g.add((private_uri, PROV['specializationOf'], public_uri))
                             g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
                         if self.config.checkStoremode(STORE_DATA):
-                            g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
+                            g.addN((s, p, o, private_uri)
+                                   for s, p, o in tmp.triples((None, None, None), context))
 
         return g
 
@@ -591,7 +607,8 @@ class Quit(object):
         files = {}
 
         for context in graph.store.graphs():
-            file = self.config.getfileforgraphuri(context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
+            file = self.config.getfileforgraphuri(
+                context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
 
             graphs = files.get(file, [])
             graphs.append(context)
@@ -607,7 +624,7 @@ class Quit(object):
                 index.add(file, content)
 
         out = list()
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if '\n' in v:
                 out.append('%s: "%s"' % (k, v))
             else:
@@ -615,7 +632,7 @@ class Quit(object):
         out.append('')
         if message:
             out.append(message)
-        #message = "\n".join(out)
+        # message = "\n".join(out)
 
         author = self.repository._repository.default_signature
         id = index.commit(message, author.name, author.email, ref=ref)
@@ -625,6 +642,7 @@ class Quit(object):
             if not self.repository.is_bare:
                 self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.sync()
+
 
 class GitRepo:
     """A class that manages a git repository.
@@ -858,8 +876,7 @@ class GitRepo:
                     'author_name': commit.author.name,
                     'author_email': commit.author.email,
                     'parents': [c.hex for c in commit.parents],
-                    }
-                )
+                })
         return commits
 
     def getids(self):
