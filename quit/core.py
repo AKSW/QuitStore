@@ -1,16 +1,12 @@
-import collections
 import pygit2
-
 
 from datetime import datetime
 import logging
 from os import makedirs, environ
-from os.path import abspath, exists, isdir, isfile, join, expanduser
+from os.path import abspath, exists, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
 from subprocess import Popen
-from functools import lru_cache
 
-import pygit2
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
@@ -19,19 +15,15 @@ from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks
 from pygit2 import KeypairFromAgent, Keypair, UserPass
 from pygit2 import credentials
-from rdflib import ConjunctiveGraph, Graph, URIRef, BNode, Literal
+from rdflib import ConjunctiveGraph, BNode, Literal
 
-from rdflib import plugin
-from rdflib.store import Store as DefaultStore
 from rdflib.graph import ReadOnlyGraphAggregate
 
-from quit.conf import STORE_NONE, STORE_DATA, STORE_PROVENANCE, STORE_ALL
-from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a, Vocabulary
+from quit.conf import STORE_DATA, STORE_PROVENANCE
+from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff
 from quit.cache import Cache
-
-from subprocess import Popen
 
 logger = logging.getLogger('quit.core')
 
@@ -147,7 +139,6 @@ class FileReference:
 
     def addquad(self, quad):
         """Add a quad to the file content."""
-
         self.content.append(quad)
 
     def deletequads(self, quads):
@@ -174,9 +165,7 @@ class FileReference:
 
 
 class Queryable:
-    """
-    A class that represents a querable graph-like object.
-    """
+    """A class that represents a querable graph-like object."""
 
     def __init__(self, **kwargs):
         pass
@@ -216,137 +205,6 @@ class Store(Queryable):
         logger.debug('Create an instance of MemoryStore')
         self.store = store
 
-        return
-
-    def getgraphuris(self):
-        """Method to get all available named graphs.
-
-        Returns:
-            A list containing all graph uris found in store.
-        """
-        graphs = []
-        for graph in self.store.contexts():
-            if isinstance(graph, BNode) or str(graph.identifier) == 'default':
-                pass
-            else:
-                graphs.append(graph.identifier)
-
-        return graphs
-
-    def getgraphcontent(self, graphuri):
-        """Get the serialized content of a named graph.
-
-        Args:
-            graphuri: The URI of a named graph.
-        Returns:
-            content: A list of strings where each string is a quad.
-        """
-        data = []
-        context = self.store.get_context(URIRef(graphuri))
-        triplestring = context.serialize(format='nt').decode('UTF-8')
-
-        # Since we have triples here, we transform them to quads by adding the graphuri
-        # TODO This might cause problems if ' .\n' will be part of a literal.
-        #   Maybe a regex would be a better solution
-        triplestring = triplestring.replace(' .\n', ' <' + graphuri + '> .\n')
-
-        data = triplestring.splitlines()
-        data.remove('')
-
-        return data
-
-    def getstoreobject(self):
-        """Get the conjunctive graph object.
-
-        Returns:
-            graph: A list of strings where each string is a quad.
-        """
-
-    def graphexists(self, graphuri):
-        """Ask if a named graph FileReference object for a named graph URI.
-
-        Args:
-            graphuri: A string containing the URI of a named graph
-
-        Returns:
-            True or False
-        """
-        if self.store.get_context(URIRef(graphuri)) is None:
-            return False
-        else:
-            return True
-
-    def addfile(self, filename, serialization):
-        """Add a file to the store.
-
-        Args:
-            filename: A String for the path to the file.
-            serialization: A String containg the RDF format
-        Raises:
-            ValueError if the given file can't be parsed as nquads.
-        """
-        try:
-            self.store.parse(source=filename, format=serialization)
-        except Exception as e:
-            logger.debug(e)
-            logger.debug(
-                "Could not import file: {}. " +
-                "Make sure the file exists and contains data in  {}".format(
-                    filename,
-                    serialization
-                )
-            )
-
-    def addquads(self, quads):
-        """Add quads to the MemoryStore.
-
-        Args:
-            quads: Rdflib.quads that should be added to the MemoryStore.
-        """
-        self.store.addN(quads)
-        self.store.commit()
-
-    def query(self, querystring):
-        """Execute a SPARQL select query.
-
-        Args:
-            querystring: A string containing a SPARQL ask or select query.
-        Returns:
-            The SPARQL result set
-        """
-        return self.store.query(querystring)
-
-    def update(self, querystring, versioning=True):
-        """Execute a SPARQL update query and update the store.
-
-        This method executes a SPARQL update query and updates and commits all affected files.
-
-        Args:
-            querystring: A string containing a SPARQL upate query.
-        """
-        # methods of rdflib ConjunciveGraph
-        if versioning:
-            actions = evalUpdate(self.store, querystring)
-            self.store.update(querystring)
-            return actions
-        else:
-            self.store.update(querystring)
-            return
-
-        return
-
-    def removequads(self, quads):
-        """Remove quads from the MemoryStore.
-
-        Args:
-            quads: Rdflib.quads that should be removed to the MemoryStore.
-        """
-        self.store.remove((quads))
-        self.store.commit()
-        return
-
-    def exit(self):
-        """Execute actions on API shutdown."""
         return
 
 
@@ -396,10 +254,7 @@ class Quit(object):
         self.syncAll()
 
     def syncAll(self):
-        """
-        Synchronizes store with repository data.
-        """
-
+        """Synchronize store with repository data."""
         def traverse(commit, seen):
             commits = []
             merges = []
