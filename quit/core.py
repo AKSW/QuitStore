@@ -29,7 +29,6 @@ from quit.conf import STORE_NONE, STORE_DATA, STORE_PROVENANCE, STORE_ALL
 from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a, Vocabulary
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff
-from quit.benchmark import benchmark
 from quit.cache import Cache
 
 from subprocess import Popen

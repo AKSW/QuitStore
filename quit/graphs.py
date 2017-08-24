@@ -42,7 +42,6 @@ class RewriteGraph(Graph):
 
 def _copyIfNotExists(target, source):
     if target not in target.store.contexts(None):
-        print("copy")
         target.store.addN((_s, _p, _o, target)
                           for _s, _p, _o in source.triples((None, None, None)))
 
@@ -137,7 +136,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             g = self._graph(g)
 
             if g not in self.store.contexts(None):
-                print("copy")
                 self.store.addN((_s, _p, _o, g)
                                 for _s, _p, _o in g.triples((None, None, None)))
 
@@ -149,7 +147,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         s, p, o, c = self._spoc(triple_or_quad)
 
         if c not in self.store.contexts(None):
-            print("copy")
             self.store.addN((_s, _p, _o, c)
                             for _s, _p, _o in c.triples((None, None, None)))
 

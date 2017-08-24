@@ -10,7 +10,6 @@ from rdflib import Literal, ConjunctiveGraph
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
 from quit.utils import clean_path
 from quit.cache import Cache
-from quit.benchmark import benchmark
 
 PROPERTY_REGEX = r"^("
 PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
@@ -253,7 +252,6 @@ class Revision(object):
         self._parents = None
         self._parsed_message = None
 
-    @benchmark
     def _extract(self, message):
         captures = {}
 
