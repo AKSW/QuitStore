@@ -4,10 +4,11 @@ import re
 import logging
 
 from datetime import datetime
+from os.path import expanduser, join
 from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
-from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset, BNode
-from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a, XSD
-from quit.utils import graphdiff, clean_path
+from rdflib import Literal, ConjunctiveGraph
+from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
+from quit.utils import clean_path
 from quit.cache import Cache
 from quit.benchmark import benchmark
 
@@ -61,6 +62,7 @@ class Repository(object):
 
     def _callback(self, origin):
         """Set a pygit callback for user authentication when acting with remotes.
+
         This method uses the private-public-keypair of the ssh host configuration.
         The keys are expected to be found at ~/.ssh/
         Warning: Create a keypair that will be used only in QuitStore and do not use
@@ -69,7 +71,6 @@ class Repository(object):
             username: The git username (mostly) given in the adress.
             passphrase: The passphrase of the private key.
         """
-        from os.path import expanduser
         ssh = join(expanduser('~'), '.ssh')
         pubkey = join(ssh, 'id_quit.pub')
         privkey = join(ssh, 'id_quit')
@@ -83,13 +84,13 @@ class Repository(object):
         passphrase = ''
 
         try:
-            credentials = Keypair(username, pubkey, privkey, passphrase)
+            credentials = pygit2.Keypair(username, pubkey, privkey, passphrase)
         except Exception:
             self.logger.debug(
                 'GitRepo, setcallback: Something went wrong with Keypair')
             return
 
-        return RemoteCallbacks(credentials=credentials)
+        return pygit2.RemoteCallbacks(credentials=credentials)
 
     def _clone(self, origin, path):
         try:
@@ -129,7 +130,7 @@ class Repository(object):
                     return self._repository.lookup_reference(template % name)
                 except KeyError:
                     pass
-            raise RevisionNotFound(ref)
+            raise RevisionNotFound(name)
 
         def traverse(ref, seen):
             for commit in self._repository.walk(ref.target, order):
@@ -197,21 +198,21 @@ class Repository(object):
                         master_ref.set_target(remote_master_id)
                     except KeyError:
                         self._repository.create_branch(
-                            branch, repo.get(remote_master_id))
+                            branch, self._repository.get(remote_master_id))
                     self._repository.head.set_target(remote_master_id)
 
                 elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
                     self._repository.merge(remote_master_id)
 
                     if self._repository.index.conflicts is not None:
-                        for conflict in repo.index.conflicts:
+                        for conflict in self._repository.index.conflicts:
                             logging.error(
                                 'Conflicts found in: {}'.format(conflict[0].path))
                         raise AssertionError('Conflicts, ahhhhh!!')
 
                     user = self._repository.default_signature
                     tree = self._repository.index.write_tree()
-                    commit = self._repository.create_commit(
+                    self._repository.create_commit(
                         'HEAD', user, user, 'Merge!', tree,
                         [self._repository.head.target, remote_master_id]
                     )
@@ -224,11 +225,6 @@ class Repository(object):
         for remote in self._repository.remotes:
             if remote.name == remote_name:
                 remote.push(ref)
-
-    def __prov__(self):
-
-        commit_graph = self.instance(commit.id, True)
-        pass
 
 
 class Revision(object):
@@ -299,97 +295,6 @@ class Revision(object):
 
     def node(self, path=None):
         return Node(self._repository, self._commit, path)
-
-    def graph(store):
-        mapping = dict()
-
-        for entry in self.node().entries(recursive=True):
-            if not entry.is_file:
-                continue
-
-            for (public_uri, g) in entry.graph(store):
-                if public_uri is None:
-                    continue
-
-                mapping[public_uri] = g
-
-        return InstanceGraph(mapping)
-
-    def __prov__(self):
-
-        uri = QUIT['commit-' + self.id]
-
-        g = ConjunctiveGraph(identifier=QUIT.default)
-
-        # default activity
-        g.add((uri, is_a, PROV['Activity']))
-
-        # special activity
-        if 'import' in self.properties.keys():
-            g.add((uri, is_a, QUIT['Import']))
-            g.add((uri, QUIT['dataSource'], URIRef(
-                self.properties['import'].strip())))
-
-        # properties
-        g.add((uri, PROV['startedAtTime'], Literal(
-            self.author_date, datatype=XSD.dateTime)))
-        g.add((uri, PROV['endedAtTime'], Literal(
-            self.committer_date, datatype=XSD.dateTime)))
-        g.add((uri, RDFS['comment'], Literal(self.message)))
-
-        # parents
-        for parent in self.parents:
-            parent_uri = QUIT['commit-' + parent.id]
-            g.add((uri, QUIT["preceedingCommit"], parent_uri))
-
-        g.add((role_author, is_a, PROV['Role']))
-        g.add((role_committer, is_a, PROV['Role']))
-
-        # author
-        (author_uri, author_graph) = self.author.__prov__()
-
-        g += author_graph
-        g.add((uri, PROV['wasAssociatedWith'], author_uri))
-
-        qualified_author = BNode()
-        g.add((uri, PROV['qualifiedAssociation'], qualified_author))
-        g.add((qualified_author, is_a, PROV['Association']))
-        g.add((qualified_author, PROV['agent'], author_uri))
-        g.add((qualified_author, PROV['role'], role_author))
-
-        # commiter
-        if self.author.name != self.committer.name:
-            (committer_uri, committer_graph) = self.committer.__prov__()
-
-            g += committer_graph
-            g.add((uri, PROV['wasAssociatedWith'], committer_uri))
-
-            qualified_committer = BNode()
-            g.add((uri, PROV['qualifiedAssociation'], qualified_committer))
-            g.add((qualified_committer, is_a, PROV['Association']))
-            g.add((qualified_committer, PROV['agent'], author_uri))
-            g.add((qualified_committer, PROV['role'], role_committer))
-        else:
-            g.add((qualified_author, PROV['role'], role_committer))
-
-        # diff
-        diff = graphdiff(parent_graph, commit_graph)
-        for ((resource_uri, hex), changesets) in diff.items():
-            for (op, update_graph) in changesets:
-                update_uri = QUIT['update-' + hex]
-                op_uri = QUIT[op + '-' + hex]
-                g.add((uri, QUIT['updates'], update_uri))
-                g.add((update_uri, QUIT['graph'], resource_uri))
-                g.add((update_uri, QUIT[op], op_uri))
-                g.addN((s, p, o, op_uri) for s, p, o in update_graph)
-
-        # entities
-        for entity in self.node().entries(recursive=True):
-            for (entity_uri, entity_graph) in self.committer.__prov__():
-                g += entity_graph
-                g.add((entity_uri, PROV['wasGeneratedBy'], uri))
-
-        return (uri, g)
 
 
 class Signature(object):
@@ -494,23 +399,6 @@ class Node(object):
         if self.is_file:
             return self.blob.size
         return None
-
-    def graph(store):
-        if self.is_file:
-
-            tmp = ConjunctiveGraph()
-            tmp.parse(data=self.content, format='nquads')
-
-            for context in tmp.context():
-
-                public_uri = QUIT[context]
-                private_uri = QUIT[context + '-' + self.blob.hex]
-
-                g = ReadOnlyRewriteGraph(
-                    entry.blob.hex, identifier=private_uri)
-                g.parse(data=entry.content, format='nquads')
-
-                yield (public_uri, g)
 
     def __prov__(self):
         if self.is_file:
@@ -675,9 +563,7 @@ class IndexTree(object):
         builder.remove(os.path.basename(path))
 
     def write(self):
-        """
-        Attach and writes all builders and return main builder oid
-        """
+        """Attach and writes all builders and return main builder oid."""
         # Create trees
         while len(self.builders) > 0:
             path, (parent, builder) = self.builders.popitem()
