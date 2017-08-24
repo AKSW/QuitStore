@@ -83,7 +83,10 @@ def sparql(branch_or_ref):
                     return response
             else:
                 res = graph.update(q)
-                quit.commit(graph, 'New Commit from QuitStore', branch_or_ref, ref, query=q)
+                quit.commit(
+                    graph, res.get('delta', None), 'New Commit from QuitStore',
+                    branch_or_ref, ref, query=q
+                )
                 return '', 200
 
         except UnSupportedQueryType as e:

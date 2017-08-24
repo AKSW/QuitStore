@@ -1,4 +1,6 @@
+import collections
 import pygit2
+
 
 from datetime import datetime
 import logging
@@ -24,9 +26,11 @@ from rdflib.store import Store as DefaultStore
 from rdflib.graph import ReadOnlyGraphAggregate
 
 from quit.conf import STORE_NONE, STORE_DATA, STORE_PROVENANCE, STORE_ALL
-from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a
-from quit.graphs import ReadOnlyRewriteGraph, InMemoryGraphAggregate
+from quit.namespace import RDF, RDFS, FOAF, XSD, PROV, QUIT, is_a, Vocabulary
+from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff
+from quit.benchmark import benchmark
+from quit.cache import Cache
 
 from subprocess import Popen
 
@@ -175,7 +179,7 @@ class Queryable:
     """
 
     def __init__(self, **kwargs):
-        self.store = ConjunctiveGraph(identifier='default')
+        pass
 
     def query(self, querystring):
         """Execute a SPARQL select query.
@@ -349,16 +353,19 @@ class Store(Queryable):
 class MemoryStore(Store):
     def __init__(self, additional_bindings=list()):
         store = ConjunctiveGraph(identifier='default')
+
         for prefix, namespace in [('quit', QUIT), ('foaf', FOAF)]:
             store.bind(prefix, namespace)
+
         for prefix, namespace in additional_bindings:
             store.bind(prefix, namespace)
+
         super().__init__(store=store)
 
 
 class VirtualGraph(Queryable):
     def __init__(self, store):
-        if not isinstance(store, InMemoryGraphAggregate):
+        if not isinstance(store, InMemoryAggregatedGraph):
             raise Exception()
         self.store = store
 
@@ -374,20 +381,24 @@ class Quit(object):
         self.config = config
         self.repository = repository
         self.store = store
+        self.blobs = Cache()
+        self.heads = Cache()
 
-    def sync(self, rebuild=False):
+    def _exists(self, cid):
+        uri = QUIT['commit-' + cid]
+        for _ in self.store.store.quads((uri, None, None, QUIT.default)):
+            return True
+        return False
+
+    def rebuild(self):
+        for context in self.store.contexts():
+            self.store.remove((None,None,None), context)
+        self.syncAll()
+
+    def syncAll(self):
         """
         Synchronizes store with repository data.
         """
-        if rebuild:
-            for c in self.store.contexts():
-                self.store.remove((None, None, None), c)
-
-        def exists(id):
-            uri = QUIT['commit-' + id]
-            for _ in self.store.store.quads((uri, None, None, QUIT.default)):
-                return True
-            return False
 
         def traverse(commit, seen):
             commits = []
@@ -398,7 +409,7 @@ class Quit(object):
                 if id in seen:
                     break
                 seen.add(id)
-                if exists(id):
+                if self._exists(id):
                     break
                 commits.append(commit)
                 parents = commit.parents
@@ -418,62 +429,75 @@ class Quit(object):
             initial_commit = self.repository.revision(name)
             commits = traverse(initial_commit, seen)
 
-            prov = self.changesets(commits)
-            self.store.addquads((s, p, o, c) for s, p, o, c in prov.quads())
+            while commits:
+                commit = commits.pop()
+                self.syncSingle(commit)
 
-            # for commit in commits:
-            #     (_, g) = commit.__prov__()
-            #     self.store += g
+    def syncSingle(self, commit, delta = None):
+        if not self._exists(commit.id):
+            self.changeset(commit, delta)
 
-    @lru_cache()
     def instance(self, id=None, force=False):
+        def parse(data):
+            g = ConjunctiveGraph()
+            g.parse(data=data, format='nquads')
+            return g
+
+        # we keep track of branch heads
+        if id in self.heads and not force:
+            return self.heads.get(id)
+
         default_graphs = list()
 
         if id:
-            commit = self.repository.revision(id)
+            map = self.config.getgraphurifilemap()
 
-            _m = self.config.getgraphurifilemap()
+            commit = self.repository.revision(id)
 
             for entity in commit.node().entries(recursive=True):
                 # todo check if file was changed
                 if entity.is_file:
-                    if entity.name not in _m.values():
+                    if entity.name not in map.values():
                         continue
 
-                    tmp = ConjunctiveGraph()
-                    tmp.parse(data=entity.content, format='nquads')
+                    if entity.hex in self.blobs:
+                        tmp = self.blobs.get(entity.hex)
+                    else:
+                        tmp = parse(entity.content)
+                        self.blobs.set(entity.hex, tmp)
 
-                    for context in (c.identifier for c in tmp.contexts()):
+                    for context in tmp.contexts():
 
                         # Todo: why?
-                        if context not in _m:
+                        if context.identifier not in map:
                             continue
 
-                        identifier = context + '-' + entity.blob.hex
-                        rewritten_identifier = context
+                        internal_identifier = context.identifier + '-' + entity.hex
 
                         if force or not self.config.checkStoremode(STORE_DATA):
-                            g = Graph(identifier=rewritten_identifier)
-                            g += tmp.triples((None, None, None))
+                            g = context
                         else:
-                            g = ReadOnlyRewriteGraph(self.store.store.store,
-                                                     identifier, rewritten_identifier)
+                            g = RewriteGraph(
+                                self.store.store.store,
+                                internal_identifier,
+                                context.identifier
+                            )
                         default_graphs.append(g)
 
-        instance = InMemoryGraphAggregate(graphs=default_graphs, identifier='default')
+        instance = InMemoryAggregatedGraph(graphs=default_graphs, identifier='default')
 
         return VirtualGraph(instance)
 
-    def changesets(self, commits=None):
-        g = ConjunctiveGraph(identifier=QUIT.default)
-
-        if not commits or (
-            not self.config.checkStoremode(STORE_DATA) and
-            not self.config.checkStoremode(STORE_PROVENANCE)
-        ):
+    def changeset(self, commit, delta=None):
+        def parse(data):
+            g = ConjunctiveGraph()
+            g.parse(data=data, format='nquads')
             return g
 
-        last = None
+        if not self.config.checkStoremode(STORE_DATA) and not self.config.checkStoremode(STORE_PROVENANCE):
+            return
+
+        g = self.store.store
 
         if self.config.checkStoremode(STORE_PROVENANCE):
             role_author_uri = QUIT['author']
@@ -482,139 +506,138 @@ class Quit(object):
             g.add((role_author_uri, is_a, PROV['Role']))
             g.add((role_committer_uri, is_a, PROV['Role']))
 
-        while commits:
-            commit = commits.pop()
-            rev = commit.id
+        # Create the commit
+        i1 = self.instance(commit.id, True)
 
-            # Create the commit
-            commit_graph = self.instance(commit.id, True)
-            commit_uri = QUIT['commit-' + commit.id]
+        commit_uri = QUIT['commit-' + commit.id]
 
-            if self.config.checkStoremode(STORE_PROVENANCE):
-                g.add((commit_uri, is_a, PROV['Activity']))
+        if self.config.checkStoremode(STORE_PROVENANCE):
+            g.add((commit_uri, is_a, PROV['Activity']))
 
-                if 'Source' in commit.properties.keys():
-                    g.add((commit_uri, is_a, QUIT['Import']))
-                    g.add((commit_uri, QUIT['dataSource'], Literal(
-                        commit.properties['Source'].strip())))
-                if 'Query' in commit.properties.keys():
-                    g.add((commit_uri, is_a, QUIT['Transformation']))
-                    g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
+            if 'Source' in commit.properties.keys():
+                g.add((commit_uri, is_a, QUIT['Import']))
+                g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
+            if 'Query' in commit.properties.keys():
+                g.add((commit_uri, is_a, QUIT['Transformation']))
+                g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
 
-                g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
-                g.add((commit_uri, PROV['startedAtTime'], Literal(
-                    commit.author_date, datatype=XSD.dateTime)))
-                g.add((commit_uri, PROV['endedAtTime'], Literal(
-                    commit.committer_date, datatype=XSD.dateTime)))
-                g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
+            g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
+            g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
+            g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
+            g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
 
-                # Author
-                hash = pygit2.hash(commit.author.email).hex
-                author_uri = QUIT['user-' + hash]
-                g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
+            # Author
+            hash = pygit2.hash(commit.author.email).hex
+            author_uri = QUIT['user-' + hash]
+            g.add((commit_uri, PROV['wasAssociatedWith'], author_uri))
 
-                g.add((author_uri, is_a, PROV['Agent']))
-                g.add((author_uri, RDFS.label, Literal(commit.author.name)))
-                g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
+            g.add((author_uri, is_a, PROV['Agent']))
+            g.add((author_uri, RDFS.label, Literal(commit.author.name)))
+            g.add((author_uri, FOAF.mbox, Literal(commit.author.email)))
 
-                q_author_uri = BNode()
-                g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
-                g.add((q_author_uri, is_a, PROV['Association']))
-                g.add((q_author_uri, PROV['agent'], author_uri))
-                g.add((q_author_uri, PROV['role'], role_author_uri))
+            q_author_uri = BNode()
+            g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
+            g.add((q_author_uri, is_a, PROV['Association']))
+            g.add((q_author_uri, PROV['agent'], author_uri))
+            g.add((q_author_uri, PROV['role'], role_author_uri))
 
-                if commit.author.name != commit.committer.name:
-                    # Committer
-                    hash = pygit2.hash(commit.committer.email).hex
-                    committer_uri = QUIT['user-' + hash]
-                    g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
+            if commit.author.name != commit.committer.name:
+                # Committer
+                hash = pygit2.hash(commit.committer.email).hex
+                committer_uri = QUIT['user-' + hash]
+                g.add((commit_uri, PROV['wasAssociatedWith'], committer_uri))
 
-                    g.add((committer_uri, is_a, PROV['Agent']))
-                    g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
-                    g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
+                g.add((committer_uri, is_a, PROV['Agent']))
+                g.add((committer_uri, RDFS.label, Literal(commit.committer.name)))
+                g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
 
-                    q_committer_uri = BNode()
-                    g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
-                    g.add((q_committer_uri, is_a, PROV['Association']))
-                    g.add((q_committer_uri, PROV['agent'], author_uri))
-                    g.add((q_committer_uri, PROV['role'], role_committer_uri))
-                else:
-                    g.add((q_author_uri, PROV['role'], role_committer_uri))
+                q_committer_uri = BNode()
+                g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
+                g.add((q_committer_uri, is_a, PROV['Association']))
+                g.add((q_committer_uri, PROV['agent'], author_uri))
+                g.add((q_committer_uri, PROV['role'], role_committer_uri))
+            else:
+                g.add((q_author_uri, PROV['role'], role_committer_uri))
 
-                # Parents
-                parent = None
-                parent_graph = None
+            # Parents
+            for parent in iter(commit.parents or []):
+                parent_uri = QUIT['commit-' + parent.id]
+                g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
 
-                if commit.parents:
-                    parent = commit.parents[0]
-                    parent_graph = self.instance(parent.id, True)
+            # Diff
+            if not delta:
+                parent = next(iter(commit.parents or []), None)
 
-                    for parent in commit.parents:
-                        parent_uri = QUIT['commit-' + parent.id]
-                        g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
+                i2 = self.instance(parent.id, True) if parent else None
 
-                # Diff
-                diff = graphdiff(parent_graph.store if parent_graph else None,
-                                 commit_graph.store if commit_graph else None)
-                for ((resource_uri, _), changesets) in diff.items():
-                    for (op, update_graph) in changesets:
-                        update_uri = QUIT['update-' + commit.id]
-                        op_uri = QUIT[op + '-' + commit.id]
-                        g.add((commit_uri, QUIT['updates'], update_uri))
-                        g.add((update_uri, QUIT['graph'], resource_uri))
-                        g.add((update_uri, QUIT[op], op_uri))
-                        g.addN((s, p, o, op_uri) for s, p, o in update_graph)
+                delta = graphdiff(i2.store if i2 else None, i1.store)
 
-            # Entities
-            _m = self.config.getgraphurifilemap()
+            for (iri, changesets) in delta.items():
+                for (op, quads) in changesets:
+                    update_uri = QUIT['update-' + commit.id]
+                    op_uri = QUIT[op + '-' + commit.id]
+                    g.add((commit_uri, QUIT['updates'], update_uri))
+                    g.add((update_uri, QUIT['graph'], iri))
+                    g.add((update_uri, QUIT[op], op_uri))
+                    g.addN(quads)
 
-            for entity in commit.node().entries(recursive=True):
-                # todo check if file was changed
-                if entity.is_file:
+        # Entities
+        map = self.config.getgraphurifilemap()
 
-                    if entity.name not in _m.values():
+        for entity in commit.node().entries(recursive=True):
+            # todo check if file was changed
+            if entity.is_file:
+
+                if entity.name not in map.values():
+                    continue
+
+                tmp = parse(entity.content)
+                self.blobs.set(entity.hex, tmp)
+
+                for context in [context for context in tmp.contexts()]:
+
+                    # Todo: why?
+                    if context.identifier not in map:
                         continue
 
-                    tmp = ConjunctiveGraph()
-                    tmp.parse(data=entity.content, format='nquads')
+                    public_uri = context.identifier
+                    private_uri = context.identifier + '-' + entity.blob.hex
 
-                    for context in [c.identifier for c in tmp.contexts()]:
+                    if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
+                        g.add((private_uri, PROV['specializationOf'], public_uri))
+                        g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
+                    if self.config.checkStoremode(STORE_DATA):
+                        g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
 
-                        # Todo: why?
-                        if context not in _m:
-                            continue
+    def commit(self, graph, delta, message, index, ref, **kwargs):
+        def build_message(message, kwargs):
+            out = list()
+            for k,v in kwargs.items():
+                if not '\n' in v:
+                    out.append('%s: %s' % (k, v))
+                else:
+                    out.append('%s: "%s"' % (k, v))
+            if message:
+                out.append('')
+                out.append(message)
+            return "\n".join(out)
 
-                        public_uri = context
-                        private_uri = context + '-' + entity.blob.hex
-
-                        if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
-                            g.add((private_uri, PROV['specializationOf'], public_uri))
-                            g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
-                        if self.config.checkStoremode(STORE_DATA):
-                            g.addN((s, p, o, private_uri)
-                                   for s, p, o in tmp.triples((None, None, None), context))
-
-        return g
-
-    def commit(self, graph, message, index, ref, **kwargs):
         if not graph.store.is_dirty:
             return
 
-        seen = set()
+        stack = {}
 
         index = self.repository.index(index)
-
-        files = {}
 
         for context in graph.store.graphs():
             file = self.config.getfileforgraphuri(
                 context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
 
-            graphs = files.get(file, [])
+            graphs = stack.get(file, [])
             graphs.append(context)
-            files[file] = graphs
+            stack[file] = graphs
 
-        for file, graphs in files.items():
+        for file, graphs in stack.items():
             g = ReadOnlyGraphAggregate(graphs)
 
             if len(g) == 0:
@@ -623,25 +646,21 @@ class Quit(object):
                 content = g.serialize(format='nquad-ordered').decode('UTF-8')
                 index.add(file, content)
 
-        out = list()
-        for k, v in kwargs.items():
-            if '\n' in v:
-                out.append('%s: "%s"' % (k, v))
-            else:
-                out.pre('%s: %s' % (k, v))
-        out.append('')
-        if message:
-            out.append(message)
-        # message = "\n".join(out)
+                hex = index.stash[file][0]
+                self.blobs.set(hex, g)
 
+
+        message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
-        id = index.commit(message, author.name, author.email, ref=ref)
 
-        if id:
-            self.repository._repository.set_head(id)
+        oid = index.commit(message, author.name, author.email, ref=ref)
+
+        if oid:
+            self.repository._repository.set_head(oid)
+            commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
-            self.sync()
+            self.syncSingle(commit, delta)
 
 
 class GitRepo:

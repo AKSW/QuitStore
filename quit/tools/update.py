@@ -11,6 +11,13 @@ from rdflib.plugins.sparql.evalutils import _fillTemplate, _join
 from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
 from collections import defaultdict
+from itertools import tee
+
+def _append(dct, iri, action, items):
+    changes = dct.get(iri, [])
+    changes.append((action, items))
+    dct[iri] = changes
+
 
 def _graphOrDefault(ctx, g):
     if g == 'DEFAULT':
@@ -38,10 +45,16 @@ def evalLoad(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#load
     """
+    res = {}
+    res["type_"] = "LOAD"
+    res["graph"] = u.iri
+
     if u.graphiri:
         ctx.load(u.iri, default=False, publicID=u.graphiri)
     else:
         ctx.load(u.iri, default=True)
+
+    return res
 
 
 def evalCreate(ctx, u):
@@ -77,39 +90,43 @@ def evalInsertData(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#insertData
     """
-    insertedtriples = defaultdict(set)
+
+    res = {}
+    res["type_"] = "INSERT"
+    res["delta"] = {}
 
     # add triples
     g = ctx.graph
     for triple in u.triples:
-        if g.triples(triple):
-            insertedtriples['insert'].add((triple, 'default'))
+        if not g.triples(triple):
+            _append(res["delta"], 'default', 'additions', u.triples)
     g += u.triples
 
     # add quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
         cg = ctx.dataset.get_context(g)
-        for triple in u.quads[g]:
-            if cg.triples(triple):
-                insertedtriples['insert'].add((triple, cg.identifier))
+        for triple in u.triples:
+            if not g.triples(triple):
+                _append(res["delta"], cg.identifier, 'additions', triple)
         cg += u.quads[g]
 
-    return insertedtriples
+    return res
 
 
 def evalDeleteData(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
-    deletedtriples = defaultdict(set)
+    res = {}
+    res["type_"] = "DELETE"
+    res["delta"] = {}
 
     # remove triples
     g = ctx.graph
-    deletedriples = ()
     for triple in u.triples:
         if g.triples(triple):
-            deletedriples['delete'].add((triple, 'default'))
+            _append(res["delta"], 'default', 'removals', triple)
     g -= u.triples
 
     # remove quads
@@ -118,45 +135,52 @@ def evalDeleteData(ctx, u):
         cg = ctx.dataset.get_context(g)
         for triple in u.quads[g]:
             if cg.triples(triple):
-                deletedriples['delete'].add((triple, cg.identifier))
+                _append(res["delta"], cg.identifier, 'removals', triple)
         cg -= u.quads[g]
 
-    return deletedriples
+    return res
 
 
 def evalDeleteWhere(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#deleteWhere
     """
-    res = evalBGP(ctx, u.triples)
+
+    res = {}
+    res["type_"] = "DELETEWHERE"
+    res["delta"] = {}
+
+    _res = evalBGP(ctx, u.triples)
     for g in u.quads:
         cg = ctx.dataset.get_context(g)
         c = ctx.pushGraph(cg)
-        res = _join(res, list(evalBGP(c, u.quads[g])))
+        _res = _join(_res, list(evalBGP(c, u.quads[g])))
 
-    deletedtriples = defaultdict(set)
-
-    for c in res:
+    for c in _res:
         g = ctx.graph
-        filled = _fillTemplate(u.triples, c)
-        for item in filled:
-            triple = (item[0], item[1], item[2])
-            deletedtriples['delete'].add((triple, 'default'))
+        filled, filled_delta = tee(_fillTemplate(u.triples, c))
+        for item in filled_delta:
+            quad = (item[0], item[1], item[2], g)
+            _append(res["delta"], 'default', 'removals', quad)
         g -= filled
 
         for g in u.quads:
             cg = ctx.dataset.get_context(c.get(g))
-            filledq = _fillTemplate(u.quads[g], c)
-            for itemq in filledq:
-                triple = (itemq[0], itemq[1], itemq[2])
-                deletedtriples['delete'].add((triple, cg.identifier))
+            filledq, filledq_delta = tee(_fillTemplate(u.quads[g], c))
+            for itemq in filledq_delta:
+                quad = (itemq[0], itemq[1], itemq[2], cg)
+                _append(res["delta"], cg.identifier, 'removals', quad)
             cg -= filledq
 
-    return deletedtriples
+    return res
 
 
 def evalModify(ctx, u):
     originalctx = ctx
+
+    res = {}
+    res["type_"] = "MODIFY"
+    res["delta"] = {}
 
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
@@ -189,8 +213,7 @@ def evalModify(ctx, u):
         g = ctx.dataset.get_context(u.withClause)
         ctx = ctx.pushGraph(g)
 
-    res = evalPart(ctx, u.where)
-    modifiedtriples = defaultdict(set)
+    _res = evalPart(ctx, u.where)
 
     if u.using:
         if otherDefault:
@@ -199,13 +222,13 @@ def evalModify(ctx, u):
             g = ctx.dataset.get_context(u.withClause)
             ctx = ctx.pushGraph(g)
 
-    for c in res:
+    for c in _res:
         dg = ctx.graph
         if u.delete:
             filled = _fillTemplate(u.delete.triples, c)
             for item in filled:
                 triple = (item[0], item[1], item[2])
-                modifiedtriples['insert'].add((triple, 'default'))
+                _append(res["delta"], 'default', 'removals', triple)
             dg -= filled
 
             for g, q in u.delete.quads.items():
@@ -213,23 +236,25 @@ def evalModify(ctx, u):
                 filledq = _fillTemplate(q, c)
                 for itemq in filledq:
                     triple = (itemq[0], itemq[1], itemq[2])
-                    modifiedtriples['insert'].add((triple, cg.identifier))
+                    _append(res["delta"], cg.identifier, 'removals', triple)
                 cg -= filledq
 
         if u.insert:
             filled = _fillTemplate(u.insert.triples, c)
             for item in filled:
-                modifiedtriples['delete'].add((triple, 'default'))
+                triple = (item[0], item[1], item[2])
+                _append(res["delta"], 'default', 'additions', triple)
             dg += filled
 
             for g, q in u.insert.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
                 filledq = _fillTemplate(q, c)
                 for itemq in filledq:
-                    modifiedtriples['delete'].add((triple, cg.identifier))
+                    triple = (item[0], item[1], item[2])
+                    _append(res["delta"], cg.identifier, 'additions', triple)
                 cg += filledq
 
-    return modifiedtriples
+    return res
 
 
 def evalAdd(ctx, u):
@@ -332,30 +357,29 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
         changes = defaultdict(set)
         try:
             if u.name == 'Load':
-                evalLoad(ctx, u)
+                return evalLoad(ctx, u)
             elif u.name == 'Clear':
-                evalClear(ctx, u)
+                return evalClear(ctx, u)
             elif u.name == 'Drop':
-                evalDrop(ctx, u)
+                return evalDrop(ctx, u)
             elif u.name == 'Create':
-                evalCreate(ctx, u)
+                return evalCreate(ctx, u)
             elif u.name == 'Add':
-                evalAdd(ctx, u)
+                return evalAdd(ctx, u)
             elif u.name == 'Move':
-                evalMove(ctx, u)
+                return evalMove(ctx, u)
             elif u.name == 'Copy':
-                evalCopy(ctx, u)
+                return evalCopy(ctx, u)
             elif u.name == 'InsertData':
-                changes = evalInsertData(ctx, u)
+                return evalInsertData(ctx, u)
             elif u.name == 'DeleteData':
-                changes = evalDeleteData(ctx, u)
+                return evalDeleteData(ctx, u)
             elif u.name == 'DeleteWhere':
-                changes = evalDeleteWhere(ctx, u)
+                return evalDeleteWhere(ctx, u)
             elif u.name == 'Modify':
-                changes = evalModify(ctx, u)
+                return evalModify(ctx, u)
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
         except:
             if not u.silent:
                 raise
-    return changes or defaultdict(set)
