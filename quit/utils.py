@@ -4,7 +4,7 @@ import os
 import contextlib
 import signal
 import sys
-from datetime import tzinfo, timedelta, datetime
+from datetime import tzinfo, timedelta
 from quit.graphs import InMemoryAggregatedGraph
 
 ZERO = timedelta(0)

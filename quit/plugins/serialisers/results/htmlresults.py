@@ -1,6 +1,6 @@
 import rdflib
 
-from jinja2 import Environment, Markup
+from jinja2 import Environment
 from rdflib.query import ResultSerializer
 
 __all__ = ['HTMLResultSerializer']
@@ -9,7 +9,6 @@ namespace_manager = rdflib.Graph().namespace_manager
 namespace_manager.bind('xsd', rdflib.XSD)
 
 env = Environment()
-env.filters["term_to_string"] = term_to_string
 
 RESULT_TEMPLATE = """
 <table class="table">

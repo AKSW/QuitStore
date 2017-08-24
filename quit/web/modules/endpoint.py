@@ -1,12 +1,11 @@
-import sys
 import traceback
 import re
 
 import logging
 from werkzeug.http import parse_accept_header
-from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
+from flask import Blueprint, request, current_app, make_response, Markup
 from rdflib import ConjunctiveGraph
-from quit.conf import STORE_PROVENANCE, STORE_DATA
+from quit.conf import STORE_PROVENANCE
 from quit.web.app import render_template, storemode_required
 from quit.exceptions import UnSupportedQueryType
 
@@ -202,12 +201,6 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
     def clear_where(graph, args):
         _, _, _, c = _spoc(args)
         graph.store.remove_context(c)
-
-    def serialize(graph, format_):
-        format_, mimetype_ = mimeutils.format_to_mime(format_)
-        response = make_response(graph.serialize(format=format_))
-        response.headers["Content-Type"] = mimetype_
-        return response
 
     def _spoc(args):
         from rdflib import URIRef
