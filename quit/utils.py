@@ -5,7 +5,7 @@ import contextlib
 import signal
 import sys
 from datetime import tzinfo, timedelta, datetime
-from quit.graphs import InMemoryGraphAggregate
+from quit.graphs import InMemoryAggregatedGraph
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -69,34 +69,33 @@ def graphdiff(first, second):
     from rdflib.compare import to_isomorphic, graph_diff
 
     diffs = {}
-    uris = set()
+    iris = set()
 
-    if first is not None and isinstance(first, InMemoryGraphAggregate):
+    if first is not None and isinstance(first, InMemoryAggregatedGraph):
         first_identifiers = list((g.identifier for g in first.graphs()))
-        uris = uris.union(first_identifiers)
-    if second is not None and isinstance(second, InMemoryGraphAggregate):
+        iris = iris.union(first_identifiers)
+    if second is not None and isinstance(second, InMemoryAggregatedGraph):
         second_identifiers = list((g.identifier for g in second.graphs()))
-        uris = uris.union(second_identifiers)       
+        iris = iris.union(second_identifiers)       
     
-    for uri in uris:
-        id = None
-        changes = diffs.get((uri, id), [])
+    for iri in iris:
+        changes = diffs.get(iri, [])
 
-        if (first is not None and uri in first_identifiers) and (second is not None and uri in second_identifiers):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(first.graph(uri)), to_isomorphic(second.graph(uri)))
+        if (first is not None and iri in first_identifiers) and (second is not None and iri in second_identifiers):
+            in_both, in_first, in_second = graph_diff(to_isomorphic(first.get_context(iri)), to_isomorphic(second.get_context(iri)))
 
             if len(in_second) > 0:
-                changes.append(('additions', in_second))
+                changes.append(('additions', ((s, p, o, iri) for s, p, o in in_second)))
             if len(in_first) > 0:
-                changes.append(('removals', in_first))
-        elif first is not None and uri in first_identifiers:
-            changes.append(('removals', first.graph(uri)))
-        elif second is not None and uri in second_identifiers:
-            changes.append(('additions', second.graph(uri)))
+                changes.append(('removals', ((s, p, o, iri) for s, p, o in in_first)))
+        elif first is not None and iri in first_identifiers:
+            changes.append(('removals', ((s, p, o, iri) for s, p, o in first.get_context(iri))))
+        elif second is not None and iri in second_identifiers:
+            changes.append(('additions', ((s, p, o, iri) for s, p, o in second.get_context(iri))))
         else: 
             continue
                         
-        diffs[(uri, id)] = changes
+        diffs[iri] = changes
     return diffs
 
 def _sigterm_handler(signum, frame):

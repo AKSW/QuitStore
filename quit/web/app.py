@@ -86,7 +86,7 @@ def register_app(app, config):
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))
-    quit.sync()
+    quit.syncAll()
     
     content = quit.store.store.serialize(format='trig').decode()
     for line in (content.splitlines()):

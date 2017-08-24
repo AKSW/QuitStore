@@ -4,7 +4,7 @@ import functools as ft
 
 from rdflib import BNode
 from quit.namespace import FOAF, PROV, QUIT
-from quit.graphs import ReadOnlyRewriteGraph
+from quit.graphs import RewriteGraph
 
 class Blame(object):
     """

@@ -1,2 +1,2 @@
-python quit/quit.py -cm localconfig --disable-data-store 
-:: --disable-provenance-store
+python quit/quit.py -cm localconfig --disable-data-store
+:: --disable-data-store  --disable-provenance-store

@@ -445,7 +445,11 @@ def main(config):
     """
     Start the app.
     """
-    app = create_app(config, True)
+    from rdflib import ConjunctiveGraph, URIRef, RDFS, Literal
+    from quit.graphs import InMemoryAggregatedGraph
+    from pprint import pprint
+
+    app = create_app(config)
     app.run(debug = True, use_reloader=False)
 
 
