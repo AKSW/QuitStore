@@ -15,14 +15,16 @@ __all__ = ['endpoint']
 
 endpoint = Blueprint('endpoint', __name__)
 
-pattern = re.compile(r"""
-    (?P<queryType>(CONSTRUCT|SELECT|ASK|DESCRIBE|INSERT|DELETE|CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD))
-    """, re.VERBOSE | re.IGNORECASE)
+queryTypeRegex = r"(?P<queryType>("
+queryTypeRegex += r"CONSTRUCT|SELECT|ASK|DESCRIBE|"
+queryTypeRegex += r"INSERT|DELETE|CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD"
+queryTypeRegex += r"))"
+queryTypePattern = re.compile(queryTypeRegex, re.VERBOSE | re.IGNORECASE)
 
 
 def parse_query_type(query):
     try:
-        query_type = pattern.search(query).group("queryType").upper()
+        query_type = queryTypePattern.search(query).group("queryType").upper()
     except AttributeError:
         query_type = None
     return query_type
