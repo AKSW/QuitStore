@@ -141,7 +141,7 @@ def evalDeleteWhere(ctx, u):
         filled = _fillTemplate(u.triples, c)
         for item in filled:
             triple = (item[0], item[1], item[2])
-            deletedriples['delete'].add((triple, 'default'))
+            deletedtriples['delete'].add((triple, 'default'))
         g -= filled
 
         for g in u.quads:
@@ -149,7 +149,7 @@ def evalDeleteWhere(ctx, u):
             filledq = _fillTemplate(u.quads[g], c)
             for itemq in filledq:
                 triple = (itemq[0], itemq[1], itemq[2])
-                deletedriples['delete'].add((triple, cg.identifier))
+                deletedtriples['delete'].add((triple, cg.identifier))
             cg -= filledq
 
     return deletedtriples
