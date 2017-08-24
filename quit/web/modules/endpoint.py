@@ -87,13 +87,11 @@ def sparql(branch_or_ref):
                 return '', 200
 
         except UnSupportedQueryType as e:
-            logger.error(e)
-            logger.error(traceback.format_exc())
+            logger.exception(e)
             return "Unsupported Query Type: <pre>{}</pre>".format(traceback.format_exc()), 200
         except Exception as e:
-            logger.error(e)
-            logger.error(traceback.format_exc())
-            return "<pre>" + traceback.format_exc() + "</pre>", 400
+            logger.exception(e)
+            return "<pre>{}</pre>".format(traceback.format_exc()), 400
     else:
         return render_template('sparql.html')
 
