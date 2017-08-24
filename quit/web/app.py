@@ -70,7 +70,6 @@ def create_app(config):
     register_hook(app)
     register_blueprints(app)
     register_extensions(app)
-    register_logging(app)
     register_errorhandlers(app)
     register_template_helpers(app)
 
@@ -115,36 +114,6 @@ def register_blueprints(app):
     @app.route("/")
     def index():
         return redirect(url_for('git.commits'))
-
-
-def register_logging(app):
-    """Register file(info) and email(error) logging."""
-
-    if app.debug or app.testing:
-        # Skip debug and test mode. Just check standard output.
-        return
-
-    import logging
-    import os
-
-    app.logger.setLevel(logging.DEBUG)
-
-    # logging format
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler('quit.log')
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(formatter)
-
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    ch.setFormatter(formatter)
-
-    # add the handlers to the logger
-    app.logger.addHandler(fh)
-    app.logger.addHandler(ch)
 
 
 def register_hook(app):

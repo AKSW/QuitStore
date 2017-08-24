@@ -147,9 +147,8 @@ def provenance():
                 raise UnSupportedQueryType()
 
         except Exception as e:
-            logger.error(e)
-            logger.error(traceback.format_exc())
-            return "<pre>" + traceback.format_exc() + "</pre>", 400
+            logger.exception(e)
+            return "<pre>{}</pre>".format(traceback.format_exc()), 400
     else:
         return render_template('provenance.html')
 
@@ -255,9 +254,8 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
                         "Method %s not supported" % method)
 
     except Exception as e:
-        logger.error(e)
-        logger.error(traceback.format_exc())
-        response = (400, dict(), "<pre>" + traceback.format_exc() + "</pre>")
+        logger.exception(e)
+        response = (400, dict(), "<pre>{}</pre>".format(traceback.format_exc()))
 
     return response
 
