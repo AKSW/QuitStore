@@ -82,7 +82,10 @@ def graphdiff(first, second):
         changes = diffs.get(iri, [])
 
         if (first is not None and iri in first_identifiers) and (second is not None and iri in second_identifiers):
-            in_both, in_first, in_second = graph_diff(to_isomorphic(first.get_context(iri)), to_isomorphic(second.get_context(iri)))
+            g1 = first.get_context(iri)
+            g2 = second.get_context(iri)
+            g1.triples((None,None,None))
+            in_both, in_first, in_second = graph_diff(to_isomorphic(g1), to_isomorphic(g2))
 
             if len(in_second) > 0:
                 changes.append(('additions', ((s, p, o, iri) for s, p, o in in_second)))

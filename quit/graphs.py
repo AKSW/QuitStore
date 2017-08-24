@@ -73,7 +73,7 @@ class CopyOnEditGraph(Graph):
             super().remove(triple_or_quad)
 
         def triples(self, triple):
-            if self._template and not self._template in self.store.contexts(None):
+            if self not in self.store.contexts(None):
                 return self._template.triples(triple)
             else:
                 return super().triples(triple)
@@ -84,6 +84,12 @@ class CopyOnEditGraph(Graph):
             for triple in other:
                 self.remove(triple)
             return self
+
+        def __len__(self):
+            if self not in self.store.contexts(None):
+                return self._template.store.__len__(context=self)
+            else:
+                return self.store.__len__(context=self)
 
 class InMemoryAggregatedGraph(ConjunctiveGraph):
     def __init__(self, store='default', identifier = None, graphs=list()):                      
