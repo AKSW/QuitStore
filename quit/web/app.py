@@ -66,8 +66,9 @@ def storemode_required(mode):
 def create_app(config, enable_profiler=False, profiler_quiet=False):
     """Create a Flask app."""
 
-    app = Flask(__name__.split('.')[0], template_folder='web/templates', static_folder='web/static')
-    register_logging(app)
+    app = Flask(
+        __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
+    )
     register_app(app, config)
     register_hook(app)
     register_blueprints(app)
@@ -81,10 +82,12 @@ def create_app(config, enable_profiler=False, profiler_quiet=False):
         f = open('profiler.log', 'w')
 
         if profiler_quiet:
-            app.wsgi_app = ProfilerMiddleware(app.wsgi_app, f, profile_dir="d:/tmp")
+            app.wsgi_app = ProfilerMiddleware(
+                app.wsgi_app, f, profile_dir="d:/tmp")
         else:
             stream = MergeStream(sys.stdout, f)
-            app.wsgi_app = ProfilerMiddleware(app.wsgi_app, stream, profile_dir="d:/tmp")
+            app.wsgi_app = ProfilerMiddleware(
+                app.wsgi_app, stream, profile_dir="d:/tmp")
 
     return app
 
@@ -162,6 +165,7 @@ def register_errorhandlers(app):
     def shutdown():
         shutdown_server()
         return 'Server shutting down...'
+
 
 def register_template_helpers(app):
 

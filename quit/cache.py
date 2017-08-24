@@ -1,15 +1,15 @@
 import collections
 
+
 class Cache:
     """"""
- 
-    def __init__(self, capacity = 50):
+
+    def __init__(self, capacity=50):
         """
-		Constructor
-		"""
+                Constructor
+                """
         self.cache = collections.OrderedDict()
         self.capacity = capacity
- 
 
     def get(self, key):
         try:
@@ -19,7 +19,6 @@ class Cache:
         except KeyError:
             return None
 
-
     def set(self, key, value):
         try:
             self.cache.pop(key)
@@ -28,10 +27,8 @@ class Cache:
                 self.cache.popitem(last=False)
         self.cache[key] = value
 
-
     def __contains__(self, key):
         return key in self.cache
-
 
     @property
     def size(self):
@@ -39,5 +36,3 @@ class Cache:
         Return the size of the cache
         """
         return len(self.cache)
-
-

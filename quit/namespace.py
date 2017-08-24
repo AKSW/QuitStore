@@ -11,11 +11,12 @@ QUIT = Namespace('http://quit.aksw.org/')
 # simplified properties
 is_a = RDF.type
 
+
 class Vocabulary:
     Activity = PROV['Activity']
     ImportActivity = QUIT['Import']
     TransformActivity = QUIT['Transformation']
-    
+
     DataSource = QUIT['dataSource']
     Query = QUIT['query']
     Hex = QUIT['hex']

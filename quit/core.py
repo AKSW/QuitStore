@@ -90,7 +90,8 @@ class FileReference:
         graph = ConjunctiveGraph()
 
         try:
-            graph.parse(self.path, format='nquads', publicID='http://localhost:5000/')
+            graph.parse(self.path, format='nquads',
+                        publicID='http://localhost:5000/')
             logger.debug('Success: File', self.path, 'parsed')
         except KeyError as e:
             # Given file contains non valid rdf data
@@ -392,7 +393,7 @@ class Quit(object):
 
     def rebuild(self):
         for context in self.store.contexts():
-            self.store.remove((None,None,None), context)
+            self.store.remove((None, None, None), context)
         self.syncAll()
 
     def syncAll(self):
@@ -433,7 +434,7 @@ class Quit(object):
                 commit = commits.pop()
                 self.syncSingle(commit)
 
-    def syncSingle(self, commit, delta = None):
+    def syncSingle(self, commit, delta=None):
         if not self._exists(commit.id):
             self.changeset(commit, delta)
 
@@ -484,7 +485,8 @@ class Quit(object):
                             )
                         default_graphs.append(g)
 
-        instance = InMemoryAggregatedGraph(graphs=default_graphs, identifier='default')
+        instance = InMemoryAggregatedGraph(
+            graphs=default_graphs, identifier='default')
 
         return VirtualGraph(instance)
 
@@ -494,7 +496,11 @@ class Quit(object):
             g.parse(data=data, format='nquads')
             return g
 
-        if not self.config.checkStoremode(STORE_DATA) and not self.config.checkStoremode(STORE_PROVENANCE):
+        if (
+            not self.config.checkStoremode(STORE_DATA)
+        ) and (
+            not self.config.checkStoremode(STORE_PROVENANCE)
+        ):
             return
 
         g = self.store.store
@@ -516,15 +522,20 @@ class Quit(object):
 
             if 'Source' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Import']))
-                g.add((commit_uri, QUIT['dataSource'], Literal(commit.properties['Source'].strip())))
+                g.add((commit_uri, QUIT['dataSource'], Literal(
+                    commit.properties['Source'].strip())))
             if 'Query' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Transformation']))
-                g.add((commit_uri, QUIT['query'], Literal(commit.properties['Query'].strip())))
+                g.add((commit_uri, QUIT['query'], Literal(
+                    commit.properties['Query'].strip())))
 
             g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
-            g.add((commit_uri, PROV['startedAtTime'], Literal(commit.author_date, datatype = XSD.dateTime)))
-            g.add((commit_uri, PROV['endedAtTime'], Literal(commit.committer_date, datatype = XSD.dateTime)))
-            g.add((commit_uri, RDFS['comment'], Literal(commit.message.strip())))
+            g.add((commit_uri, PROV['startedAtTime'], Literal(
+                commit.author_date, datatype=XSD.dateTime)))
+            g.add((commit_uri, PROV['endedAtTime'], Literal(
+                commit.committer_date, datatype=XSD.dateTime)))
+            g.add((commit_uri, RDFS['comment'],
+                   Literal(commit.message.strip())))
 
             # Author
             hash = pygit2.hash(commit.author.email).hex
@@ -552,7 +563,8 @@ class Quit(object):
                 g.add((committer_uri, FOAF.mbox, Literal(commit.committer.email)))
 
                 q_committer_uri = BNode()
-                g.add((commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
+                g.add(
+                    (commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
                 g.add((q_committer_uri, is_a, PROV['Association']))
                 g.add((q_committer_uri, PROV['agent'], author_uri))
                 g.add((q_committer_uri, PROV['role'], role_committer_uri))
@@ -604,16 +616,19 @@ class Quit(object):
                     private_uri = context.identifier + '-' + entity.blob.hex
 
                     if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
-                        g.add((private_uri, PROV['specializationOf'], public_uri))
-                        g.add((private_uri, PROV['wasGeneratedBy'], commit_uri))
+                        g.add(
+                            (private_uri, PROV['specializationOf'], public_uri))
+                        g.add(
+                            (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
-                        g.addN((s, p, o, private_uri) for s, p, o in tmp.triples((None, None, None), context))
+                        g.addN((s, p, o, private_uri) for s, p,
+                               o in tmp.triples((None, None, None), context))
 
     def commit(self, graph, delta, message, index, ref, **kwargs):
         def build_message(message, kwargs):
             out = list()
-            for k,v in kwargs.items():
-                if not '\n' in v:
+            for k, v in kwargs.items():
+                if '\n' not in v:
                     out.append('%s: %s' % (k, v))
                 else:
                     out.append('%s: "%s"' % (k, v))
@@ -649,7 +664,6 @@ class Quit(object):
                 hex = index.stash[file][0]
                 self.blobs.set(hex, g)
 
-
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
 
@@ -659,7 +673,8 @@ class Quit(object):
             self.repository._repository.set_head(oid)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
-                self.repository._repository.checkout(ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
+                self.repository._repository.checkout(
+                    ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.syncSingle(commit, delta)
 
 
@@ -756,7 +771,8 @@ class GitRepo:
             index.add(filename)
             index.write()
         except Exception as e:
-            logger.info("GitRepo, addfile, Could not add file  {}.".format(filename))
+            logger.info(
+                "GitRepo, addfile, Could not add file  {}.".format(filename))
             logger.debug(e)
 
     def addRemote(self, name, url):
@@ -777,7 +793,8 @@ class GitRepo:
             self.repo.remotes.set_push_url(name, url)
             self.repo.remotes.set_url(name, url)
         except Exception as e:
-            logger.info("Could not set push/fetch urls: {} - {}".format(name, url))
+            logger.info(
+                "Could not set push/fetch urls: {} - {}".format(name, url))
             logger.debug(e)
 
     def checkout(self, commitid):
@@ -864,7 +881,8 @@ class GitRepo:
             if self.gcProcess is None or self.gcProcess.poll() is not None:
                 # Start garbage collection with "--auto" option,
                 # which imidietly terminates, if it is not necessary
-                self.gcProcess = Popen(["git", "gc", "--auto", "--quiet"], cwd=self.path)
+                self.gcProcess = Popen(
+                    ["git", "gc", "--auto", "--quiet"], cwd=self.path)
                 logger.debug('Spawn garbage collection')
         except Exception as e:
             logger.debug('Git garbage collection failed to spawn')
@@ -988,14 +1006,16 @@ class GitRepo:
         try:
             remo = self.repo.remotes[remote]
         except Exception as e:
-            logger.info("Can not push. Remote: {} does not exist.".format(remote))
+            logger.info(
+                "Can not push. Remote: {} does not exist.".format(remote))
             logger.debug(e)
             return
 
         try:
             remo.push(ref, callbacks=self.callback)
         except Exception as e:
-            logger.info("Can not push to {} with ref {}".format(remote, str(ref)))
+            logger.info(
+                "Can not push to {} with ref {}".format(remote, str(ref)))
             logger.debug(e)
 
     def getRemotes(self):
@@ -1055,4 +1075,5 @@ class QuitRemoteCallbacks (RemoteCallbacks):
                     "GIT_USERNAME or GIT_PASSWORD are not set."
                 )
         else:
-            raise Exception("Only unsupported credential types allowed by remote end")
+            raise Exception(
+                "Only unsupported credential types allowed by remote end")

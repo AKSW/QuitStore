@@ -11,7 +11,10 @@ from quit.utils import graphdiff, clean_path
 from quit.cache import Cache
 from quit.benchmark import benchmark
 
-PROPERTY_REGEX = r"^((?P<key>([\w0-9_]+))\s*:\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\".*\"|'[^']*'))))"
+PROPERTY_REGEX = r"^("
+PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
+PROPERTY_REGEX += r"\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\".*\"|'[^']*')))"
+PROPERTY_REGEX += r")"
 
 logger = logging.getLogger('quit.git')
 
@@ -20,6 +23,7 @@ role_author = QUIT['author']
 role_committer = QUIT['committer']
 
 CACHE = Cache()
+
 
 def _git_timestamp(ts, offset):
     import quit.utils as tzinfo
@@ -40,7 +44,8 @@ class Repository(object):
             self._repository = pygit2.Repository(path)
         except KeyError:
             if not params.get('create', False):
-                raise RepositoryNotFound('Repository "%s" does not exist' % path)
+                raise RepositoryNotFound(
+                    'Repository "%s" does not exist' % path)
 
             if origin:
                 self.callback = self._callback(origin)
@@ -80,7 +85,8 @@ class Repository(object):
         try:
             credentials = Keypair(username, pubkey, privkey, passphrase)
         except Exception:
-            self.logger.debug('GitRepo, setcallback: Something went wrong with Keypair')
+            self.logger.debug(
+                'GitRepo, setcallback: Something went wrong with Keypair')
             return
 
         return RemoteCallbacks(credentials=credentials)
@@ -174,7 +180,8 @@ class Repository(object):
                 remote_master_id = self._repository.lookup_reference(
                     'refs/remotes/origin/{}'.format(branch)
                 ).target
-                merge_result, _ = self._repository.merge_analysis(remote_master_id)
+                merge_result, _ = self._repository.merge_analysis(
+                    remote_master_id)
 
                 # Up to date, do nothing
                 if merge_result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
@@ -182,12 +189,15 @@ class Repository(object):
 
                 # We can just fastforward
                 elif merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
-                    self._repository.checkout_tree(self._repository.get(remote_master_id))
+                    self._repository.checkout_tree(
+                        self._repository.get(remote_master_id))
                     try:
-                        master_ref = self._repository.lookup_reference('refs/heads/%s' % (branch))
+                        master_ref = self._repository.lookup_reference(
+                            'refs/heads/%s' % (branch))
                         master_ref.set_target(remote_master_id)
                     except KeyError:
-                        self._repository.create_branch(branch, repo.get(remote_master_id))
+                        self._repository.create_branch(
+                            branch, repo.get(remote_master_id))
                     self._repository.head.set_target(remote_master_id)
 
                 elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
@@ -195,7 +205,8 @@ class Repository(object):
 
                     if self._repository.index.conflicts is not None:
                         for conflict in repo.index.conflicts:
-                            logging.error('Conflicts found in: {}'.format(conflict[0].path))
+                            logging.error(
+                                'Conflicts found in: {}'.format(conflict[0].path))
                         raise AssertionError('Conflicts, ahhhhh!!')
 
                     user = self._repository.default_signature
@@ -250,7 +261,8 @@ class Revision(object):
     def _extract(self, message):
         captures = {}
 
-        matches = re.finditer(PROPERTY_REGEX, message, re.DOTALL | re.MULTILINE)
+        matches = re.finditer(PROPERTY_REGEX, message,
+                              re.DOTALL | re.MULTILINE)
 
         if matches:
             for _, match in enumerate(matches):
@@ -259,10 +271,11 @@ class Revision(object):
 
                 if match.group('key') and match.group('quoted'):
                     key, value = match.group('key'), match.group('quoted')
-                    value = value[1 : len(value)-1] #remove quotes
+                    value = value[1: len(value) - 1]  # remove quotes
 
                 captures[key] = value
-            message = re.sub(PROPERTY_REGEX, "", message, 0, re.DOTALL | re.MULTILINE).strip(" \n")
+            message = re.sub(PROPERTY_REGEX, "", message, 0,
+                             re.DOTALL | re.MULTILINE).strip(" \n")
         return captures, message
 
     @property
@@ -280,7 +293,8 @@ class Revision(object):
     @property
     def parents(self):
         if self._parents is None:
-            self._parents = [Revision(self._repository, id) for id in self._commit.parents]
+            self._parents = [Revision(self._repository, id)
+                             for id in self._commit.parents]
         return self._parents
 
     def node(self, path=None):
@@ -313,11 +327,14 @@ class Revision(object):
         # special activity
         if 'import' in self.properties.keys():
             g.add((uri, is_a, QUIT['Import']))
-            g.add((uri, QUIT['dataSource'], URIRef(self.properties['import'].strip())))
+            g.add((uri, QUIT['dataSource'], URIRef(
+                self.properties['import'].strip())))
 
         # properties
-        g.add((uri, PROV['startedAtTime'], Literal(self.author_date, datatype=XSD.dateTime)))
-        g.add((uri, PROV['endedAtTime'], Literal(self.committer_date, datatype=XSD.dateTime)))
+        g.add((uri, PROV['startedAtTime'], Literal(
+            self.author_date, datatype=XSD.dateTime)))
+        g.add((uri, PROV['endedAtTime'], Literal(
+            self.committer_date, datatype=XSD.dateTime)))
         g.add((uri, RDFS['comment'], Literal(self.message)))
 
         # parents
@@ -433,11 +450,11 @@ class Node(object):
         self._commit = commit
 
     @property
-    def hex(self) :
+    def hex(self):
         return self.obj.hex
 
     @property
-    def is_dir(self) :
+    def is_dir(self):
         return self.kind == Node.DIRECTORY
 
     @property
@@ -463,7 +480,8 @@ class Node(object):
             for entry in self.obj:
                 dirname = self.is_dir and self.name or self.dirname
                 node = Node(
-                    self._repository, self._commit, '/'.join(x for x in [dirname, entry.name] if x)
+                    self._repository, self._commit, '/'.join(
+                        x for x in [dirname, entry.name] if x)
                 )
 
                 yield node
@@ -488,7 +506,8 @@ class Node(object):
                 public_uri = QUIT[context]
                 private_uri = QUIT[context + '-' + self.blob.hex]
 
-                g = ReadOnlyRewriteGraph(entry.blob.hex, identifier=private_uri)
+                g = ReadOnlyRewriteGraph(
+                    entry.blob.hex, identifier=private_uri)
                 g.parse(data=entry.content, format='nquads')
 
                 yield (public_uri, g)
@@ -515,6 +534,7 @@ class Node(object):
 
 
 from heapq import heappush, heappop
+
 
 class Index(object):
     def __init__(self, repository):
@@ -548,7 +568,8 @@ class Index(object):
         ref = kwargs.pop('ref', 'HEAD')
         commiter_name = kwargs.pop('commiter_name', author_name)
         commiter_email = kwargs.pop('commiter_email', author_email)
-        parents = kwargs.pop('parents', [self.revision.id] if self.revision else [])
+        parents = kwargs.pop(
+            'parents', [self.revision.id] if self.revision else [])
 
         author = pygit2.Signature(author_name, author_email)
         commiter = pygit2.Signature(commiter_name, commiter_email)
@@ -609,10 +630,12 @@ class IndexTree(object):
         self.builders = IndexHeap()
         if self.revision:
             self.builders[''] = (
-                None, self.repository._repository.TreeBuilder(self.revision._commit.tree)
+                None, self.repository._repository.TreeBuilder(
+                    self.revision._commit.tree)
             )
         else:
-            self.builders[''] = (None, self.repository._repository.TreeBuilder())
+            self.builders[''] = (
+                None, self.repository._repository.TreeBuilder())
 
     def get_builder(self, path):
         parts = path.split(os.path.sep)
@@ -630,7 +653,8 @@ class IndexTree(object):
                     node = self.revision.node(_path)
                     if node.is_file:
                         raise IndexError(
-                            'Cannot create a tree builder. "{}" is a file'.format(node.name)
+                            'Cannot create a tree builder. "{}" is a file'.format(
+                                node.name)
                         )
                     args.append(node.obj.oid)
             except NodeNotFound:
