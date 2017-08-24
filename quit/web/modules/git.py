@@ -58,10 +58,6 @@ def pull():
         HTTP Response 201: If pull was possible
         HTTP Response: 403: If pull did not work
     """
-    # if current_app.config['repository'].pull():
-    #    return '', status.HTTP_201_CREATED
-    # else:
-    #    return '', status.HTTP_403_FORBIDDEN
     try:
         current_app.config['quit'].repository.pull()
         return '', 201
@@ -79,11 +75,6 @@ def push():
         HTTP Response 201: If push was possible
         HTTP Response: 403: If push did not work
     """
-    # if current_app.config['repository'].push():
-    #    return '', status.HTTP_201_CREATED
-    # else:
-    #    return '', status.HTTP_403_FORBIDDEN
-
     try:
         current_app.config['quit'].repository.push()
         return '', 201

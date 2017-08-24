@@ -147,8 +147,6 @@ def savedexit():
     Add methods you want to call on unexpected shutdown.
     """
     logger.info("Exiting store")
-    # store.exit()
-    logger.info("Store exited")
 
 
 def parseArgs(args):

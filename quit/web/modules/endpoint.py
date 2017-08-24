@@ -190,7 +190,7 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
     def copy_where(target, graph, args):
         s, p, o, c = _spoc(args)
 
-        for subgraph in (x for x in graph.contexts()):  # if c is None or x.identifier == c):
+        for subgraph in (x for x in graph.contexts()):
             target.store.addN((s, p, o, subgraph.identifier)
                               for s, p, o in subgraph.triples((None, None, None)))
 
@@ -215,7 +215,6 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
     try:
         if method in ['GET', 'HEAD']:
             # format, content_type = self.negotiate(self.RESULT_GRAPH, accept_header)
-            # if content_type.startswith('text/'): content_type += "; charset=utf-8"
 
             content_type, format = negotiate(accept_header)
             if content_type.startswith('text/'):
