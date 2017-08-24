@@ -1,11 +1,7 @@
-import rdflib.plugin as plugin
-
 from itertools import chain
-from rdflib import Graph, Literal, URIRef, ConjunctiveGraph, Dataset
-from rdflib.graph import Node, ReadOnlyGraphAggregate, ModificationException
-from rdflib.graph import UnSupportedAggregateOperation, Path
-from rdflib.store import Store
-from rdflib.plugins.memory import IOMemory
+from rdflib import Graph, ConjunctiveGraph
+from rdflib.graph import ModificationException
+from rdflib.graph import Path
 
 
 class RewriteGraph(Graph):
@@ -21,16 +17,6 @@ class RewriteGraph(Graph):
 
     def triples(self, triple):
         return self.__graph.triples(triple)
-
-    def __cmp__(self, other):
-        if other is None:
-            return -1
-        elif isinstance(other, Graph):
-            return -1
-        elif isinstance(other, RewriteGraph):
-            return cmp(self.__graph, other.__graph)
-        else:
-            return -1
 
     def add(self, triple_or_quad):
         raise ModificationException()
@@ -94,7 +80,9 @@ class CopyOnEditGraph(Graph):
 
     def __isub__(self, other):
         """Subtract all triples in Graph other from Graph.
-           BNode IDs are not changed."""
+
+        BNode IDs are not changed.
+        """
         for triple in other:
             self.remove(triple)
         return self
@@ -202,7 +190,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
 
     def __contains__(self, triple_or_quad):
         (_, _, _, context) = self._spoc(triple_or_quad)
-        context = self._graph(c)
+        context = self._graph(context)
 
         for graph in self.graphs():
             if context is None or graph.identifier == context.identifier:
