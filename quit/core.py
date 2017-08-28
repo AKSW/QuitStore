@@ -445,7 +445,7 @@ class Quit(object):
                     g.add((commit_uri, QUIT['updates'], update_uri))
                     g.add((update_uri, QUIT['graph'], iri))
                     g.add((update_uri, QUIT[op], op_uri))
-                    g.addN(quads)
+                    g.addN((s, p, o, op_uri) for s, p, o, _ in quads)
 
         # Entities
         map = self.config.getgraphurifilemap()

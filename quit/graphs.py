@@ -40,12 +40,6 @@ class RewriteGraph(Graph):
         return len(self.__graph)
 
 
-def _copyIfNotExists(target, source):
-    if target not in target.store.contexts(None):
-        target.store.addN((_s, _p, _o, target)
-                          for _s, _p, _o in source.triples((None, None, None)))
-
-
 class CopyOnEditGraph(Graph):
     def __init__(self, template, store='default', identifier=None, namespace_manager=None):
         super().__init__(store, identifier, namespace_manager)
@@ -55,27 +49,40 @@ class CopyOnEditGraph(Graph):
         assert not template or template.identifier == identifier, "identifier must match"
 
         self._template = template
+        self._store = super().store
+
+    def _copyIfNotExists(self):
+        if self not in self._store.contexts(None):
+            self._store.addN(
+                (s, p, o, self) for s, p, o in self._template.triples((None, None, None)))
 
     def add(self, triple_or_quad):
         if self._template:
-            _copyIfNotExists(self, self._template)
+            _copyIfNotExists()
         super().add(triple_or_quad)
 
     def addN(self, triple_or_quad):
         if self._template:
-            _copyIfNotExists(self, self._template)
+            _copyIfNotExists()
         super().addN(triple_or_quad)
 
     def remove(self, triple_or_quad):
         if self._template:
-            _copyIfNotExists(self, self._template)
+            _copyIfNotExists()
         super().remove(triple_or_quad)
 
     def triples(self, triple):
-        if self not in self.store.contexts(None):
+        if self not in self._store.contexts(None):
             return self._template.triples(triple)
         else:
             return super().triples(triple)
+
+    @property
+    def store(self):
+        if self not in self._store.contexts(None):
+            return self._template.store
+        else:
+            return self._store
 
     def __isub__(self, other):
         """Subtract all triples in Graph other from Graph.
