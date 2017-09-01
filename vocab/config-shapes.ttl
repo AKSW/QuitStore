@@ -1,0 +1,67 @@
+@prefix quit: <http://quit.aksw.org/> .
+@prefix qshapes: <http://quit.aksw.org/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+qshapes:StoreShape
+	a sh:NodeShape ;
+	sh:targetClass quit:QuitStore ;
+	sh:property [
+		sh:path quit:storeFromDir ;
+		sh:datatype xsd:boolean ;
+	] ;
+	sh:property [
+		sh:path quit:allowNewGraphs ;
+		sh:datatype xsd:boolean ;
+	] ;
+	sh:property [
+		sh:path quit:pathOfGitRepo ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:defaultBranch ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:globalFile ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:linkToGitRemote ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .
+
+
+qshapes:GraphShape
+	a sh:NodeShape ;
+	sh:targetClass quit:Graph ;
+	sh:property [
+		sh:path quit:graphUri ;
+		sh:nodeKind sh:IRI ;
+	] ;
+	sh:property [
+		sh:path quit:graphFile ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:isVersioned ;
+		sh:datatype xsd:boolean ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .
+
+
+qshapes:GraphShape
+	a sh:NodeShape ;
+	sh:targetClass quit:Binding ;
+	sh:property [
+		sh:path quit:prefix ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:namespace ;
+		sh:nodeKind sh:IRI ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .

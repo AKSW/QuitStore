@@ -1,0 +1,55 @@
+@prefix quit: <http://quit.aksw.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# classes
+quit:QuitStore a rdfs:Class ;
+  rdfs:label "Quit Store" ;
+  rdfs:comment "Information about the Git Store" .
+
+quit:Graph a rdfs:Class ;
+  rdfs:label "Quit Graph" ;
+  rdfs:comment "A named Graph" .
+
+quit:Binding a rdfs:Class ;
+  rdfs:comment "Information about custom namespaces" .
+
+# quit:QuitStore properties
+quit:storeFromDir a rdfs:Property ;
+  rdfs:comment "(Dis)allow Quit building the store from all files found in repository" .
+
+quit:allowNewGraphs a rdfs:Property ;
+  rdfs:comment """(Dis)allow Quit adding new files for each new named graph.
+  [This property is not yet evaluated by the implementation.]""" .
+
+quit:pathOfGitRepo a rdfs:Property ;
+  rdfs:comment "Path to the local Git Repository" .
+
+quit:defaultBranch a rdfs:Property ;
+  rdfs:comment "Branch used as default" .
+
+quit:globalFile a rdfs:Property ;
+  rdfs:comment "File for unassigned graphs" .
+
+quit:linkToGitRemote a rdfs:Property ;
+  rdfs:comment "Link to the Git Remote" .
+
+# quit:Graph properties
+quit:graphUri a rdfs:Property ;
+  rdfs:label "Graph URI" ;
+  rdfs:comment "The URI of a graph" .
+
+quit:graphFile a rdfs:Property ;
+  rdfs:label "Graph File" ;
+  rdfs:comment "The filename" .
+
+quit:isVersioned a rdfs:Property ;
+  rdfs:label "Is Versioned" ;
+  rdfs:comment "The Information if a graph should be versioned" .
+
+# quit:Binding properties
+quit:prefix a rdfs:Property ;
+  rdfs:comment "Prefix for a binding" .
+
+quit:namespace a rdfs:Property ;
+  rdfs:comment "Actual namespace for a binding" .
