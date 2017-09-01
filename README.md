@@ -76,6 +76,14 @@ Specify a path to a configuration file. (Defaults to ./config.ttl)
 
 Run Quit-Store without versioning activated
 
+`--disable-data-store`
+
+Set the store mode to disable extra caching of the complete change history.
+
+`--disable-provenance-store`
+
+Disable provenance storage. This also disables the costly initial synchronization process.
+
 `-gc`, `--garbagecollection`
 
 Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
