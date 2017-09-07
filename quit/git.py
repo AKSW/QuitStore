@@ -473,13 +473,9 @@ class Index(object):
         oid = tree.write()
         self.dirty = True
 
-        try:
-            return self.repository._repository.create_commit(
-                ref, author, commiter, message, oid, parents
-            )
-        except Exception as e:
-            logger.exception(e)
-            return None
+        return self.repository._repository.create_commit(
+            ref, author, commiter, message, oid, parents
+        )
 
 
 class IndexHeap(object):
