@@ -387,7 +387,6 @@ class Quit(object):
         oid = index.commit(message, author.name, author.email, ref=ref)
 
         if oid:
-            self.repository._repository.set_head(oid)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
