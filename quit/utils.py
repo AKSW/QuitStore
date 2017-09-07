@@ -99,13 +99,13 @@ def graphdiff(first, second):
             in_both, in_first, in_second = graph_diff(to_isomorphic(g1), to_isomorphic(g2))
 
             if len(in_second) > 0:
-                changes.append(('additions', ((s, p, o, iri) for s, p, o in in_second)))
+                changes.append(('additions', ((s, p, o) for s, p, o in in_second)))
             if len(in_first) > 0:
-                changes.append(('removals', ((s, p, o, iri) for s, p, o in in_first)))
+                changes.append(('removals', ((s, p, o) for s, p, o in in_first)))
         elif first is not None and iri in first_identifiers:
-            changes.append(('removals', ((s, p, o, iri) for s, p, o in first.get_context(iri))))
+            changes.append(('removals', ((s, p, o) for s, p, o in first.get_context(iri))))
         elif second is not None and iri in second_identifiers:
-            changes.append(('additions', ((s, p, o, iri) for s, p, o in second.get_context(iri))))
+            changes.append(('additions', ((s, p, o) for s, p, o in second.get_context(iri))))
         else:
             continue
 

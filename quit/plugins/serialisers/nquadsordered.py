@@ -18,7 +18,7 @@ class OrderedNQuadsSerializer(NQuadsSerializer):
         encoding = self.encoding
 
         contexts = self.store.graphs if isinstance(
-            self.store, ReadOnlyGraphAggregate) else self.store.contexts()
+            self.store, ReadOnlyGraphAggregate) else self.store.contexts(None)
 
         for context in contexts:
             for triple in sorted(context):

@@ -30,6 +30,9 @@ class Cache:
     def __contains__(self, key):
         return key in self.cache
 
+    def __iter__(self):
+        return (c for c in self.cache)
+
     @property
     def size(self):
         """

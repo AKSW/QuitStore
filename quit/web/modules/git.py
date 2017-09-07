@@ -22,7 +22,7 @@ def commits(branch_or_ref):
         HTTP Response with commits.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
+    default_branch = quit.config.getDefaultBranch() or 'master'
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch

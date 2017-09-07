@@ -1,8 +1,8 @@
+import functools
 from itertools import chain
 from rdflib import Graph, ConjunctiveGraph
 from rdflib.graph import ModificationException
 from rdflib.graph import Path
-
 
 class RewriteGraph(Graph):
     def __init__(
@@ -39,6 +39,9 @@ class RewriteGraph(Graph):
     def __len__(self):
         return len(self.__graph)
 
+def _copyIfNotExists(store, self, other):
+    if other and self not in store.contexts(None):
+        store.addN((s, p, o, self) for s, p, o in other.triples((None, None, None)))
 
 class CopyOnEditGraph(Graph):
     def __init__(self, template, store='default', identifier=None, namespace_manager=None):
@@ -49,31 +52,23 @@ class CopyOnEditGraph(Graph):
         assert not template or template.identifier == identifier, "identifier must match"
 
         self._template = template
-        self._store = super().store
-
-    def _copyIfNotExists(self):
-        if self not in self._store.contexts(None):
-            self._store.addN(
-                (s, p, o, self) for s, p, o in self._template.triples((None, None, None)))
+        self._store = store
 
     def add(self, triple_or_quad):
-        if self._template:
-            _copyIfNotExists()
+        _copyIfNotExists(self._store, self, self._template)
         super().add(triple_or_quad)
 
     def addN(self, triple_or_quad):
-        if self._template:
-            _copyIfNotExists()
+        _copyIfNotExists(self._store, self, self._template)
         super().addN(triple_or_quad)
 
     def remove(self, triple_or_quad):
-        if self._template:
-            _copyIfNotExists()
+        _copyIfNotExists(self._store, self, self._template)
         super().remove(triple_or_quad)
 
     def triples(self, triple):
         if self not in self._store.contexts(None):
-            return self._template.triples(triple)
+            return self._template.triples(triple) if self._template else (_ for _ in ())
         else:
             return super().triples(triple)
 
@@ -82,7 +77,7 @@ class CopyOnEditGraph(Graph):
         if self not in self._store.contexts(None):
             return self._template.store
         else:
-            return self._store
+            return super().store
 
     def __isub__(self, other):
         """Subtract all triples in Graph other from Graph.
@@ -94,10 +89,10 @@ class CopyOnEditGraph(Graph):
         return self
 
     def __len__(self):
-        if self not in self.store.contexts(None):
-            return self._template.store.__len__(context=self)
+        if self not in self._store.contexts(None):
+            return self._template.__len__()
         else:
-            return self.store.__len__(context=self)
+            return super().__len__()
 
 
 class InMemoryAggregatedGraph(ConjunctiveGraph):
@@ -132,9 +127,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
     def add(self, triple_or_quad):
         s, p, o, c = self._spoc(triple_or_quad, default=True)
 
-        if c not in self.store.contexts(None):
-            self.store.addN((_s, _p, _o, c)
-                            for _s, _p, _o in c.triples((None, None, None)))
+        _copyIfNotExists(self.store, c, self._lookup(identifier))
 
         self.store.add((s, p, o), context=c, quoted=False)
 
@@ -142,9 +135,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         def do(g):
             g = self._graph(g)
 
-            if g not in self.store.contexts(None):
-                self.store.addN((_s, _p, _o, g)
-                                for _s, _p, _o in g.triples((None, None, None)))
+            _copyIfNotExists(self.store, c, self._lookup(identifier))
 
             return g
 
@@ -153,20 +144,26 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
     def remove(self, triple_or_quad):
         s, p, o, c = self._spoc(triple_or_quad)
 
-        if c not in self.store.contexts(None):
-            self.store.addN((_s, _p, _o, c)
-                            for _s, _p, _o in c.triples((None, None, None)))
+        _copyIfNotExists(self.store, c, self._lookup(identifier))
 
         self.store.remove((s, p, o), context=c)
 
     def contexts(self, triple=None):
-        if triple is None or triple is (None, None, None):
-            contexts = (context for context in self._contexts)
-        else:
-            contexts = (
-                context for context in self._contexts if triple in context)
+        def collect():
+            if triple is None or triple is (None, None, None):
+                contexts = (context for context in self._contexts)
+            else:
+                contexts = (context for context in self._contexts 
+                            if triple in context)
 
-        return list(set(chain(self.store.contexts(triple), contexts)))
+            seen = set()
+            for element in chain(self.store.contexts(triple), contexts):
+                k = element.identifier
+                if k not in seen:
+                    seen.add(k)
+                    yield element
+
+        return list(collect())
 
     graphs = contexts
 
@@ -201,6 +198,9 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
                 if triple_or_quad[:3] in graph:
                     return True
         return False
+
+    def __len__(self):
+        return functools.reduce(lambda a,b: a + len(b), self.contexts(None), 0)
 
     def _lookup(self, identifier):
         return next((x for x in self._contexts if x.identifier == identifier), None)

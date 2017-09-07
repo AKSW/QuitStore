@@ -15,13 +15,13 @@ from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks
 from pygit2 import KeypairFromAgent, Keypair, UserPass
 from pygit2 import credentials
-from rdflib import ConjunctiveGraph, BNode, Literal
+from rdflib import Graph, ConjunctiveGraph, BNode, Literal
 
 from rdflib.graph import ReadOnlyGraphAggregate
 
 from quit.conf import STORE_DATA, STORE_PROVENANCE
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
-from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
+from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
 from quit.utils import graphdiff
 from quit.cache import Cache
 
@@ -157,11 +157,6 @@ class Quit(object):
             self.changeset(commit, delta)
 
     def instance(self, id=None, force=False):
-        def parse(data):
-            g = ConjunctiveGraph()
-            g.parse(data=data, format='nquads')
-            return g
-
         # we keep track of branch heads
         if id in self.heads and not force:
             return self.heads.get(id)
@@ -179,19 +174,21 @@ class Quit(object):
                     if entity.name not in map.values():
                         continue
 
-                    if entity.hex in self.blobs:
-                        tmp = self.blobs.get(entity.hex)
+                    if entity.oid in self.blobs:
+                        contexts = self.blobs.get(entity.oid)
                     else:
-                        tmp = parse(entity.content)
-                        self.blobs.set(entity.hex, tmp)
+                        tmp = ConjunctiveGraph()
+                        tmp.parse(data=entity.content, format='nquads')
 
-                    for context in tmp.contexts():
+                        # Info: currently filter graphs from file that were not defined in config
+                        # Todo: is this the wanted behaviour?
+                        contexts = set((context for context in tmp.contexts(None) 
+                                        if context.identifier in map))
 
-                        # Todo: why?
-                        if context.identifier not in map:
-                            continue
+                        self.blobs.set(entity.oid, contexts)
 
-                        internal_identifier = context.identifier + '-' + entity.hex
+                    for context in contexts:
+                        internal_identifier = context.identifier + '-' + str(entity.oid)
 
                         if force or not self.config.checkStoremode(STORE_DATA):
                             g = context
@@ -209,11 +206,6 @@ class Quit(object):
         return VirtualGraph(instance)
 
     def changeset(self, commit, delta=None):
-        def parse(data):
-            g = ConjunctiveGraph()
-            g.parse(data=data, format='nquads')
-            return g
-
         if (
             not self.config.checkStoremode(STORE_DATA)
         ) and (
@@ -303,13 +295,13 @@ class Quit(object):
                 delta = graphdiff(i2.store if i2 else None, i1.store)
 
             for (iri, changesets) in delta.items():
-                for (op, quads) in changesets:
-                    update_uri = QUIT['update-' + commit.id]
+                for (op, triples) in changesets:
+                    update_uri = QUIT['update-%s-%s'.format(iri, commit.id)]
                     op_uri = QUIT[op + '-' + commit.id]
                     g.add((commit_uri, QUIT['updates'], update_uri))
                     g.add((update_uri, QUIT['graph'], iri))
                     g.add((update_uri, QUIT[op], op_uri))
-                    g.addN((s, p, o, op_uri) for s, p, o, _ in quads)
+                    g.addN((s, p, o, op_uri) for s, p, o in triples)
 
         # Entities
         map = self.config.getgraphurifilemap()
@@ -321,21 +313,25 @@ class Quit(object):
                 if entity.name not in map.values():
                     continue
 
-                tmp = parse(entity.content)
-                self.blobs.set(entity.hex, tmp)
+                if entity.oid in self.blobs:
+                    contexts = self.blobs.get(entity.oid)
+                else:
+                    tmp = ConjunctiveGraph()
+                    tmp.parse(data=entity.content, format='nquads')
 
-                for context in [context for context in tmp.contexts()]:
+                    # Info: currently filter graphs from file that were not defined in config
+                    # Todo: is this the wanted behaviour?
+                    contexts = set((context for context in tmp.contexts(None) 
+                                    if context.identifier in map))
 
-                    # Todo: why?
-                    if context.identifier not in map:
-                        continue
+                    self.blobs.set(entity.oid, contexts)
 
-                    public_uri = context.identifier
-                    private_uri = context.identifier + '-' + entity.blob.hex
+                for context in contexts:
+                    private_uri = context.identifier + '-' + str(entity.oid)
 
                     if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
                         g.add(
-                            (private_uri, PROV['specializationOf'], public_uri))
+                            (private_uri, PROV['specializationOf'], context.identifier))
                         g.add(
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
@@ -355,6 +351,9 @@ class Quit(object):
                 out.append(message)
             return "\n".join(out)
 
+        def unwrap(graph):
+            return Graph(store=graph.store, identifier=graph.identifier)
+
         if not graph.store.is_dirty:
             return
 
@@ -362,25 +361,25 @@ class Quit(object):
 
         index = self.repository.index(index)
 
-        for context in graph.store.graphs():
+        for context in graph.store.contexts(None):
             file = self.config.getfileforgraphuri(
                 context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
 
-            graphs = stack.get(file, [])
-            graphs.append(context)
-            stack[file] = graphs
+            contexts = stack.get(file, set())
+            contexts.add(unwrap(context))
+            stack[file] = contexts
 
-        for file, graphs in stack.items():
-            g = ReadOnlyGraphAggregate(graphs)
+        for file, contexts in stack.items():
+            g = ReadOnlyGraphAggregate(list(contexts))
 
             if len(g) == 0:
                 index.remove(file)
-            else:
+            else:                
                 content = g.serialize(format='nquad-ordered').decode('UTF-8')
                 index.add(file, content)
 
-                hex = index.stash[file][0]
-                self.blobs.set(hex, g)
+                oid = index.stash[file][0]
+                self.blobs.set(oid, contexts)           
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature

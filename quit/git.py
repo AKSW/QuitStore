@@ -353,8 +353,8 @@ class Node(object):
         self._commit = commit
 
     @property
-    def hex(self):
-        return self.obj.hex
+    def oid(self):
+        return self.obj.id
 
     @property
     def is_dir(self):
