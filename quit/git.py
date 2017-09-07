@@ -53,9 +53,6 @@ class Repository(object):
             else:
                 pygit2.init_repository(path)
 
-        name = os.path.basename(path).lower()
-
-        self.name = name
         self.path = path
         self.params = params
 
