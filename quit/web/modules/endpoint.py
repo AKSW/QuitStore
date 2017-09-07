@@ -31,7 +31,7 @@ def parse_query_type(query):
 
 
 @endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
-@endpoint.route("/sparql/<branch_or_ref>", methods=['POST', 'GET'])
+@endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET'])
 def sparql(branch_or_ref):
     """Process a SPARQL query (Select or Update).
 
@@ -41,13 +41,12 @@ def sparql(branch_or_ref):
         HTTP Response 400: If request doesn't contain a valid sparql query.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch() or 'master'
+    default_branch = quit.config.getDefaultBranch()
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
 
     q = request.values.get('query', None) or request.values.get('update', None)
-    ref = request.values.get('ref', None) or 'refs/heads/%s' % default_branch
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
@@ -84,6 +83,9 @@ def sparql(branch_or_ref):
                     return response
             else:
                 res = graph.update(q)
+
+                ref = request.values.get('ref', None) or default_branch
+                ref = 'refs/heads/{}'.format(ref)
                 quit.commit(
                     graph, res.get('delta', None), 'New Commit from QuitStore',
                     branch_or_ref, ref, query=q
@@ -265,12 +267,13 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
 def statements(branch_or_ref):
 
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch() or 'master'
+    default_branch = quit.config.getDefaultBranch()
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
 
-    ref = request.values.get('ref', None) or 'refs/heads/%s' % default_branch
+    ref = request.values.get('ref', None) or default_branch
+    ref = 'refs/heads/{}'.format(ref)
 
     method = request.method
     mimetype = request.mimetype

@@ -13,7 +13,7 @@ git = Blueprint('git', __name__)
 
 
 @git.route("/commits", defaults={'branch_or_ref': None}, methods=['GET'])
-@git.route("/commits/<branch_or_ref>", methods=['GET'])
+@git.route("/commits/<path:branch_or_ref>", methods=['GET'])
 def commits(branch_or_ref):
     """
     Lists all commits of a given git branch.
@@ -22,7 +22,7 @@ def commits(branch_or_ref):
         HTTP Response with commits.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch() or 'master'
+    default_branch = quit.config.getDefaultBranch()
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
