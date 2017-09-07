@@ -182,7 +182,7 @@ class Quit(object):
 
                         # Info: currently filter graphs from file that were not defined in config
                         # Todo: is this the wanted behaviour?
-                        contexts = set((context for context in tmp.contexts(None) 
+                        contexts = set((context for context in tmp.contexts(None)
                                         if context.identifier in map))
 
                         self.blobs.set(entity.oid, contexts)
@@ -321,7 +321,7 @@ class Quit(object):
 
                     # Info: currently filter graphs from file that were not defined in config
                     # Todo: is this the wanted behaviour?
-                    contexts = set((context for context in tmp.contexts(None) 
+                    contexts = set((context for context in tmp.contexts(None)
                                     if context.identifier in map))
 
                     self.blobs.set(entity.oid, contexts)
@@ -336,7 +336,7 @@ class Quit(object):
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
                         g.addN((s, p, o, private_uri) for s, p,
-                               o in tmp.triples((None, None, None), context))
+                               o in context.triples((None, None, None)))
 
     def commit(self, graph, delta, message, index, ref, **kwargs):
         def build_message(message, kwargs):
@@ -374,12 +374,12 @@ class Quit(object):
 
             if len(g) == 0:
                 index.remove(file)
-            else:                
+            else:
                 content = g.serialize(format='nquad-ordered').decode('UTF-8')
                 index.add(file, content)
 
                 oid = index.stash[file][0]
-                self.blobs.set(oid, contexts)           
+                self.blobs.set(oid, contexts)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
