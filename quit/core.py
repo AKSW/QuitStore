@@ -3,7 +3,7 @@ import pygit2
 from datetime import datetime
 import logging
 from os import makedirs, environ
-from os.path import abspath, exists, isfile, join, expanduser
+from os.path import exists, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
 from subprocess import Popen
 
@@ -15,7 +15,7 @@ from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks
 from pygit2 import KeypairFromAgent, Keypair, UserPass
 from pygit2 import credentials
-from rdflib import Graph, ConjunctiveGraph, BNode, Literal
+from rdflib import ConjunctiveGraph, BNode, Literal
 
 from rdflib.graph import ReadOnlyGraphAggregate
 
@@ -198,12 +198,12 @@ class Quit(object):
 
                             # Info: currently filter graphs from file that were not defined in config
                             # Todo: is this the wanted behaviour?
-                            contexts = set((context for context in tmp.contexts(None) 
+                            contexts = set((context for context in tmp.contexts(None)
                                             if context.identifier in map))
 
                             self.blobs.set(blob, contexts)
                 self.commit2blobs.set(id, blobs)
-            
+
             # now all blobs in commit are known
             for blob in blobs:
                 for context in self.blobs.get(blob):
@@ -354,7 +354,7 @@ class Quit(object):
                         g.add(
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
-                        g.addN((s, p, o, private_uri) for s, p, o 
+                        g.addN((s, p, o, private_uri) for s, p, o
                                in context.triples((None, None, None)))
 
     def commit(self, graph, delta, message, index, ref, **kwargs):
@@ -370,10 +370,7 @@ class Quit(object):
                 out.append(message)
             return "\n".join(out)
 
-        def unwrap(graph):
-            return Graph(store=graph.store, identifier=graph.identifier)
-
-        if not graph.store.is_dirty:
+        if not delta:
             return
 
         stack = {}
@@ -385,7 +382,10 @@ class Quit(object):
                 context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
 
             contexts = stack.get(file, set())
-            contexts.add(unwrap(context))
+            if isinstance(context, CopyOnEditGraph):
+                contexts.add(context.unwrap())
+            else:
+                contexts.add(context)
             stack[file] = contexts
         blobs = set()
         for file, contexts in stack.items():
@@ -398,7 +398,7 @@ class Quit(object):
                 index.add(file, content)
 
                 oid = index.stash[file][0]
-                self.blobs.set(oid, contexts) 
+                self.blobs.set(oid, contexts)
                 blobs.add(oid)
 
         message = build_message(message, kwargs)
@@ -407,7 +407,7 @@ class Quit(object):
         oid = index.commit(message, author.name, author.email, ref=ref)
 
         if oid:
-            self.commit2blobs.set(oid.hex, blobs)          
+            self.commit2blobs.set(oid.hex, blobs)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
