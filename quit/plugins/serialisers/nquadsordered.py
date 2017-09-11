@@ -21,6 +21,6 @@ class OrderedNQuadsSerializer(NQuadsSerializer):
             self.store, ReadOnlyGraphAggregate) else self.store.contexts(None)
 
         for context in contexts:
-            for triple in sorted(context):
+            for triple in context:
                 stream.write(_nq_row(triple, context.identifier).encode(encoding, "replace"))
         stream.write("\n".encode(encoding, "replace"))
