@@ -67,11 +67,11 @@ def initialize(args):
         logger.info('Versioning: enabled')
         v = True
 
-    storemode = STORE_ALL
-    if args.disable_data_store:
-        storemode &= ~STORE_DATA
-    if args.disable_provenance_store:
-        storemode &= ~STORE_PROVENANCE
+    storemode = 0
+    if 'provenance' in args.feature:
+        storemode |= STORE_PROVENANCE
+    if 'persistance' in args.feature:
+        storemode |= STORE_DATA
 
     try:
         config = QuitConfiguration(
@@ -149,12 +149,28 @@ def savedexit():
     logger.info("Exiting store")
 
 
+class DefaultListAction(argparse.Action):
+    CHOICES = ['provenance', 'persistance']
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values:
+            for value in values:
+                if value not in self.CHOICES:
+                    message = ("invalid choice: {0!r} (choose from {1})".format(
+                        value, ', '.join([repr(action) for action in self.CHOICES])))
+                    raise argparse.ArgumentError(self, message)
+            setattr(namespace, self.dest, values)
+
+
 def parseArgs(args):
     """Parse command line arguments."""
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
                 "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
+    featurehelp = """This option enables additional features of the QuitStore:
+                "provenance" - Store provenance information for each revision.
+                "persistance" - Store all internal data as rdf graph."""
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
     targethelp = 'The directory of the local store repository.'
@@ -173,6 +189,8 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('-f', '--feature', nargs='*', action=DefaultListAction, default=[],
+                        help=featurehelp)
     parser.add_argument('--disable-data-store', action='store_true')
     parser.add_argument('--disable-provenance-store', action='store_true')
     parser.add_argument('-p', '--port', default=5000, type=int)
