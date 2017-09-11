@@ -103,6 +103,7 @@ class Quit(object):
         self.config = config
         self.repository = repository
         self.store = store
+        self.commit2blobs = Cache()
         self.blobs = Cache()
         self.heads = Cache()
 
@@ -164,41 +165,51 @@ class Quit(object):
         default_graphs = list()
 
         if id:
-            map = self.config.getgraphurifilemap()
+            if id in self.commit2blobs:
+                blobs = self.commit2blobs.get(id)
 
-            commit = self.repository.revision(id)
+            else:
+                blobs = set()
+                map = self.config.getgraphurifilemap()
+                commit = self.repository.revision(id)
 
-            for entity in commit.node().entries(recursive=True):
-                # todo check if file was changed
-                if entity.is_file:
-                    if entity.name not in map.values():
-                        continue
+                for entity in commit.node().entries(recursive=True):
+                    # todo check if file was changed
+                    if entity.is_file:
+                        if entity.name not in map.values():
+                            continue
 
-                    if entity.oid in self.blobs:
-                        contexts = self.blobs.get(entity.oid)
-                    else:
-                        tmp = ConjunctiveGraph()
-                        tmp.parse(data=entity.content, format='nquads')
+                        blob = entity.oid
+                        blobs.add(blob)
 
-                        # Info: currently filter graphs from file that were not defined in config
-                        # Todo: is this the wanted behaviour?
-                        contexts = set((context for context in tmp.contexts(None) 
-                                        if context.identifier in map))
-
-                        self.blobs.set(entity.oid, contexts)
-
-                    for context in contexts:
-                        internal_identifier = context.identifier + '-' + str(entity.oid)
-
-                        if force or not self.config.checkStoremode(STORE_DATA):
-                            g = context
+                        if blob in self.blobs:
+                            contexts = self.blobs.get(blob)
                         else:
-                            g = RewriteGraph(
-                                self.store.store.store,
-                                internal_identifier,
-                                context.identifier
-                            )
-                        default_graphs.append(g)
+                            tmp = ConjunctiveGraph()
+                            tmp.parse(data=entity.content, format='nquads')
+
+                            # Info: currently filter graphs from file that were not defined in config
+                            # Todo: is this the wanted behaviour?
+                            contexts = set((context for context in tmp.contexts(None) 
+                                            if context.identifier in map))
+
+                            self.blobs.set(blob, contexts)
+                self.commit2blobs.set(id, blobs)
+            
+            # now all blobs in commit are known
+            for blob in blobs:
+                for context in self.blobs.get(blob):
+                    internal_identifier = context.identifier + '-' + str(entity.oid)
+
+                    if force or not self.config.checkStoremode(STORE_DATA):
+                        g = context
+                    else:
+                        g = RewriteGraph(
+                            self.store.store.store,
+                            internal_identifier,
+                            context.identifier
+                        )
+                    default_graphs.append(g)
 
         instance = InMemoryAggregatedGraph(
             graphs=default_graphs, identifier='default')
@@ -335,8 +346,8 @@ class Quit(object):
                         g.add(
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
-                        g.addN((s, p, o, private_uri) for s, p,
-                               o in tmp.triples((None, None, None), context))
+                        g.addN((s, p, o, private_uri) for s, p, o 
+                               in context.triples(None))
 
     def commit(self, graph, delta, message, index, ref, **kwargs):
         def build_message(message, kwargs):
@@ -368,7 +379,7 @@ class Quit(object):
             contexts = stack.get(file, set())
             contexts.add(unwrap(context))
             stack[file] = contexts
-
+        blobs = set()
         for file, contexts in stack.items():
             g = ReadOnlyGraphAggregate(list(contexts))
 
@@ -379,7 +390,8 @@ class Quit(object):
                 index.add(file, content)
 
                 oid = index.stash[file][0]
-                self.blobs.set(oid, contexts)           
+                self.blobs.set(oid, contexts) 
+                blobs.add(oid)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
@@ -387,6 +399,7 @@ class Quit(object):
         oid = index.commit(message, author.name, author.email, ref=ref)
 
         if oid:
+            self.commit2blobs.set(oid.hex, blobs)          
             self.repository._repository.set_head(oid)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
