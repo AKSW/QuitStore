@@ -367,6 +367,8 @@ class QuitConfiguration:
         for s, p, o in self.sysconf.triples((None, property, None)):
             return str(o)
 
+        return "master"
+
     def getGlobalFile(self):
         """Get the path of Git repository from configuration.
 

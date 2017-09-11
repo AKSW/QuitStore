@@ -4,6 +4,7 @@ from rdflib import Graph, ConjunctiveGraph
 from rdflib.graph import ModificationException
 from rdflib.graph import Path
 
+
 class RewriteGraph(Graph):
     def __init__(
         self, store='default', identifier=None, rewritten_identifier=None, namespace_manager=None
@@ -39,9 +40,11 @@ class RewriteGraph(Graph):
     def __len__(self):
         return len(self.__graph)
 
+
 def _copyIfNotExists(store, self, other):
     if other and self not in store.contexts(None):
         store.addN((s, p, o, self) for s, p, o in other.triples((None, None, None)))
+
 
 class CopyOnEditGraph(Graph):
     def __init__(self, template, store='default', identifier=None, namespace_manager=None):
@@ -153,7 +156,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             if triple is None or triple is (None, None, None):
                 contexts = (context for context in self._contexts)
             else:
-                contexts = (context for context in self._contexts 
+                contexts = (context for context in self._contexts
                             if triple in context)
 
             seen = set()
@@ -200,7 +203,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         return False
 
     def __len__(self):
-        return functools.reduce(lambda a,b: a + len(b), self.contexts(None), 0)
+        return functools.reduce(lambda a, b: a + len(b), self.contexts(None), 0)
 
     def _lookup(self, identifier):
         return next((x for x in self._contexts if x.identifier == identifier), None)

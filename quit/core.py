@@ -158,6 +158,14 @@ class Quit(object):
             self.changeset(commit, delta)
 
     def instance(self, id=None, force=False):
+        """Create and return dataset for a given commit id.
+
+        Args:
+            id: commit id of the commit to retrieve
+            force: force to get the dataset from the git repository instead of the internal cache
+        Returns:
+            Instance of VirtualGraph representing the respective dataset
+        """
         # we keep track of branch heads
         if id in self.heads and not force:
             return self.heads.get(id)
@@ -199,7 +207,7 @@ class Quit(object):
             # now all blobs in commit are known
             for blob in blobs:
                 for context in self.blobs.get(blob):
-                    internal_identifier = context.identifier + '-' + str(entity.oid)
+                    internal_identifier = context.identifier + '-' + str(blob)
 
                     if force or not self.config.checkStoremode(STORE_DATA):
                         g = context
@@ -332,7 +340,7 @@ class Quit(object):
 
                     # Info: currently filter graphs from file that were not defined in config
                     # Todo: is this the wanted behaviour?
-                    contexts = set((context for context in tmp.contexts(None) 
+                    contexts = set((context for context in tmp.contexts(None)
                                     if context.identifier in map))
 
                     self.blobs.set(entity.oid, contexts)
@@ -347,7 +355,7 @@ class Quit(object):
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
                     if self.config.checkStoremode(STORE_DATA):
                         g.addN((s, p, o, private_uri) for s, p, o 
-                               in context.triples(None))
+                               in context.triples((None, None, None)))
 
     def commit(self, graph, delta, message, index, ref, **kwargs):
         def build_message(message, kwargs):
@@ -385,7 +393,7 @@ class Quit(object):
 
             if len(g) == 0:
                 index.remove(file)
-            else:                
+            else:
                 content = g.serialize(format='nquad-ordered').decode('UTF-8')
                 index.add(file, content)
 
@@ -400,7 +408,6 @@ class Quit(object):
 
         if oid:
             self.commit2blobs.set(oid.hex, blobs)          
-            self.repository._repository.set_head(oid)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(

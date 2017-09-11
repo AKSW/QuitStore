@@ -102,15 +102,19 @@ def evalInsertData(ctx, u):
 
     # add triples
     g = ctx.graph
-    _append(res["delta"], 'default', 'additions', list(filter(lambda triple: triple not in g, u.triples)))
-    g += u.triples
+    filled = list(filter(lambda triple: triple not in g, u.triples))
+    if filled:
+        _append(res["delta"], 'default', 'additions', filled)
+        g += filled
 
     # add quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
         cg = ctx.dataset.get_context(g)
-        _append(res["delta"], cg.identifier, 'additions', list(filter(lambda triple: triple not in cg, u.quads[g])))
-        cg += u.quads[g]
+        filledq = list(filter(lambda triple: triple not in cg, u.quads[g]))
+        if filledq:
+            _append(res["delta"], cg.identifier, 'additions', filledq)
+            cg += filledq
 
     return res
 
@@ -125,15 +129,19 @@ def evalDeleteData(ctx, u):
 
     # remove triples
     g = ctx.graph
-    _append(res["delta"], 'default', 'removals', list(filter(lambda triple: triple in g, u.triples)))
-    g -= u.triples
+    filled = list(filter(lambda triple: triple in g, u.triples))
+    if filled:
+        _append(res["delta"], 'default', 'removals', filled)
+        g -= filled
 
     # remove quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
         cg = ctx.dataset.get_context(g)
-        _append(res["delta"], cg.identifier, 'removals', list(filter(lambda triple: triple in cg, u.quads[g])))
-        cg -= u.quads[g]
+        filledq = list(filter(lambda triple: triple in cg, u.quads[g]))
+        if filledq:
+            _append(res["delta"], cg.identifier, 'removals', filledq)
+            cg -= filledq
 
     return res
 
