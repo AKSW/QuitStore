@@ -157,6 +157,14 @@ class Quit(object):
             self.changeset(commit, delta)
 
     def instance(self, id=None, force=False):
+        """Create and return dataset for a given commit id.
+
+        Args:
+            id: commit id of the commit to retrieve
+            force: force to get the dataset from the git repository instead of the internal cache
+        Returns:
+            Instance of VirtualGraph representing the respective dataset
+        """
         # we keep track of branch heads
         if id in self.heads and not force:
             return self.heads.get(id)
