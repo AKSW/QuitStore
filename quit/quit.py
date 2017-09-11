@@ -86,18 +86,6 @@ def initialize(args):
         logger.error(e)
         sys.exit('Exiting quit')
 
-    gitrepo = GitRepo(
-        path=config.getRepoPath(),
-        origin=config.getOrigin()
-    )
-    try:
-        gitrepo = GitRepo(
-            path=config.getRepoPath(),
-            origin=config.getOrigin()
-        )
-    except Exception as e:
-        raise InvalidConfigurationError(e)
-
     if args.garbagecollection:
         try:
             with subprocess.Popen(
@@ -116,7 +104,6 @@ def initialize(args):
                 )
                 logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
 
-            gitrepo.gc = True
             logger.info(
                 "Garbage Collection is enabled with gc.auto threshold {}".format(
                     gcAutoThreshold
