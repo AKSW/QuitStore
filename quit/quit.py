@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath
 
 import argparse
 from quit.core import GitRepo
-from quit.conf import QuitConfiguration, STORE_ALL, STORE_DATA, STORE_PROVENANCE
+from quit.conf import Feature, QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
 from quit.utils import handle_exit
 from quit.web.app import create_app
@@ -67,12 +67,6 @@ def initialize(args):
         logger.info('Versioning: enabled')
         v = True
 
-    storemode = 0
-    if 'provenance' in args.feature:
-        storemode |= STORE_PROVENANCE
-    if 'persistance' in args.feature:
-        storemode |= STORE_DATA
-
     try:
         config = QuitConfiguration(
             versioning=v,
@@ -80,7 +74,7 @@ def initialize(args):
             targetdir=args.targetdir,
             repository=args.repourl,
             configmode=args.configmode,
-            storemode=storemode
+            features=args.features,
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -149,17 +143,21 @@ def savedexit():
     logger.info("Exiting store")
 
 
-class DefaultListAction(argparse.Action):
-    CHOICES = ['provenance', 'persistance']
+class FeaturesAction(argparse.Action):
+    CHOICES = {'provenance': Feature.Provenance, 'persistence': Feature.Persistence}
 
     def __call__(self, parser, namespace, values, option_string=None):
         if values:
+            flags = Feature.Unknown
             for value in values:
-                if value not in self.CHOICES:
+                if value not in self.CHOICES.keys():
                     message = ("invalid choice: {0!r} (choose from {1})".format(
-                        value, ', '.join([repr(action) for action in self.CHOICES])))
+                        value, ', '.join([repr(action) for action in self.CHOICES.keys()])))
                     raise argparse.ArgumentError(self, message)
-            setattr(namespace, self.dest, values)
+                else:
+                    flags |= self.CHOICES[value]
+
+            setattr(namespace, self.dest, flags)
 
 
 def parseArgs(args):
@@ -189,10 +187,8 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
-    parser.add_argument('-f', '--feature', nargs='*', action=DefaultListAction, default=[],
+    parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction, default=Feature.Unknown,
                         help=featurehelp)
-    parser.add_argument('--disable-data-store', action='store_true')
-    parser.add_argument('--disable-provenance-store', action='store_true')
     parser.add_argument('-p', '--port', default=5000, type=int)
     parser.add_argument('--host', default='0.0.0.0', type=str)
 
@@ -201,7 +197,7 @@ def parseArgs(args):
 
 def main(config):
     """Start the app."""
-    app = create_app(config)
+    app = create_app(config, enable_profiler=True)
     app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
 
 

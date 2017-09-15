@@ -52,11 +52,11 @@ DROPDOWN_TEMPLATE = """
 env = Environment()
 
 
-def storemode_required(mode):
+def feature_required(feature):
     def wrapper(f):
         @wraps(f)
         def decorated_view(*args, **kwargs):
-            if not current_app.config['quit'].config.checkStoremode(mode):
+            if not current_app.config['quit'].config.hasFeatures(feature):
                 return render_template("config_error.html"), 404
             return f(*args, **kwargs)
         return decorated_view
@@ -83,11 +83,11 @@ def create_app(config, enable_profiler=False, profiler_quiet=False):
 
         if profiler_quiet:
             app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, f, profile_dir="d:/tmp")
+                app.wsgi_app, f, profile_dir="c:/tmp")
         else:
             stream = MergeStream(sys.stdout, f)
             app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, stream, profile_dir="d:/tmp")
+                app.wsgi_app, stream, profile_dir="c:/tmp")
 
     return app
 

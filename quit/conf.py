@@ -13,10 +13,11 @@ from quit.utils import clean_path
 
 logger = logging.getLogger('quit.conf')
 
-STORE_NONE = 0
-STORE_PROVENANCE = (1 << 0)
-STORE_DATA = (1 << 1)
-STORE_ALL = STORE_DATA | STORE_PROVENANCE
+class Feature:
+    Unknown    = 0
+    Provenance = 1 << 0
+    Persistence      = 1 << 1
+    All        = Provenance | Persistence
 
 
 class QuitConfiguration:
@@ -26,7 +27,7 @@ class QuitConfiguration:
         self,
         configmode=None,
         configfile='config.ttl',
-        storemode=None,
+        features=None,
         repository=None,
         targetdir=None,
         versioning=True
@@ -40,7 +41,7 @@ class QuitConfiguration:
         logger = logging.getLogger('quit.conf.QuitConfiguration')
         logger.debug('Initializing configuration object.')
 
-        self.storemode = storemode
+        self.features = features
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
@@ -493,8 +494,8 @@ class QuitConfiguration:
     def isversioningon(self):
         return self.versioning
 
-    def checkStoremode(self, flags):
-        return (self.storemode & flags) == flags
+    def hasFeature(self, flags):
+        return flags == (self.features & flags)
 
     def setConfigMode(self, mode):
         self.sysconf.remove((None, self.quit.configMode, None))

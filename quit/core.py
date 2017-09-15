@@ -19,7 +19,7 @@ from rdflib import Graph, ConjunctiveGraph, BNode, Literal
 
 from rdflib.graph import ReadOnlyGraphAggregate
 
-from quit.conf import STORE_DATA, STORE_PROVENANCE
+from quit.conf import Feature, QuitConfiguration
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
 from quit.utils import graphdiff
@@ -209,7 +209,7 @@ class Quit(object):
                 for context in self.blobs.get(blob):
                     internal_identifier = context.identifier + '-' + str(blob)
 
-                    if force or not self.config.checkStoremode(STORE_DATA):
+                    if force or not self.config.hasFeature(Feature.Persistence):
                         g = context
                     else:
                         g = RewriteGraph(
@@ -226,15 +226,15 @@ class Quit(object):
 
     def changeset(self, commit, delta=None):
         if (
-            not self.config.checkStoremode(STORE_DATA)
+            not self.config.hasFeature(Feature.Persistence)
         ) and (
-            not self.config.checkStoremode(STORE_PROVENANCE)
+            not self.config.hasFeature(Feature.Provenance)
         ):
             return
 
         g = self.store.store
 
-        if self.config.checkStoremode(STORE_PROVENANCE):
+        if self.config.hasFeature(Feature.Provenance):
             role_author_uri = QUIT['author']
             role_committer_uri = QUIT['committer']
 
@@ -246,7 +246,7 @@ class Quit(object):
 
         commit_uri = QUIT['commit-' + commit.id]
 
-        if self.config.checkStoremode(STORE_PROVENANCE):
+        if self.config.hasFeature(Feature.Provenance):
             g.add((commit_uri, is_a, PROV['Activity']))
 
             if 'Source' in commit.properties.keys():
@@ -348,12 +348,12 @@ class Quit(object):
                 for context in contexts:
                     private_uri = context.identifier + '-' + str(entity.oid)
 
-                    if self.config.checkStoremode(STORE_PROVENANCE | STORE_DATA):
+                    if self.config.hasFeature(Feature.Provenance | Feature.Persistence):
                         g.add(
                             (private_uri, PROV['specializationOf'], context.identifier))
                         g.add(
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
-                    if self.config.checkStoremode(STORE_DATA):
+                    if self.config.hasFeature(Feature.Persistence):
                         g.addN((s, p, o, private_uri) for s, p, o 
                                in context.triples((None, None, None)))
 
