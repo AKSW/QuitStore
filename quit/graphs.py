@@ -82,6 +82,10 @@ class CopyOnEditGraph(Graph):
         else:
             return super().store
 
+
+    def unwrap(self):
+        return Graph(store=self.store, identifier=self.identifier)
+
     def __isub__(self, other):
         """Subtract all triples in Graph other from Graph.
 
@@ -110,14 +114,11 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         self._contexts = graphs
 
     def __repr__(self):
-        return "<InMemoryGraphAggregate: {}|{} graphs>".format(
+        return "<{}: {}|{} graphs>".format(
+            type(self).__name__,
             len(self.store.contexts()),
             len((c for c in self.graphs() if c not in self.store.contexts()))
         )
-
-    @property
-    def is_dirty(self):
-        return len(list(self.store.contexts())) > 0
 
     def _graph(self, c):
         if c is None:
@@ -126,30 +127,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             return self.get_context(c)
         else:
             return self.get_context(c.identifier)
-
-    def add(self, triple_or_quad):
-        s, p, o, c = self._spoc(triple_or_quad, default=True)
-
-        _copyIfNotExists(self.store, c, self._lookup(identifier))
-
-        self.store.add((s, p, o), context=c, quoted=False)
-
-    def addN(self, quads):
-        def do(g):
-            g = self._graph(g)
-
-            _copyIfNotExists(self.store, c, self._lookup(identifier))
-
-            return g
-
-        self.store.addN((s, p, o, do(c)) for s, p, o, c in quads)
-
-    def remove(self, triple_or_quad):
-        s, p, o, c = self._spoc(triple_or_quad)
-
-        _copyIfNotExists(self.store, c, self._lookup(identifier))
-
-        self.store.remove((s, p, o), context=c)
 
     def contexts(self, triple=None):
         def collect():
@@ -207,6 +184,40 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
 
     def _lookup(self, identifier):
         return next((x for x in self._contexts if x.identifier == identifier), None)
+
+    def get_context(self, identifier, quoted=False):
+        if isinstance(identifier, Graph):
+            identifier = identifier.identifier
+        return self._lookup(identifier) or Graph(
+            store=self.store, identifier=identifier, namespace_manager=self
+        )
+
+
+class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
+
+    def add(self, triple_or_quad):
+        s, p, o, c = self._spoc(triple_or_quad, default=True)
+
+        _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+
+        self.store.add((s, p, o), context=c, quoted=False)
+
+    def addN(self, quads):
+        def do(g):
+            c = self._graph(g)
+
+            _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+
+            return g
+
+        self.store.addN((s, p, o, do(c)) for s, p, o, c in quads)
+
+    def remove(self, triple_or_quad):
+        s, p, o, c = self._spoc(triple_or_quad)
+
+        _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+
+        self.store.remove((s, p, o), context=c)
 
     def get_context(self, identifier, quoted=False):
         if isinstance(identifier, Graph):
