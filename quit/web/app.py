@@ -56,7 +56,7 @@ def feature_required(feature):
     def wrapper(f):
         @wraps(f)
         def decorated_view(*args, **kwargs):
-            if not current_app.config['quit'].config.hasFeatures(feature):
+            if not current_app.config['quit'].config.hasFeature(feature):
                 return render_template("config_error.html"), 404
             return f(*args, **kwargs)
         return decorated_view
