@@ -3,8 +3,8 @@ import traceback
 
 from werkzeug.http import parse_accept_header
 from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
-from quit.conf import STORE_PROVENANCE
-from quit.web.app import render_template, storemode_required
+from quit.conf import Feature
+from quit.web.app import render_template, feature_required
 
 __all__ = ['debug']
 
@@ -13,7 +13,7 @@ debug = Blueprint('debug', __name__)
 
 @debug.route("/blame", defaults={'branch_or_ref': None}, methods=['GET'])
 @debug.route("/blame/<branch_or_ref>", methods=['GET'])
-@storemode_required(STORE_PROVENANCE)
+@feature_required(Feature.Provenance)
 def blame(branch_or_ref):
 
     quit = current_app.config['quit']

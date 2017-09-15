@@ -5,8 +5,8 @@ import logging
 from werkzeug.http import parse_accept_header
 from flask import Blueprint, request, current_app, make_response, Markup
 from rdflib import ConjunctiveGraph
-from quit.conf import STORE_PROVENANCE
-from quit.web.app import render_template, storemode_required
+from quit.conf import Feature
+from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQueryType
 
 logger = logging.getLogger('quit.modules.endpoint')
@@ -103,7 +103,7 @@ def sparql(branch_or_ref):
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
-@storemode_required(STORE_PROVENANCE)
+@feature_required(Feature.Provenance)
 def provenance():
     """Process a SPARQL query (Select only) against Provenance endpoint.
 
