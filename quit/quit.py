@@ -174,7 +174,7 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
-    parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction, default=Feature.Unknown,
+    parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=5000, type=int)
     parser.add_argument('--host', default='0.0.0.0', type=str)
