@@ -235,8 +235,8 @@ class Quit(object):
         g = self.store.store
 
         if self.config.hasFeature(Feature.Provenance):
-            role_author_uri = QUIT['author']
-            role_committer_uri = QUIT['committer']
+            role_author_uri = QUIT['Author']
+            role_committer_uri = QUIT['Committer']
 
             g.add((role_author_uri, is_a, PROV['Role']))
             g.add((role_committer_uri, is_a, PROV['Role']))
