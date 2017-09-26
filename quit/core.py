@@ -76,7 +76,7 @@ class MemoryStore(Store):
     def __init__(self, additional_bindings=list()):
         store = ConjunctiveGraph(identifier='default')
 
-        for prefix, namespace in [('quit', QUIT), ('foaf', FOAF)]:
+        for prefix, namespace in [('quit', QUIT), ('foaf', FOAF), ('prov', PROV)]:
             store.bind(prefix, namespace)
 
         for prefix, namespace in additional_bindings:
