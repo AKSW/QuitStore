@@ -345,10 +345,13 @@ class Quit(object):
 
                     self.blobs.set(entity.oid, contexts)
 
-                for context in contexts:
-                    private_uri = context.identifier + '-' + str(entity.oid)
+                for index, context in enumerate(contexts):
+                    private_uri = QUIT["graph-{}-{}".format(entity.oid, index)]
 
-                    if self.config.hasFeature(Feature.Provenance | Feature.Persistence):
+                    if (
+                        self.config.hasFeature(Feature.Provenance) or
+                        self.config.hasFeature(Feature.Persistence)
+                    ):
                         g.add(
                             (private_uri, PROV['specializationOf'], context.identifier))
                         g.add(
