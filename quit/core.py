@@ -315,7 +315,7 @@ class Quit(object):
 
             for (iri, changesets) in delta.items():
                 for (op, triples) in changesets:
-                    update_uri = QUIT['update-%s-%s'.format(iri, commit.id)]
+                    update_uri = QUIT['update-{}-{}'.format(iri, commit.id)]
                     op_uri = QUIT[op + '-' + commit.id]
                     g.add((commit_uri, QUIT['updates'], update_uri))
                     g.add((update_uri, QUIT['graph'], iri))
