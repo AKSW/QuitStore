@@ -352,6 +352,7 @@ class Quit(object):
                         self.config.hasFeature(Feature.Provenance) or
                         self.config.hasFeature(Feature.Persistence)
                     ):
+                        g.add((private_uri, is_a, PROV['Entity']))
                         g.add(
                             (private_uri, PROV['specializationOf'], context.identifier))
                         g.add(
