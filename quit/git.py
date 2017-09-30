@@ -306,19 +306,6 @@ class Signature(object):
     def __repr__(self):
         return '<{0}> {1}'.format(self.__class__.__name__, self.name).encode('UTF-8')
 
-    def __prov__(self):
-
-        hash = pygit2.hash(self.email).hex
-        uri = QUIT['user-' + hash]
-
-        g = ConjunctiveGraph(identifier=QUIT.default)
-
-        g.add((uri, is_a, PROV['Agent']))
-        g.add((uri, RDFS.label, Literal(self.name)))
-        g.add((uri, FOAF.mbox, Literal(self.email)))
-
-        return (uri, g)
-
 
 class Node(object):
 
@@ -395,25 +382,33 @@ class Node(object):
             return self.blob.size
         return None
 
-    def __prov__(self):
-        if self.is_file:
+    def history(self, revision=None):
+        initial = self._repository.get_revision(revision or self._commit.id)._commit
+        walker = self._repository._repository.walk(initial.oid, pygit2.GIT_SORT_TIME)
 
-            tmp = ConjunctiveGraph()
-            tmp.parse(data=self.content, format='nquads')
+        last = None
+        c0 = walker.next()
+        try:
+            e0 = c0.tree[self.name]
+            last = c0
+        except KeyError:
+            e0 = None
 
-            for context in tmp.context():
-                g = ConjunctiveGraph(identifier=QUIT.default)
+        for c1 in walker:
+            try:
+                e1 = c1.tree[self.name]
+                if e0 and e0.oid != e1.oid:
+                    yield Revision(self._repository, c0)
+            except KeyError:
+                e1 = None
 
-                public_uri = QUIT[context]
-                private_uri = QUIT[context + '-' + self.blob.hex]
+            c0 = c1
+            e0 = e1
+            if e1:
+                last = c1
 
-                g.add((private_uri, is_a, PROV['Entity']))
-                g.add((private_uri, PROV['specializationOf'], public_uri))
-                g.addN(
-                    (s, p, o, private_uri) for s, p, o, _ in tmp.quads(None, None, None, context)
-                )
-
-                yield (private_uri, g)
+        if last:
+            yield Revision(self._repository, last) 
 
 
 from heapq import heappush, heappop

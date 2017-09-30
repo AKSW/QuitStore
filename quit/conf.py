@@ -305,11 +305,11 @@ class QuitConfiguration:
             # and furthermore we assume that one file can contain data of more
             # than one named graph and so we store for each file a set of graphs
             if filename in self.files:
-                self.files[filename]['graphs'].add(graphuri)
+                self.files[filename]['graphs'].append(graphuri)
             else:
                 self.files[filename] = {
                     'serialization': format,
-                    'graphs': {graphuri}
+                    'graphs': [graphuri]
                 }
 
         return
@@ -464,9 +464,9 @@ class QuitConfiguration:
             A set containing strings of graph uris asociated to that file
         """
         if file in self.files:
-            return list(self.files[file]['graphs'])
+            return self.files[file]['graphs']
 
-        return
+        return []
 
     def getgraphsfromdir(self, path=None):
         """Get the files that are part of the repository (tracked or not).

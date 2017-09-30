@@ -15,15 +15,16 @@ from pygit2 import init_repository, clone_repository
 from pygit2 import Repository, Signature, RemoteCallbacks
 from pygit2 import KeypairFromAgent, Keypair, UserPass
 from pygit2 import credentials
-from rdflib import ConjunctiveGraph, BNode, Literal
 
+from rdflib import Graph, ConjunctiveGraph, BNode, Literal
 from rdflib.graph import ReadOnlyGraphAggregate
+from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
 from quit.conf import Feature, QuitConfiguration
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
 from quit.utils import graphdiff
-from quit.cache import Cache
+from quit.cache import Cache, FileReference
 
 logger = logging.getLogger('quit.core')
 
@@ -103,9 +104,8 @@ class Quit(object):
         self.config = config
         self.repository = repository
         self.store = store
-        self.commit2blobs = Cache()
-        self.blobs = Cache()
-        self.heads = Cache()
+        self._commits = Cache()
+        self._blobs = Cache()
 
     def _exists(self, cid):
         uri = QUIT['commit-' + cid]
@@ -157,7 +157,7 @@ class Quit(object):
         if not self._exists(commit.id):
             self.changeset(commit, delta)
 
-    def instance(self, id=None, force=False):
+    def instance(self, commit_id=None, force=False):
         """Create and return dataset for a given commit id.
 
         Args:
@@ -166,48 +166,46 @@ class Quit(object):
         Returns:
             Instance of VirtualGraph representing the respective dataset
         """
-        # we keep track of branch heads
-        if id in self.heads and not force:
-            return self.heads.get(id)
 
         default_graphs = list()
 
-        if id:
-            if id in self.commit2blobs:
-                blobs = self.commit2blobs.get(id)
-
-            else:
+        if commit_id:
+            
+            blobs = self._commits.get(commit_id)
+            if not blobs:
                 blobs = set()
-                map = self.config.getgraphurifilemap()
-                commit = self.repository.revision(id)
+                map = self.config.getgraphurifilemap()                
+                commit = self.repository.revision(commit_id)
 
                 for entity in commit.node().entries(recursive=True):
                     # todo check if file was changed
                     if entity.is_file:
                         if entity.name not in map.values():
                             continue
+                        l = self.config.getgraphuriforfile(entity.name)
+                        fixed = set(( Graph(identifier=i) for i in l))
 
-                        blob = entity.oid
-                        blobs.add(blob)
+                        oid = entity.oid
+                        blobs.add(oid)
 
-                        if blob in self.blobs:
-                            contexts = self.blobs.get(blob)
-                        else:
+                        f, contexts = self._blobs.get(oid) or (None, [])
+                        if not contexts:
                             tmp = ConjunctiveGraph()
                             tmp.parse(data=entity.content, format='nquads')
 
                             # Info: currently filter graphs from file that were not defined in config
                             # Todo: is this the wanted behaviour?
                             contexts = set((context for context in tmp.contexts(None)
-                                            if context.identifier in map))
+                                            if context.identifier in map)) | fixed
 
-                            self.blobs.set(blob, contexts)
-                self.commit2blobs.set(id, blobs)
+                            self._blobs.set(oid, (FileReference(entity.name, entity.content), contexts))
+                self._commits.set(commit_id, blobs)
 
             # now all blobs in commit are known
-            for blob in blobs:
-                for context in self.blobs.get(blob):
-                    internal_identifier = context.identifier + '-' + str(blob)
+            for oid in blobs:
+                f, contexts = self._blobs.get(oid)
+                for context in contexts:
+                    internal_identifier = context.identifier + '-' + str(oid)
 
                     if force or not self.config.hasFeature(Feature.Persistence):
                         g = context
@@ -332,18 +330,20 @@ class Quit(object):
                 if entity.name not in map.values():
                     continue
 
-                if entity.oid in self.blobs:
-                    contexts = self.blobs.get(entity.oid)
-                else:
+                l = self.config.getgraphuriforfile(entity.name)
+                fixed = set(( Graph(identifier=i) for i in l))
+                
+                f, contexts = self._blobs.get(entity.oid) or (None, None)
+                if not contexts:
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')
 
                     # Info: currently filter graphs from file that were not defined in config
                     # Todo: is this the wanted behaviour?
                     contexts = set((context for context in tmp.contexts(None)
-                                    if context.identifier in map))
+                                            if context.identifier in map)) | fixed
 
-                    self.blobs.set(entity.oid, contexts)
+                    self._blobs.set(entity.oid, (FileReference(entity.name, entity.content), contexts))
 
                 for index, context in enumerate(contexts):
                     private_uri = QUIT["graph-{}-{}".format(entity.oid, index)]
@@ -361,7 +361,7 @@ class Quit(object):
                         g.addN((s, p, o, private_uri) for s, p, o
                                in context.triples((None, None, None)))
 
-    def commit(self, graph, delta, message, index, ref, **kwargs):
+    def commit(self, graph, delta, message, commit_id, ref, **kwargs):
         def build_message(message, kwargs):
             out = list()
             for k, v in kwargs.items():
@@ -377,33 +377,28 @@ class Quit(object):
         if not delta:
             return
 
-        stack = {}
+        index = self.repository.index(commit_id)
 
-        index = self.repository.index(index)
+        blobs_new = set()
+        blobs = self._commits.remove(commit_id) or []
+        for oid in blobs:
+            f, contexts = self._blobs.get(oid) or (None, [])
+            for context in contexts:
+                changesets = delta.get(context.identifier, [])
+                if changesets:
+                    for (op, triples) in changesets:
+                        for triple in triples:
+                            line = _nq(triple, context.identifier)
+                            if op == 'additions':
+                                f.add(line)
+                            elif op == 'removals':
+                                f.remove(line)
+                    index.add(f.path, f.content)
 
-        for context in graph.store.contexts(None):
-            file = self.config.getfileforgraphuri(
-                context.identifier) or self.config.getGlobalFile() or 'unassigned.nq'
-
-            contexts = stack.get(file, set())
-            if isinstance(context, CopyOnEditGraph):
-                contexts.add(context.unwrap())
-            else:
-                contexts.add(context)
-            stack[file] = contexts
-        blobs = set()
-        for file, contexts in stack.items():
-            g = ReadOnlyGraphAggregate(list(contexts))
-
-            if len(g) == 0:
-                index.remove(file)
-            else:
-                content = g.serialize(format='nquad-ordered').decode('UTF-8')
-                index.add(file, content)
-
-                oid = index.stash[file][0]
-                self.blobs.set(oid, contexts)
-                blobs.add(oid)
+                    self._blobs.remove(oid)
+                    oid = index.stash[f.path][0]
+                    self._blobs.set(oid, (f, contexts))
+            blobs_new.add(oid)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
@@ -411,7 +406,7 @@ class Quit(object):
         oid = index.commit(message, author.name, author.email, ref=ref)
 
         if oid:
-            self.commit2blobs.set(oid.hex, blobs)
+            self._commits.set(oid.hex, blobs_new)
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
