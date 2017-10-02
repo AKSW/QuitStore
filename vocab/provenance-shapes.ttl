@@ -1,0 +1,59 @@
+@prefix quit: <http://quit.aksw.org/> .
+@prefix qshapes: <http://quit.aksw.org/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+qshapes:CommitShape
+	a sh:NodeShape ;
+	sh:targetClass prov:Activity ;
+	sh:property [
+		sh:path quit:preceedingCommit ;
+	] ;
+	sh:property [
+		sh:path rdfs:comment ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path quit:hex ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:property [
+		sh:path prov:startedAtTime ;
+		sh:datatype xsd:datetime ;
+	] ;
+	sh:property [
+		sh:path prov:endedAtTime ;
+		sh:datatype xsd:datetime ;
+	] ;
+	sh:property [
+		sh:path prov:qualifiedAssociation ;
+		sh:nodeKind sh:BlankNodeOrIRI ;
+	] ;
+	sh:property [
+		sh:path prov:wasAssociatedWith ;
+		sh:nodeKind sh:BlankNodeOrIRI ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .
+
+
+qshapes:TransformationShape
+	a sh:NodeShape ;
+	sh:targetClass quit:Transformation ;
+	sh:property [
+		sh:path quit:query ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .
+
+
+qshapes:ImportShape
+	a sh:NodeShape ;
+	sh:targetClass quit:Import ;
+	sh:property [
+		sh:path quit:dataSource ;
+		sh:datatype xsd:string ;
+	] ;
+	sh:closed false ;
+	sh:ignoredProperties ( rdf:type ) .
