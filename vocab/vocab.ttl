@@ -2,6 +2,7 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
+## Quit Configuration
 # classes
 quit:QuitStore a rdfs:Class ;
   rdfs:label "Quit Store" ;
@@ -53,3 +54,57 @@ quit:prefix a rdfs:Property ;
 
 quit:namespace a rdfs:Property ;
   rdfs:comment "Actual namespace for a binding" .
+
+## Quit Provenance
+# classes
+quit:Import a rdfs:Class ;
+  rdfs:label "Import" ;
+  rdfs:comment "An import of RDF data from some source" .
+
+quit:Transformation a rdfs:Class ;
+  rdfs:label "Transformation" ;
+  rdfs:comment "A transformation of an RDF dataset e.g. using a SPARQL update query" .
+
+# instances
+quit:Author a prov:Role ;
+  rdfs:label "Author" ;
+  rdfs:comment "The author of a Git commit" .
+
+quit:Committer a prov:Role ;
+  rdfs:label "Committer" ;
+  rdfs:comment "The commiter of a Git commit" .
+
+# prov:Activity properties
+quit:preceedingCommit a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+quit:hex a rdfs:Property ;
+  rdf:label "" ;
+  rdfs:comment "The hexadecimal hash used to identify objects in a Git repository" .
+
+quit:updates  a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+quit:additions a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+quit:removals a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+quit:graph a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+# quit:Import properties
+quit:dataSource a rdf:Property ;
+  rdfs:label "" ;
+  rdfs:comment "" .
+
+# quit:Transformation properties
+quit:query a rdf:Property ;
+  rdfs:label "query" ;
+  rdfs:comment "A SPARQL query appliead to an RDF dataset" .
