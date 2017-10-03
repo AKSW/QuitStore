@@ -65,9 +65,9 @@ class Store(Queryable):
     """
 
     def __init__(self, store):
-        """Initialize a new MemoryStore instance."""
-        logger = logging.getLogger('quit.core.MemoryStore')
-        logger.debug('Create an instance of MemoryStore')
+        """Initialize a new Store instance."""
+        logger = logging.getLogger('quit.core.Store')
+        logger.debug('Create an instance of Store')
         self.store = store
 
         return
@@ -76,11 +76,9 @@ class Store(Queryable):
 class MemoryStore(Store):
     def __init__(self, additional_bindings=list()):
         store = ConjunctiveGraph(identifier='default')
+        nsBindings = [('quit', QUIT), ('foaf', FOAF), ('prov', PROV)]
 
-        for prefix, namespace in [('quit', QUIT), ('foaf', FOAF), ('prov', PROV)]:
-            store.bind(prefix, namespace)
-
-        for prefix, namespace in additional_bindings:
+        for prefix, namespace in nsBindings + additional_bindings:
             store.bind(prefix, namespace)
 
         super().__init__(store=store)
