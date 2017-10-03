@@ -80,6 +80,13 @@ Run Quit-Store without versioning activated
 
 Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
 
+`-f`, `--features`
+
+This option enables additional features of the store:
+
+- `provenance` - Store provenance information for each revision.
+- `persistance` - Store all internal data as RDF graph.
+
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
 
 Set the loglevel for the standard output to verbose (INFO) respective extra verbose (DEBUG).
