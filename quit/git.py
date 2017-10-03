@@ -5,7 +5,7 @@ import logging
 
 from datetime import datetime
 from os.path import expanduser, join
-from exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
+from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Literal, ConjunctiveGraph
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
 from quit.utils import clean_path
@@ -49,9 +49,9 @@ class Repository(object):
 
             if origin:
                 self.callback = self._callback(origin)
-                pygit2.clone_repository(url=origin, path=path, bare=False)
+                self._repository = pygit2.clone_repository(url=origin, path=path, bare=False)
             else:
-                pygit2.init_repository(path)
+                self._repository = pygit2.init_repository(path)
 
         self.path = path
         self.params = params

@@ -185,7 +185,7 @@ def parseArgs(args):
 
 def main(config):
     """Start the app."""
-    app = create_app(config, enable_profiler=False)
+    app = create_app(config)
     app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
 
 

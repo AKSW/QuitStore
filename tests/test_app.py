@@ -5,7 +5,8 @@ from distutils.dir_util import copy_tree, remove_tree
 from glob import glob
 from os import remove, stat, path
 from os.path import join, isdir
-from quit import quit as quitApp
+import quit.quit as quitApp
+from quit.web.app import create_app
 import unittest
 import tempfile
 import subprocess
@@ -35,8 +36,6 @@ class QuitAppTestCase(unittest.TestCase):
                 else:
                     f.write(line)
 
-        self.app = quitApp.app.test_client()
-
     def tearDown(self):
         def __deleteFiles(directory):
             files = glob(join(directory, '*'))
@@ -59,11 +58,29 @@ class QuitAppTestCase(unittest.TestCase):
 
     def testStartApp(self):
         """Test start of quit store."""
+
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
-        quitApp.initialize(args)
+        objects = quitApp.initialize(args)
+
+        config = objects['config']
+        app = create_app(config).test_client()
 
         query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
-        response = self.app.post('/sparql', data=dict(query=query))
+        response = app.post('/sparql', data=dict(query=query))
+        self.assertEqual(response.status, '200 OK')
+
+    def testReloadStore(self):
+        """Test reload of quit store."""
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        objects = quitApp.initialize(args)
+
+        config = objects['config']
+        app = create_app(config).test_client()
+
+        app = create_app(config).test_client()
+
+        query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+        response = app.post('/sparql', data=dict(query=query))
         self.assertEqual(response.status, '200 OK')
 
     def testLogfileExists(self):
@@ -100,23 +117,16 @@ class QuitAppTestCase(unittest.TestCase):
 
         self.assertFalse(os.path.isfile(self.logfile))
 
-    def testReloadStore(self):
-        """Test reload of quit store."""
+    def testCommits(self):
+        """Test /commits API request."""
+
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
-        quitApp.initialize(args)
+        objects = quitApp.initialize(args)
 
-        quitApp.reloadstore()
+        config = objects['config']
+        app = create_app(config).test_client()
 
-        query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
-        response = self.app.post('/sparql', data=dict(query=query))
-        self.assertEqual(response.status, '200 OK')
-
-    def testGitLog(self):
-        """Test /git/log API request."""
-        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
-        quitApp.initialize(args)
-
-        response= self.app.get('/git/log')
+        response = app.get('/commits')
         self.assertEqual(response.status, '200 OK')
 
     def testGCConfiguration(self):
