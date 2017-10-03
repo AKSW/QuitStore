@@ -4,7 +4,7 @@ from rdflib.query import Processor, UpdateProcessor, ResultSerializer
 
 register(
     'nquad-ordered', Serializer,
-    'quit.plugins.serialisers.nquadsordered', 'OrderedNQuadsSerializer')
+    'quit.plugins.serializers.nquadsordered', 'OrderedNQuadsSerializer')
 
 register(
     'sparql', Processor,
