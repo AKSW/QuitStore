@@ -1,3 +1,6 @@
+# This file was taken from https://github.com/RDFLib/rdflib-web
+# Copyrights by Gunnar Aastrand Grimnes <http://gromgull.net/>
+
 import rdflib
 
 from jinja2 import Environment
