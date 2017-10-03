@@ -8,7 +8,6 @@ from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Literal, ConjunctiveGraph
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
-from quit.utils import clean_path
 from quit.cache import Cache
 
 PROPERTY_REGEX = r"^("
@@ -325,7 +324,7 @@ class Node(object):
             except KeyError:
                 raise NodeNotFound(path, commit.hex)
             self.obj = repository._repository.get(entry.oid)
-            self.name = clean_path(path)
+            self.name = os.path.normpath(path)
             if self.obj.type == pygit2.GIT_OBJ_TREE:
                 self.kind = Node.DIRECTORY
                 self.tree = self.obj
@@ -428,14 +427,14 @@ class Index(object):
             raise IndexError(e)
 
     def add(self, path, contents, mode=None):
-        path = clean_path(path)
+        path = os.path.normpath(path)
 
         oid = self.repository._repository.create_blob(contents)
 
         self.stash[path] = (oid, mode or pygit2.GIT_FILEMODE_BLOB)
 
     def remove(self, path):
-        path = clean_path(path)
+        path = os.path.normpath(path)
 
         self.stash[path] = (None, None)
 

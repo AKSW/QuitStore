@@ -28,14 +28,6 @@ class TZ(tzinfo):
         return ZERO
 
 
-def clean_path(path):
-    path = os.path.normpath(path)
-    if path.startswith(os.sep):
-        path = path[len(os.sep):]
-
-    return path
-
-
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
     return Response(
