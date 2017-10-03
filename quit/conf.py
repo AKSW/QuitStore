@@ -1,5 +1,6 @@
 import logging
 
+import os
 from os import walk
 from os.path import join, isfile, abspath, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
@@ -9,7 +10,6 @@ from rdflib.plugins.parsers import notation3, nquads, ntriples
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse, urlencode
-from quit.utils import clean_path
 
 logger = logging.getLogger('quit.conf')
 
@@ -134,9 +134,10 @@ class QuitConfiguration:
     def __initgraphsfromdir(self, repodir):
         """Init a repository by analyzing all existing files."""
         graphs = self.getgraphsfromdir(repodir)
+        repopath = self.getRepoPath()
 
         for file, format in graphs.items():
-            absgraphfile = file + '.graph'
+            absgraphfile = os.path.join(repopath, file + '.graph')
             graphuri = self.__readGraphIriFile(absgraphfile)
 
             if graphuri and format == 'nquads':
@@ -145,7 +146,7 @@ class QuitConfiguration:
                 tmpgraph = ConjunctiveGraph(identifier='default')
 
                 try:
-                    tmpgraph.parse(source=file, format=format)
+                    tmpgraph.parse(source=os.path.join(repopath, file), format=format)
                 except Exception:
                     logger.error(
                         "Could not parse graphfile {}. File skipped.".format(file)
@@ -235,7 +236,6 @@ class QuitConfiguration:
 
         repopath = self.getRepoPath()
 
-        changedfiles = {}
         for row in result:
             filename = str(row['filename'])
             format = guess_format(filename)
@@ -244,61 +244,37 @@ class QuitConfiguration:
 
             graphuri = str(row['graphuri'])
 
-            found = False
+            graphFile = join(repopath, filename)
 
-            absfile = abspath(filename)
-            joinedabsfile = abspath(join(repopath, filename))
-
-            # Analyze and check files
-            if absfile.startswith(repopath):
-                # file is part of git repo
-                if isfile(absfile):
-                    # everything is fine
-                    pass
-                else:
-                    try:
-                        open(absfile, 'a+').close()
-                    except FileNotFoundError:
-                        raise InvalidConfigurationError(
-                            "File not found. Can't create file {} in repo {}".format(
-                                absfile,
-                                self.getRepoPath()
-                            )
-                        )
-                filename = relpath(absfile, start=repopath)
+            if isfile(graphFile):
+                # everything is fine
+                pass
             else:
-                if isfile(joinedabsfile):
-                    # everything is fine
-                    pass
-                else:
-                    try:
-                        open(joinedabsfile, 'a+').close()
-                    except PermissionError:
-                        raise InvalidConfigurationError(
-                            "Permission denied. Can't create file {} in repo {}".format(
-                                joinedabsfile,
-                                self.getRepoPath()
-                            )
+                try:
+                    open(graphFile, 'a+').close()
+                except PermissionError:
+                    raise InvalidConfigurationError(
+                        "Permission denied. Can't create file {} in repo {}".format(
+                            graphFile,
+                            self.getRepoPath()
                         )
-                    except FileNotFoundError:
-                        raise InvalidConfigurationError(
-                            "File not found. Can't create file {} in repo {}".format(
-                                joinedabsfile,
-                                self.getRepoPath()
-                            )
+                    )
+                except FileNotFoundError:
+                    raise InvalidConfigurationError(
+                        "File not found. Can't create file {} in repo {}".format(
+                            graphFile,
+                            self.getRepoPath()
                         )
-                    except Exception as e:
-                        raise UnknownConfigurationError(
-                            "Can't create file {} in repo {}. Error: {}".format(
-                                joinedabsfile,
-                                self.getRepoPath(),
-                                e
-                            )
+                    )
+                except Exception as e:
+                    raise UnknownConfigurationError(
+                        "Can't create file {} in repo {}. Error: {}".format(
+                            graphFile,
+                            self.getRepoPath(),
+                            e
                         )
+                    )
 
-                filename = relpath(joinedabsfile, start=repopath)
-
-            filename = clean_path(filename)
             graphuri = URIRef(graphuri)
 
             # we store which named graph is serialized in which file
@@ -426,6 +402,8 @@ class QuitConfiguration:
         Returns:
             A string of the path to the file asociated with named graph
         """
+        if isinstance(graphuri, str):
+            graphuri = URIRef(graphuri)
         for uri, filename in self.graphs.items():
             if uri == graphuri:
                 return filename
@@ -483,10 +461,9 @@ class QuitConfiguration:
         graphfiles = {}
         for dirpath, dirs, files in walk(path):
             dirs[:] = [d for d in dirs if d not in exclude]
-            for file in files:
-                filename = join(dirpath, file)
+            for filename in files:
 
-                format = guess_format(filename)
+                format = guess_format(join(dirpath, filename))
                 if format is not None:
                     graphfiles[filename] = format
 

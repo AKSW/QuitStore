@@ -11,7 +11,7 @@ from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import MissingFileError
 from distutils.dir_util import copy_tree, remove_tree
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-
+import rdflib
 
 class TestConfiguration(unittest.TestCase):
 
@@ -176,7 +176,7 @@ class TestConfiguration(unittest.TestCase):
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
-        self.assertEqual(sorted(graphs), ['http://example.org/2/', 'http://example.org/discovered/'])
+        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/2/', 'http://example.org/discovered/'])
 
         files = conf.getfiles()
         self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
@@ -186,12 +186,17 @@ class TestConfiguration(unittest.TestCase):
 
         gfMap = conf.getgraphurifilemap()
         self.assertEqual(gfMap, {
-                'http://example.org/discovered/': 'example1.nq',
-                'http://example.org/2/': 'example2.nt'
+                rdflib.term.URIRef('http://example.org/discovered/'): 'example1.nq',
+                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
             })
 
-        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/discovered/'])
-        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual(
+            [str(x) for x in conf.getgraphuriforfile('example1.nq')],
+            ['http://example.org/discovered/']
+        )
+        self.assertEqual(
+            [str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/']
+        )
         self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
         self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
@@ -203,7 +208,7 @@ class TestConfiguration(unittest.TestCase):
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
-        self.assertEqual(sorted(graphs), ['http://example.org/1/', 'http://example.org/2/'])
+        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/1/', 'http://example.org/2/'])
 
         files = conf.getfiles()
         self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
@@ -213,12 +218,12 @@ class TestConfiguration(unittest.TestCase):
 
         gfMap = conf.getgraphurifilemap()
         self.assertEqual(gfMap, {
-                'http://example.org/1/': 'example1.nq',
-                'http://example.org/2/': 'example2.nt'
+                rdflib.term.URIRef('http://example.org/1/'): 'example1.nq',
+                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
             })
 
-        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/1/'])
-        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/1/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
         self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
         self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
@@ -230,7 +235,7 @@ class TestConfiguration(unittest.TestCase):
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
-        self.assertEqual(sorted(graphs), ['http://example.org/1/', 'http://example.org/2/'])
+        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/1/', 'http://example.org/2/'])
 
         files = conf.getfiles()
         self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
@@ -240,12 +245,12 @@ class TestConfiguration(unittest.TestCase):
 
         gfMap = conf.getgraphurifilemap()
         self.assertEqual(gfMap, {
-                'http://example.org/1/': 'example1.nq',
-                'http://example.org/2/': 'example2.nt'
+                rdflib.term.URIRef('http://example.org/1/'): 'example1.nq',
+                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
             })
 
-        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/1/'])
-        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/1/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
         self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
         self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
@@ -257,7 +262,7 @@ class TestConfiguration(unittest.TestCase):
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
-        self.assertEqual(sorted(graphs), ['http://example.org/2/', 'http://example.org/discovered/'])
+        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/2/', 'http://example.org/discovered/'])
 
         files = conf.getfiles()
         self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
@@ -267,12 +272,12 @@ class TestConfiguration(unittest.TestCase):
 
         gfMap = conf.getgraphurifilemap()
         self.assertEqual(gfMap, {
-                'http://example.org/discovered/': 'example1.nq',
-                'http://example.org/2/': 'example2.nt'
+                rdflib.term.URIRef('http://example.org/discovered/'): 'example1.nq',
+                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
             })
 
-        self.assertEqual(conf.getgraphuriforfile('example1.nq'), ['http://example.org/discovered/'])
-        self.assertEqual(conf.getgraphuriforfile('example2.nt'), ['http://example.org/2/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/discovered/'])
+        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
         self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
         self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
