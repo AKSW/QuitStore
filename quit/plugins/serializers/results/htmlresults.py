@@ -42,7 +42,7 @@ def term_to_string(ctx, term):
 
 
 env = Environment()
-env.filters["term_to_string"]=term_to_string
+env.filters["term_to_string"] = term_to_string
 
 RESULT_TEMPLATE = """
 <table class="table">
