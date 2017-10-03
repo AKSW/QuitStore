@@ -6,7 +6,6 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
 
 import argparse
-from quit.core import GitRepo
 from quit.conf import Feature, QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
 from quit.utils import handle_exit

@@ -9,6 +9,7 @@ from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
 from rdflib import Literal, ConjunctiveGraph
 from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
 from quit.cache import Cache
+import pygit2
 
 PROPERTY_REGEX = r"^("
 PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
@@ -47,55 +48,15 @@ class Repository(object):
                     'Repository "%s" does not exist' % path)
 
             if origin:
-                self.callback = self._callback(origin)
-                self._repository = pygit2.clone_repository(url=origin, path=path, bare=False)
+                self.callback = QuitRemoteCallbacks()
+                self._repository = pygit2.clone_repository(
+                    url=origin, path=path, bare=False, callbacks=self.callback
+                )
             else:
                 self._repository = pygit2.init_repository(path)
 
         self.path = path
         self.params = params
-
-    def _callback(self, origin):
-        """Set a pygit callback for user authentication when acting with remotes.
-
-        This method uses the private-public-keypair of the ssh host configuration.
-        The keys are expected to be found at ~/.ssh/
-        Warning: Create a keypair that will be used only in QuitStore and do not use
-        existing keypairs.
-        Args:
-            username: The git username (mostly) given in the adress.
-            passphrase: The passphrase of the private key.
-        """
-        ssh = join(expanduser('~'), '.ssh')
-        pubkey = join(ssh, 'id_quit.pub')
-        privkey = join(ssh, 'id_quit')
-
-        from re import search
-        # regex to match username in web git adresses
-        regex = '(\w+:\/\/)?((.+)@)*([\w\d\.]+)(:[\d]+){0,1}\/*(.*)'
-        p = search(regex, origin)
-        username = p.group(3)
-
-        passphrase = ''
-
-        try:
-            credentials = pygit2.Keypair(username, pubkey, privkey, passphrase)
-        except Exception:
-            self.logger.debug(
-                'GitRepo, setcallback: Something went wrong with Keypair')
-            return
-
-        return pygit2.RemoteCallbacks(credentials=credentials)
-
-    def _clone(self, origin, path):
-        try:
-            self.addRemote('origin', origin)
-            repo = pygit2.clone_repository(
-                url=origin, path=path, bare=False, callbacks=self.callback
-            )
-            return repo
-        except Exception:
-            raise Exception('Could not clone from', origin)
 
     @property
     def is_empty(self):
@@ -562,3 +523,48 @@ class IndexTree(object):
         builder.clear()
 
         return oid
+
+
+class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
+    """Set a pygit callback for user authentication when acting with remotes."""
+
+    def credentials(self, url, username_from_url, allowed_types):
+        """
+        The callback to return a suitable authentication method.
+        it supports GIT_CREDTYPE_SSH_KEY and GIT_CREDTYPE_USERPASS_PLAINTEXT
+        GIT_CREDTYPE_SSH_KEY with an ssh agent configured in the env variable SSH_AUTH_SOCK
+          or with id_rsa and id_rsa.pub in ~/.ssh (password must be the empty string)
+        GIT_CREDTYPE_USERPASS_PLAINTEXT from the env variables GIT_USERNAME and GIT_PASSWORD
+        """
+        if pygit2.credentials.GIT_CREDTYPE_SSH_KEY & allowed_types:
+            if "SSH_AUTH_SOCK" in os.environ:
+                # Use ssh agent for authentication
+                return pygit2.KeypairFromAgent(username_from_url)
+            else:
+                ssh = join(expanduser('~'), '.ssh')
+                if "QUIT_SSH_KEY_HOME" in os.environ:
+                    ssh = os.environ["QUIT_SSH_KEY_HOME"]
+                # public key is still needed because:
+                # _pygit2.GitError: Failed to authenticate SSH session:
+                # Unable to extract public key from private key file:
+                # Method unimplemented in libgcrypt backend
+                pubkey = join(ssh, 'id_rsa.pub')
+                privkey = join(ssh, 'id_rsa')
+                # check if ssh key is available in the directory
+                if os.path.isfile(pubkey) and os.path.isfile(privkey):
+                    return pygit2.Keypair(username_from_url, pubkey, privkey, "")
+                else:
+                    raise Exception(
+                        "No SSH keys could be found, please specify SSH_AUTH_SOCK or add keys to " +
+                        "your ~/.ssh/"
+                    )
+        elif pygit2.credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
+            if "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
+                return pygit2.UserPass(os.environ["GIT_USERNAME"], os.environ["GIT_PASSWORD"])
+            else:
+                raise Exception(
+                    "Remote requested plaintext username and password authentication but " +
+                    "GIT_USERNAME or GIT_PASSWORD are not set."
+                )
+        else:
+            raise Exception("Only unsupported credential types allowed by remote end")
