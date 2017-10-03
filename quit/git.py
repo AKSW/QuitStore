@@ -408,7 +408,7 @@ class Node(object):
                 last = c1
 
         if last:
-            yield Revision(self._repository, last) 
+            yield Revision(self._repository, last)
 
 
 from heapq import heappush, heappop

@@ -1,13 +1,10 @@
 from collections import OrderedDict
 from sortedcontainers import SortedList
 
+
 class Cache:
-    """"""
 
     def __init__(self, capacity=50):
-        """
-                Constructor
-                """
         self.cache = OrderedDict()
         self.capacity = capacity
 

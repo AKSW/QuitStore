@@ -13,11 +13,12 @@ from quit.utils import clean_path
 
 logger = logging.getLogger('quit.conf')
 
+
 class Feature:
-    Unknown    = 0
+    Unknown = 0
     Provenance = 1 << 0
-    Persistence      = 1 << 1
-    All        = Provenance | Persistence
+    Persistence = 1 << 1
+    All = Provenance | Persistence
 
 
 class QuitConfiguration:

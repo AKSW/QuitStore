@@ -82,7 +82,6 @@ class CopyOnEditGraph(Graph):
         else:
             return super().store
 
-
     def unwrap(self):
         return Graph(store=self.store, identifier=self.identifier)
 

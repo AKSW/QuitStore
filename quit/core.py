@@ -170,11 +170,11 @@ class Quit(object):
         default_graphs = list()
 
         if commit_id:
-            
+
             blobs = self._commits.get(commit_id)
             if not blobs:
                 blobs = set()
-                map = self.config.getgraphurifilemap()                
+                map = self.config.getgraphurifilemap()
                 commit = self.repository.revision(commit_id)
 
                 for entity in commit.node().entries(recursive=True):
@@ -182,8 +182,8 @@ class Quit(object):
                     if entity.is_file:
                         if entity.name not in map.values():
                             continue
-                        l = self.config.getgraphuriforfile(entity.name)
-                        fixed = set(( Graph(identifier=i) for i in l))
+                        graphUris = self.config.getgraphuriforfile(entity.name)
+                        fixed = set((Graph(identifier=i) for i in graphUris))
 
                         oid = entity.oid
                         blobs.add(oid)
@@ -193,12 +193,15 @@ class Quit(object):
                             tmp = ConjunctiveGraph()
                             tmp.parse(data=entity.content, format='nquads')
 
-                            # Info: currently filter graphs from file that were not defined in config
+                            # Info: currently filter graphs from file that were not defined in
+                            #       config
                             # Todo: is this the wanted behaviour?
                             contexts = set((context for context in tmp.contexts(None)
                                             if context.identifier in map)) | fixed
 
-                            self._blobs.set(oid, (FileReference(entity.name, entity.content), contexts))
+                            self._blobs.set(
+                                oid, (FileReference(entity.name, entity.content), contexts)
+                            )
                 self._commits.set(commit_id, blobs)
 
             # now all blobs in commit are known
@@ -330,9 +333,9 @@ class Quit(object):
                 if entity.name not in map.values():
                     continue
 
-                l = self.config.getgraphuriforfile(entity.name)
-                fixed = set(( Graph(identifier=i) for i in l))
-                
+                graphUris = self.config.getgraphuriforfile(entity.name)
+                fixed = set((Graph(identifier=i) for i in graphUris))
+
                 f, contexts = self._blobs.get(entity.oid) or (None, None)
                 if not contexts:
                     tmp = ConjunctiveGraph()
@@ -340,10 +343,13 @@ class Quit(object):
 
                     # Info: currently filter graphs from file that were not defined in config
                     # Todo: is this the wanted behaviour?
-                    contexts = set((context for context in tmp.contexts(None)
-                                            if context.identifier in map)) | fixed
+                    contexts = set(
+                        (context for context in tmp.contexts(None) if context.identifier in map)
+                    ) | fixed
 
-                    self._blobs.set(entity.oid, (FileReference(entity.name, entity.content), contexts))
+                    self._blobs.set(
+                        entity.oid, (FileReference(entity.name, entity.content), contexts)
+                    )
 
                 for index, context in enumerate(contexts):
                     private_uri = QUIT["graph-{}-{}".format(entity.oid, index)]
