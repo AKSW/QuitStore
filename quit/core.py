@@ -367,7 +367,7 @@ class Quit(object):
                         g.add((private_uri, PROV['qualifiedGeneration'], q_usage))
                         g.add((q_usage, is_a, PROV['Generation']))
                         g.add((q_usage, PROV['activity'], commit_uri))
-                        
+
                         prev = next(entity.history(), None)
                         if prev:
                             prev_uri = QUIT["graph-{}-{}".format(prev.oid, index)]
