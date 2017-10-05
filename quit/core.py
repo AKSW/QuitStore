@@ -168,12 +168,12 @@ class Quit(object):
         default_graphs = list()
 
         if commit_id:
+            commit = self.repository.revision(commit_id)
 
-            blobs = self._commits.get(commit_id)
+            blobs = self._commits.get(commit.id)
             if not blobs:
                 blobs = set()
                 map = self.config.getgraphurifilemap()
-                commit = self.repository.revision(commit_id)
 
                 for entity in commit.node().entries(recursive=True):
                     # todo check if file was changed
@@ -200,7 +200,7 @@ class Quit(object):
                             self._blobs.set(
                                 oid, (FileReference(entity.name, entity.content), contexts)
                             )
-                self._commits.set(commit_id, blobs)
+                self._commits.set(commit.id, blobs)
 
             # now all blobs in commit are known
             for oid in blobs:
@@ -381,25 +381,26 @@ class Quit(object):
         if not delta:
             return
 
-        index = self.repository.index(commit_id)
+        commit = self.repository.revision(commit_id)
+        index = self.repository.index(commit.id)
 
         blobs_new = set()
-        blobs = self._commits.remove(commit_id) or []
+        blobs = self._commits.remove(commit.id) or []
         for oid in blobs:
-            f, contexts = self._blobs.get(oid) or (None, [])
+            f, contexts = self._blobs.remove(oid) or (None, [])
             for context in contexts:
                 changesets = delta.get(context.identifier, [])
                 if changesets:
                     for (op, triples) in changesets:
                         for triple in triples:
-                            line = _nq(triple, context.identifier)
+                            # the internal _nq serializer appends '\n'
+                            line = _nq(triple, context.identifier).rstrip()
                             if op == 'additions':
                                 f.add(line)
                             elif op == 'removals':
                                 f.remove(line)
                     index.add(f.path, f.content)
 
-                    self._blobs.remove(oid)
                     oid = index.stash[f.path][0]
                     self._blobs.set(oid, (f, contexts))
             blobs_new.add(oid)
