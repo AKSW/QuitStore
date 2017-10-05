@@ -262,7 +262,7 @@ class Quit(object):
                 commit.author_date, datatype=XSD.dateTime)))
             g.add((commit_uri, PROV['endedAtTime'], Literal(
                 commit.committer_date, datatype=XSD.dateTime)))
-            g.add((commit_uri, RDFS['comment'],
+            g.add((commit_uri, RDFS['label'],
                    Literal(commit.message.strip())))
 
             # Author
@@ -295,14 +295,15 @@ class Quit(object):
                     (commit_uri, PROV['qualifiedAssociation'], q_committer_uri))
                 g.add((q_committer_uri, is_a, PROV['Association']))
                 g.add((q_committer_uri, PROV['agent'], author_uri))
-                g.add((q_committer_uri, PROV['role'], role_committer_uri))
+                g.add((q_committer_uri, PROV['hadRole'], role_committer_uri))
             else:
-                g.add((q_author_uri, PROV['role'], role_committer_uri))
+                g.add((q_author_uri, PROV['hadRole'], role_committer_uri))
 
             # Parents
             for parent in iter(commit.parents or []):
                 parent_uri = QUIT['commit-' + parent.id]
                 g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
+                g.add((commit_uri, PROV["wasInformedBy"], parent_uri))
 
             # Diff
             if not delta:
@@ -361,6 +362,23 @@ class Quit(object):
                             (private_uri, PROV['specializationOf'], context.identifier))
                         g.add(
                             (private_uri, PROV['wasGeneratedBy'], commit_uri))
+
+                        q_usage = BNode()
+                        g.add((private_uri, PROV['qualifiedGeneration'], q_usage))
+                        g.add((q_usage, is_a, PROV['Generation']))
+                        g.add((q_usage, PROV['activity'], commit_uri))
+                        
+                        prev = next(entity.history(), None)
+                        if prev:
+                            prev_uri = QUIT["graph-{}-{}".format(prev.oid, index)]
+                            g.add((private_uri, PROV['wasDerivedFrom'], prev_uri))
+                            g.add((commit_uri, PROV['used'], prev_uri))
+
+                            q_derivation = BNode()
+                            g.add((private_uri, PROV['qualifiedDerivation'], q_derivation))
+                            g.add((q_derivation, is_a, PROV['Derivation']))
+                            g.add((q_derivation, PROV['entity'], prev_uri))
+                            g.add((q_derivation, PROV['hadActivity'], commit_uri))
                     if self.config.hasFeature(Feature.Persistence):
                         g.addN((s, p, o, private_uri) for s, p, o
                                in context.triples((None, None, None)))

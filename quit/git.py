@@ -342,33 +342,22 @@ class Node(object):
             return self.blob.size
         return None
 
-    def history(self, revision=None):
-        initial = self._repository.get_revision(revision or self._commit.id)._commit
-        walker = self._repository._repository.walk(initial.oid, pygit2.GIT_SORT_TIME)
+    def history(self):
+        walker = self._repository._repository.walk(self._commit.oid, pygit2.GIT_SORT_TIME)
 
-        last = None
-        c0 = walker.next()
-        try:
-            e0 = c0.tree[self.name]
-            last = c0
-        except KeyError:
-            e0 = None
+        c0 = self._commit
+        e0 = c0.tree[self.name]
 
         for c1 in walker:
             try:
                 e1 = c1.tree[self.name]
                 if e0 and e0.oid != e1.oid:
-                    yield Revision(self._repository, c0)
+                    yield Node(self._repository, c1, self.name)
             except KeyError:
-                e1 = None
+                return
 
             c0 = c1
             e0 = e1
-            if e1:
-                last = c1
-
-        if last:
-            yield Revision(self._repository, last)
 
 
 from heapq import heappush, heappop
