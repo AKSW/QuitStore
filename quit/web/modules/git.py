@@ -82,3 +82,49 @@ def push():
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
         return "<pre>" + traceback.format_exc() + "</pre>", 403
+
+
+@git.route("/merge", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
+@git.route("/merge/<path:branch_or_ref>", methods=['GET', 'POST'])
+def merge(branch_or_ref):
+    """Merge two commits and set the result to branch_or_ref.
+
+    merge branch into target and set branch_or_ref to the resulting commit
+    - if ony branch_or_ref is given, do nothing
+    - if branch_or_ref and branch is given, merge branch into branch_or_ref and set branch_or_ref to
+        the resulting commit
+    - if branch_or_ref, branch and target are given, merge branch into target and set branch_or_ref
+        to the resulting commit
+
+    Returns:
+        HTTP Response 201: If merge was possible
+        HTTP Response: 403: If merge did fail
+    """
+    try:
+
+        branch = request.values.get('branch', None) or None
+        target = request.values.get('target', None) or branch_or_ref
+        current_app.config['quit'].repository.merge(branch_or_ref, target, branch)
+        return '', 201
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 403
+
+
+@git.route("/revert", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
+@git.route("/revert/<path:branch_or_ref>", methods=['GET', 'POST'])
+def revert(branch_or_ref):
+    """Revert a commit.
+
+    Returns:
+        HTTP Response 201: If revert was possible
+        HTTP Response: 403: If revert did fail
+    """
+    try:
+        current_app.config['quit'].repository.revert()
+        return '', 201
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 403

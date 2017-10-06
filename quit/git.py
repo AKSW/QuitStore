@@ -183,6 +183,13 @@ class Repository(object):
             if remote.name == remote_name:
                 remote.push(ref)
 
+    def merge(self, reference='', target='', branch=''):
+        raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')
+
+
+    def revert(self, reference='', target='', branch=''):
+        raise Exception('Not yet supported')
+
 
 class Revision(object):
 
