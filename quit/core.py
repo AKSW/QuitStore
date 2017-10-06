@@ -396,6 +396,16 @@ class Quit(object):
                 out.append(message)
             return "\n".join(out)
 
+        def _apply(f, changeset):
+            for (op, triples) in changeset:
+                for triple in triples:
+                    # the internal _nq serializer appends '\n'
+                    line = _nq(triple, context.identifier).rstrip()
+                    if op == 'additions':
+                        f.add(line)
+                    elif op == 'removals':
+                        f.remove(line)
+
         if not delta:
             return
 
@@ -403,24 +413,35 @@ class Quit(object):
         index = self.repository.index(commit.id)
 
         blobs_new = set()
-        blobs = self._commits.remove(commit.id) or []
+        blobs = self._commits.get(commit.id) or []
         for oid in blobs:
-            f, contexts = self._blobs.remove(oid) or (None, [])
+            f, contexts = self._blobs.get(oid) or (None, [])
             for context in contexts:
-                changesets = delta.get(context.identifier, [])
-                if changesets:
-                    for (op, triples) in changesets:
-                        for triple in triples:
-                            # the internal _nq serializer appends '\n'
-                            line = _nq(triple, context.identifier).rstrip()
-                            if op == 'additions':
-                                f.add(line)
-                            elif op == 'removals':
-                                f.remove(line)
-                    index.add(f.path, f.content)
+                changeset = delta.get(context.identifier, [])
+                if changeset:
+                    _apply(f, changeset)
+                    del delta[context.identifier]
+                    
+            index.add(f.path, f.content)
 
-                    oid = index.stash[f.path][0]
-                    self._blobs.set(oid, (f, contexts))
+            self._blobs.remove(oid)
+            oid = index.stash[f.path][0]
+            self._blobs.set(oid, (f, contexts))
+            blobs_new.add(oid)
+
+        
+        if delta:
+            f_name = self.config.getGlobalFile() or 'unassigned.nq'
+            f_new = FileReference(f_name, "")
+            unassigned = set(graph.store.get_context(i) for i in delta.keys())
+            for identifier, changeset in delta.items():
+                if changeset:
+                    _apply(f_new, changeset)
+                    
+            index.add(f_new.path, f_new.content)
+
+            oid = index.stash[f_new.path][0]
+            self._blobs.set(oid, (f_new, unassigned))
             blobs_new.add(oid)
 
         message = build_message(message, kwargs)
