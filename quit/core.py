@@ -421,7 +421,7 @@ class Quit(object):
                 if changeset:
                     _apply(f, changeset)
                     del delta[context.identifier]
-                    
+
             index.add(f.path, f.content)
 
             self._blobs.remove(oid)
@@ -429,7 +429,6 @@ class Quit(object):
             self._blobs.set(oid, (f, contexts))
             blobs_new.add(oid)
 
-        
         if delta:
             f_name = self.config.getGlobalFile() or 'unassigned.nq'
             f_new = FileReference(f_name, "")
@@ -437,7 +436,7 @@ class Quit(object):
             for identifier, changeset in delta.items():
                 if changeset:
                     _apply(f_new, changeset)
-                    
+
             index.add(f_new.path, f_new.content)
 
             oid = index.stash[f_new.path][0]
