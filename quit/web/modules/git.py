@@ -50,8 +50,9 @@ def commits(branch_or_ref):
         return "<pre>" + traceback.format_exc() + "</pre>", 403
 
 
-@git.route("/pull", methods=['POST', 'GET'])
-def pull():
+@git.route("/pull", defaults={'remote': None}, methods=['POST', 'GET'])
+@git.route("/pull/<path:remote>", methods=['GET', 'POST'])
+def pull(remote):
     """Pull from remote.
 
     Returns:
@@ -59,7 +60,7 @@ def pull():
         HTTP Response: 403: If pull did not work
     """
     try:
-        current_app.config['quit'].repository.pull()
+        current_app.config['quit'].repository.pull(remote)
         return '', 201
     except Exception as e:
         current_app.logger.error(e)
@@ -67,8 +68,27 @@ def pull():
         return "<pre>" + traceback.format_exc() + "</pre>", 403
 
 
-@git.route("/push", methods=['POST', 'GET'])
-def push():
+@git.route("/fetch", defaults={'remote': None}, methods=['POST', 'GET'])
+@git.route("/fetch/<path:remote>", methods=['GET', 'POST'])
+def fetch(remote):
+    """Fetch from remote.
+
+    Returns:
+        HTTP Response 201: If pull was possible
+        HTTP Response: 403: If pull did not work
+    """
+    try:
+        current_app.config['quit'].repository.fetch(remote)
+        return '', 201
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 403
+
+
+@git.route("/push", defaults={'remote': None}, methods=['POST', 'GET'])
+@git.route("/push/<path:remote>", methods=['GET', 'POST'])
+def push(remote):
     """Pull from remote.
 
     Returns:
@@ -76,7 +96,7 @@ def push():
         HTTP Response: 403: If push did not work
     """
     try:
-        current_app.config['quit'].repository.push()
+        current_app.config['quit'].repository.push(remote)
         return '', 201
     except Exception as e:
         current_app.logger.error(e)
