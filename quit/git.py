@@ -131,6 +131,7 @@ class Repository(object):
         return index
 
     def pull(self, remote_name='origin', branch='master'):
+        logger.debug('Pulling branch: {} from {}'.format(branch, remote_name))
         for remote in self._repository.remotes:
             if remote.name == remote_name:
                 remote.fetch()
@@ -162,7 +163,7 @@ class Repository(object):
 
                     if self._repository.index.conflicts is not None:
                         for conflict in self._repository.index.conflicts:
-                            logging.error(
+                            logger.error(
                                 'Conflicts found in: {}'.format(conflict[0].path))
                         raise AssertionError('Conflicts, ahhhhh!!')
 
