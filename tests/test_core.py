@@ -2,172 +2,90 @@
 
 import unittest
 from context import quit
-from quit.core import MemoryStore
-import quit.git
+import quit.core
 from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
+
+class QueryableTests(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+
+class StoreTests(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+
 class MemoryStoreTests(unittest.TestCase):
 
     def setUp(self):
-        self.dir = path.abspath('../sample')
-        self.store = MemoryStore()
-        self.store.addfile(path.join(self.dir, 'team.nq'), 'nq')
+        pass
 
     def tearDown(self):
-        self.store = None
-        self.dir = None
+        pass
 
 
-class GitRepoTests(unittest.TestCase):
-
+class VirtualGraphTests(unittest.TestCase):
     def setUp(self):
-
-        self.dir = TemporaryDirectory()
-        self.remotedir = TemporaryDirectory()
-        self.file = NamedTemporaryFile(dir=self.dir.name, delete=False)
-        self.filename = path.basename(self.file.name)
-        self.author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
-        self.comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
-
-        # Initialize repository
-        init_repository(self.dir.name, False)
+        pass
 
     def tearDown(self):
-        self.file = None
-        self.filename = None
-        self.dir.cleanup()
-        self.dir = None
-        self.remotedir.cleanup()
-        self.remotedir = None
-
-    def getrepowithaddedfile(self):
-        """Create a repository and add a file to the git index."""
-        # Write to file
-        self.file.write(b'First Line\n')
-        self.file.read()
-
-        # Add file to index
-        repo = Repository(self.dir.name)
-        index = repo.index
-        index.read()
-        index.add(self.filename)
-        index.write()
-
-    def getrepowithcommit(self):
-        """Prepare a git repository with one existing commit.
-
-        Create a directory, initialize a git Repository, add
-        and commit a file.
-
-        Returns:
-            A list containing the directory and file
-        """
-        self.getrepowithaddedfile()
-        # Create commit
-        repo = Repository(self.dir.name)
-        index = repo.index
-        index.read()
-        tree = index.write_tree()
-        message = "First commit of temporary test repo"
-        repo.create_commit('HEAD',
-                           self.author, self.comitter, message,
-                           tree,
-                           [])
-
-    def testCloneRepo(self):
-        REMOTE_NAME = 'origin'
-        REMOTE_URL = 'git://github.com/AKSW/QuitStore.example.git'
-
-        dir = TemporaryDirectory()
-        quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        self.assertTrue(path.exists(path.join(dir.name, 'example.nq')))
-        dir.cleanup()
-
-    def testCloneRepoViaSSH(self):
-        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/sshkey/"
-
-        REMOTE_URL = 'git@github.com:AKSW/QuitStore.example.git'
-
-        dir = TemporaryDirectory()
-        quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        self.assertTrue(path.exists(path.join(dir.name, 'example.nq')))
-        dir.cleanup()
-
-    def testCloneRepoViaSSHNoKeyFiles(self):
-        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/nosshkey/"
-        if "SSH_AUTH_SOCK" in environ:
-            del environ["SSH_AUTH_SOCK"]
-
-        REMOTE_URL = 'git@github.com:AKSW/QuitStore.example.git'
-
-        dir = TemporaryDirectory()
-        with self.assertRaises(Exception) as context:
-            quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        dir.cleanup()
-
-    def testCloneNotExistingRepo(self):
-        environ["QUIT_SSH_KEY_HOME"] = "./tests/assets/sshkey/"
-
-        REMOTE_URL = 'git@github.com:AKSW/ThereIsNoQuitStoreRepo.git'
-
-        dir = TemporaryDirectory()
-        with self.assertRaises(Exception) as context:
-            quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        dir.cleanup()
-
-    def testCommit(self):
-        """Test that adding data causes a new commit"""
         pass
 
-    def testCommitMessages(self):
-        """Test if setting a commit message works"""
+
+class QuitTests(unittest.TestCase):
+    def setUp(self):
         pass
 
-    def testCommitDefaultMessages(self):
-        """Test that a commit gets a default message"""
+    def tearDown(self):
         pass
 
-    def testCommitNoOp(self):
-        """Test that adding an existing statement causes no new commit"""
-        pass
 
+class SeveralOldTest(unittest.TestCase):
+    """Sort these test according to their corresponding classes."""
     def testGetTheGitLog(self):
-        """Test that it possible to get the git history"""
+        """Test that it possible to get the git history."""
         pass
 
     def testGCConfiguration(self):
-        """Test that the garbage collection works"""
+        """Test that the garbage collection works."""
         pass
 
     def testCommitExists(self):
-        """Test that a commit exists after an update"""
+        """Test that a commit exists after an update."""
         pass
 
     def testIsStagingAreaClean(self):
-        """Test that the local staging area is clean after a commit"""
+        """Test that the local staging area is clean after a commit."""
         pass
 
     def testPullFromRemoteWhenAhead(self):
-        """Test that pulling from remote, when the local repos is ahead causes a merge"""
+        """Test that pulling from remote, when the local repos is ahead causes a merge."""
         pass
 
     def testPullFromRemoteWhenBehind(self):
-        """Test that pulling from remote, when the local repos is behind causes a fast-forward"""
+        """Test that pulling from remote, when the local repos is behind causes a fast-forward."""
         pass
 
     def testPushToRemoteWhenAhead(self):
-        """Test that pushing to remote, when the local repos is ahead updates the remote"""
+        """Test that pushing to remote, when the local repos is ahead updates the remote."""
         pass
 
     def testPushToRemoteWhenDiverged(self):
-        """Test that pushing to remote, when the local repos is diverged does not kill the system"""
+        """Test that pushing to remote, when the local repos is diverged does not kill the system."""
         pass
 
     def testRepoGarbageCollectionTrigger(self):
-        pass # disable for now
+        pass  # disable for now
         #self.getrepowithcommit()
 
         #import os
@@ -204,6 +122,7 @@ class GitRepoTests(unittest.TestCase):
         # commit
         # self.assertNotEqual(commit.commit_time, lastCommit.commit_time)
         pass
+
 
 def main():
     unittest.main()

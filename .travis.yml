@@ -37,9 +37,15 @@ before_script:
 
 # command to run tests
 script:
-    - coverage run -a --source=quit tests/test_core.py
-    - coverage run -a --source=quit tests/test_conf.py
     - coverage run -a --source=quit tests/test_app.py
+    - coverage run -a --source=quit tests/test_cache.py
+    - coverage run -a --source=quit tests/test_conf.py
+    - coverage run -a --source=quit tests/test_core.py
+    - coverage run -a --source=quit tests/test_git.py
+    - coverage run -a --source=quit tests/test_graphs.py
+    - coverage run -a --source=quit tests/test_helpers.py
+    - coverage run -a --source=quit tests/test_namespace.py
+    - coverage run -a --source=quit tests/test_provenance.py
 
 after_success:
     coveralls
