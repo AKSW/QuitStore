@@ -16,6 +16,96 @@ class GitRevisionTests(unittest.TestCase):
     def tearDown(self):
         pass
 
+
+class GitIndexTests(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = TemporaryDirectory()
+        self.file = NamedTemporaryFile(dir=self.dir.name, delete=False)
+        self.filename = path.basename(self.file.name)
+        self.author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+        self.comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+        self.repo = quit.git.Repository(self.dir.name, create=True)
+
+    def tearDown(self):
+        self.file = None
+        self.filename = None
+        self.dir.cleanup()
+        self.dir = None
+        self.reop = None
+
+    def addfile(self):
+        """Create a repository and add a file to the git index."""
+        # Write to file
+        self.file.write(b'First Line\n')
+        self.file.read()
+
+        # Add file to index
+        repo = Repository(self.dir.name)
+        index = repo.index
+        index.read()
+        index.add(self.filename)
+        index.write()
+        self.repo = quit.git.Repository(self.dir.name)
+
+    def createcommit(self):
+        """Prepare a git repository with one existing commit.
+
+        Create a directory, initialize a git Repository, add
+        and commit a file.
+
+        Returns:
+            A list containing the directory and file
+        """
+        self.addfile()
+        # Create commit
+        repo = Repository(self.dir.name)
+        index = repo.index
+        index.read()
+        tree = index.write_tree()
+        message = "First commit of temporary test repo"
+        repo.create_commit('HEAD',
+                           self.author, self.comitter, message,
+                           tree,
+                           [])
+        self.repo = quit.git.Repository(self.dir.name)
+
+    def testIndexSetRevision(self):
+        self.createcommit()
+        reviosions = self.repo.revisions()
+        index = quit.git.Index(self.repo)
+
+        index.set_revision(reviosions[0].id)
+
+        with self.assertRaises(Exception) as context:
+            index.set_revision('not.existing.revision')
+
+    def testIndexAddFile(self):
+        index = quit.git.Index(self.repo)
+        self.assertEqual(len(index.stash), 0)
+        index.add(self.filename, b'First Line\n')
+        self.assertEqual(len(index.stash), 1)
+
+    def testIndexCommit(self):
+        index = quit.git.Index(self.repo)
+
+        self.assertFalse(index.dirty)
+
+        commit = index.commit(
+            "First commit from quit test",
+            "QuitTest",
+            "test@quitstore.example.org"
+        )
+
+        self.assertTrue(index.dirty)
+
+        with self.assertRaises(Exception) as context:
+            index.commit(
+                "Second commit from quit test",
+                "QuitTest",
+                "test@quitstore.example.org"
+            )
+
 class GitRepositoryTests(unittest.TestCase):
 
     def setUp(self):
@@ -38,7 +128,7 @@ class GitRepositoryTests(unittest.TestCase):
         self.remotedir.cleanup()
         self.remotedir = None
 
-    def getrepowithaddedfile(self):
+    def addfile(self):
         """Create a repository and add a file to the git index."""
         # Write to file
         self.file.write(b'First Line\n')
@@ -51,7 +141,7 @@ class GitRepositoryTests(unittest.TestCase):
         index.add(self.filename)
         index.write()
 
-    def getrepowithcommit(self):
+    def createcommit(self):
         """Prepare a git repository with one existing commit.
 
         Create a directory, initialize a git Repository, add
@@ -60,7 +150,7 @@ class GitRepositoryTests(unittest.TestCase):
         Returns:
             A list containing the directory and file
         """
-        self.getrepowithaddedfile()
+        self.addfile()
         # Create commit
         repo = Repository(self.dir.name)
         index = repo.index
@@ -82,13 +172,13 @@ class GitRepositoryTests(unittest.TestCase):
         dir.cleanup()
 
     def testInitEmptyRepo(self):
-        self.getrepowithaddedfile()
+        self.addfile()
         repo = quit.git.Repository(self.dir.name)
         self.assertFalse(repo.is_bare)
         self.assertEqual(len(repo.revisions()), 0)
 
     def testInitRepoWithExistingCommit(self):
-        self.getrepowithcommit()
+        self.createcommit()
         repo = quit.git.Repository(self.dir.name)
         self.assertFalse(repo.is_bare)
         self.assertEqual(len(repo.revisions()), 1)
@@ -138,11 +228,11 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testRepositoryIsEmpty(self):
         """Test that adding data causes a new commit."""
-        self.getrepowithaddedfile()
+        self.addfile()
         repo = quit.git.Repository(self.dir.name)
         self.assertTrue(repo.is_empty)
 
-        self.getrepowithcommit()
+        self.createcommit()
         repo = quit.git.Repository(self.dir.name)
         self.assertFalse(repo.is_empty)
 
