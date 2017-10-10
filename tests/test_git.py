@@ -16,22 +16,6 @@ class GitRevisionTests(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def testCommit(self):
-        """Test that adding data causes a new commit."""
-        pass
-
-    def testCommitMessages(self):
-        """Test if setting a commit message works"""
-        pass
-
-    def testCommitDefaultMessages(self):
-        """Test that a commit gets a default message"""
-        pass
-
-    def testCommitNoOp(self):
-        """Test that adding an existing statement causes no new commit"""
-        pass
-
 class GitRepositoryTests(unittest.TestCase):
 
     def setUp(self):
