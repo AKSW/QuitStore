@@ -90,7 +90,6 @@ class Repository(object):
             logger.info('Git garbage collection could not be configured and was disabled')
             logger.debug(e)
 
-
     @property
     def is_empty(self):
         return self._repository.is_empty
