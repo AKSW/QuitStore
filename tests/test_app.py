@@ -82,6 +82,8 @@ class QuitAppTestCase(unittest.TestCase):
         index.add('example1.nq.graph')
         index.add('example2.nq')
         index.add('example2.nq.graph')
+        index.add('example3.nq')
+        index.add('config.ttl')
         index.write()
 
     def createcommit(self):
@@ -99,14 +101,10 @@ class QuitAppTestCase(unittest.TestCase):
         index.read()
         tree = index.write_tree()
         message = "First commit of temporary test repo"
-        self.repo.create_commit('HEAD',
-                           self.author, self.comitter, message,
-                           tree,
-                           [])
+        self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
     def testStartApp(self):
         """Test start of quit store."""
-
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
         objects = quitApp.initialize(args)
 
@@ -115,6 +113,32 @@ class QuitAppTestCase(unittest.TestCase):
 
         query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
         response = app.post('/sparql', data=dict(query=query))
+        self.assertEqual(response.status, '200 OK')
+
+    def testFeatureProvenance(self):
+        """Test if feature is active or not."""
+        query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+        self.createcommit()
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        objects = quitApp.initialize(args)
+
+        config = objects['config']
+        app = create_app(config).test_client()
+        response = app.post('/provenance', data=dict(query=query))
+        self.assertEqual(response.status, '404 NOT FOUND')
+
+        args = quitApp.parseArgs(
+            ['-c', self.localConfigFile, '-cm', 'localconfig', '-f', 'provenance']
+        )
+        objects = quitApp.initialize(args)
+
+        config = objects['config']
+        app = create_app(config).test_client()
+
+        response = app.post(
+            '/provenance',
+            data=dict(query=query)
+        )
         self.assertEqual(response.status, '200 OK')
 
     def testReloadStore(self):
