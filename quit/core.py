@@ -25,6 +25,8 @@ from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
 from quit.utils import graphdiff
 from quit.cache import Cache, FileReference
 
+import subprocess
+
 logger = logging.getLogger('quit.core')
 
 
@@ -97,6 +99,9 @@ class VirtualGraph(Queryable):
 
 
 class Quit(object):
+
+    gcProcess = None
+
     def __init__(self, config, repository, store):
         self.config = config
         self.repository = repository
@@ -447,6 +452,9 @@ class Quit(object):
 
         oid = index.commit(message, author.name, author.email, ref=ref)
 
+        if config.hasFeature(Feature.GarbageCollection):
+            self.garbagecollection()
+
         if oid:
             self._commits.set(oid.hex, blobs_new)
             commit = self.repository.revision(oid.hex)
@@ -454,3 +462,21 @@ class Quit(object):
                 self.repository._repository.checkout(
                     ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.syncSingle(commit, delta)
+
+    def garbagecollection(self):
+        """Start garbage collection.
+        Args:
+            commitid: A string cotaining a commitid.
+        """
+        try:
+            # Check if the garbage collection process is still running
+            if self.gcProcess is None or self.gcProcess.poll() is not None:
+                # Start garbage collection with "--auto" option,
+                # which imidietly terminates, if it is not necessary
+                self.gcProcess = subprocess.Popen(
+                    ["git", "gc", "--auto", "--quiet"], cwd=self.repository.path
+                )
+                logger.debug('Spawn garbage collection')
+        except Exception as e:
+            logger.debug('Git garbage collection failed to spawn')
+            logger.debug(e)

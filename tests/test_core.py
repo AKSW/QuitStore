@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+
+import os
+import stat
+import time
 import unittest
 from context import quit
 import quit.core
+import quit.git
 from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
@@ -101,35 +106,32 @@ class SeveralOldTest(unittest.TestCase):
         pass
 
     def testRepoGarbageCollectionTrigger(self):
-        pass  # disable for now
-        #self.getrepowithcommit()
 
-        #import os
-        #import stat
-        #import time
-        #with TemporaryDirectory() as execDir:
-        #    execFile = os.path.join(execDir, "git")
-        #    checkFile = os.path.join(execDir, "check")
+        with TemporaryDirectory() as execDir:
+            execFile = os.path.join(execDir, "git")
+            checkFile = os.path.join(execDir, "check")
 
-        #    with open(execFile, 'w') as execFilePointer:
-        #        execFilePointer.write("""#!/bin/sh
-        #        if [ "$1" = "gc" ] ; then
-        #            touch """ + checkFile + """
-        #        fi
-        #        """)
-        #    os.chmod(execFile, stat.S_IXUSR | stat.S_IRUSR)
+            with open(execFile, 'w') as execFilePointer:
+                execFilePointer.write("""#!/bin/sh
+                if [ "$1" = "gc" ] ; then
+                    touch """ + checkFile + """
+                fi
+                """)
+            os.chmod(execFile, stat.S_IXUSR | stat.S_IRUSR)
 
-        #    # configure PATH for Popen to contain dummy git gc, which should be triggered
-        #    os.environ['PATH'] = ':'.join([execDir, os.getenv('PATH')])
+            # configure PATH for Popen to contain dummy git gc, which should be triggered
+            os.environ['PATH'] = ':'.join([execDir, os.getenv('PATH')])
 
-        #    repo = GitRepo(self.dir.name)
-        #    repo.garbagecollection()
+            with TemporaryDirectory() as repoDir:
+                repository = quit.git.Repository(repoDir, create=True, garbageCollection=True)
+                instance = quit.core.Quit(None, repository, None)
+                instance.garbagecollection()
 
-        #    start = time.time()
-        #    # check if mocked git was executed
-        #    while not os.path.isfile(checkFile):
-        #        if (time.time() - start) > 1:
-        #            self.fail("Git garbage collection was not triggered")
+                start = time.time()
+                # check if mocked git was executed
+                while not os.path.isfile(checkFile):
+                    if (time.time() - start) > 1:
+                        self.fail("Git garbage collection was not triggered")
 
     def testSuccessfullCommitWithTime(self):
         """Test that two commits at different times actually have divverent timestamps."""
