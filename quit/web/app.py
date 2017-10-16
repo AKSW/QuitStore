@@ -13,7 +13,7 @@ from flask.ext.cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
-from quit.conf import QuitConfiguration
+from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
 from quit.git import Repository
 
@@ -95,7 +95,10 @@ def create_app(config, enable_profiler=False, profiler_quiet=False):
 def register_app(app, config):
     """Different ways of configurations."""
 
-    repository = Repository(config.getRepoPath(), create=True)
+    garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
+    logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
+
+    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection)
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))

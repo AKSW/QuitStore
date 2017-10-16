@@ -5,7 +5,6 @@ import logging
 from os import makedirs, environ
 from os.path import exists, isfile, join, expanduser
 from quit.exceptions import QuitGitRepoError
-from subprocess import Popen
 
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD

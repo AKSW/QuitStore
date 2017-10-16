@@ -11,7 +11,6 @@ from quit.exceptions import InvalidConfigurationError
 from quit.utils import handle_exit
 from quit.web.app import create_app
 import logging
-import subprocess
 
 werkzeugLogger = logging.getLogger('werkzeug')
 werkzeugLogger.setLevel(logging.INFO)
@@ -66,6 +65,13 @@ def initialize(args):
         logger.info('Versioning: enabled')
         v = True
 
+    if args.garbagecollection:
+        logger.info(
+            "Please use the option \"--feature garbagecollection\" instead of "
+            + "\"-gc\" or \"--garbagecollection\"."
+        )
+        args.features |= Feature.GarbageCollection
+
     try:
         config = QuitConfiguration(
             versioning=v,
@@ -78,35 +84,6 @@ def initialize(args):
     except InvalidConfigurationError as e:
         logger.error(e)
         sys.exit('Exiting quit')
-
-    if args.garbagecollection:
-        try:
-            with subprocess.Popen(
-                ["git", "config", "gc.auto"],
-                stdout=subprocess.PIPE,
-                cwd=config.getRepoPath()
-            ) as gcAutoThresholdProcess:
-                stdout, stderr = gcAutoThresholdProcess.communicate()
-                gcAutoThreshold = stdout.decode("UTF-8").strip()
-
-            if not gcAutoThreshold:
-                gcAutoThreshold = 256
-                subprocess.Popen(
-                    ["git", "config", "gc.auto", str(gcAutoThreshold)],
-                    cwd=config.getRepoPath()
-                )
-                logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
-
-            logger.info(
-                "Garbage Collection is enabled with gc.auto threshold {}".format(
-                    gcAutoThreshold
-                )
-            )
-        except Exception as e:
-            # Disable garbage collection for the rest of the run because it
-            # is likely that git is not available
-            logger.info('Git garbage collection could not be configured and was disabled')
-            logger.debug(e)
 
     # since repo is handled, we can add graphs to config
     config.initgraphconfig()
@@ -130,7 +107,11 @@ def savedexit():
 
 
 class FeaturesAction(argparse.Action):
-    CHOICES = {'provenance': Feature.Provenance, 'persistence': Feature.Persistence}
+    CHOICES = {
+        'provenance': Feature.Provenance,
+        'persistence': Feature.Persistence,
+        'garbagecollection': Feature.GarbageCollection
+    }
 
     def __call__(self, parser, namespace, values, option_string=None):
         if values:

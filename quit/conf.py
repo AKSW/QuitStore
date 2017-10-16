@@ -18,7 +18,8 @@ class Feature:
     Unknown = 0
     Provenance = 1 << 0
     Persistence = 1 << 1
-    All = Provenance | Persistence
+    GarbageCollection = 1 << 2
+    All = Provenance | Persistence | GarbageCollection
 
 
 class QuitConfiguration:

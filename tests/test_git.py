@@ -7,6 +7,7 @@ from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+import subprocess
 
 class GitRevisionTests(unittest.TestCase):
 
@@ -239,6 +240,35 @@ class GitRepositoryTests(unittest.TestCase):
     def testRepositoryIsBare(self):
         """Test if is_bare is currently done in init/clone tests."""
         pass
+
+    def testNoGCConfiguration(self):
+        """Test Garbage Collection configuration."""
+        quit.git.Repository(self.dir.name, garbageCollection=False)
+
+        with subprocess.Popen(
+            ["git", "config", "gc.auto"],
+            stdout=subprocess.PIPE,
+            cwd=self.dir.name
+        ) as getGCAuto:
+            stdout, stderr = getGCAuto.communicate()
+            response = stdout.decode("UTF-8").strip()
+
+        self.assertEqual(response, '')
+
+    def testGCConfiguration(self):
+        """Test Garbage Collection configuration."""
+        quit.git.Repository(self.dir.name, garbageCollection=True)
+
+        with subprocess.Popen(
+            ["git", "config", "gc.auto"],
+            stdout=subprocess.PIPE,
+            cwd=self.dir.name
+        ) as getGCAuto:
+            stdout, stderr = getGCAuto.communicate()
+            response = stdout.decode("UTF-8").strip()
+
+        self.assertNotEqual(response, '')
+        self.assertEqual(response, '256')
 
 
 def main():

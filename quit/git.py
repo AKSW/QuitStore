@@ -11,6 +11,8 @@ from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
 from quit.cache import Cache
 import pygit2
 
+import subprocess
+
 PROPERTY_REGEX = r"^("
 PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
 PROPERTY_REGEX += r"\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\".*\"|'[^']*')))"
@@ -55,8 +57,39 @@ class Repository(object):
             else:
                 self._repository = pygit2.init_repository(path)
 
+        garbagecollection = params.get('garbageCollection', False)
+
+        if garbagecollection:
+            self.init_garbageCollection(path)
+
         self.path = path
         self.params = params
+
+    def init_garbageCollection(self, path):
+        """Set the threshold for automatic garbage collection for the git repository"""
+        try:
+            with subprocess.Popen(
+                ["git", "config", "gc.auto"],
+                stdout=subprocess.PIPE,
+                cwd=path
+            ) as gcAutoThresholdProcess:
+                stdout, stderr = gcAutoThresholdProcess.communicate()
+                gcAutoThreshold = stdout.decode("UTF-8").strip()
+
+            if not gcAutoThreshold:
+                gcAutoThreshold = 256
+                subprocess.Popen(["git", "config", "gc.auto", str(gcAutoThreshold)], cwd=path)
+                logger.info("Set default gc.auto threshold {}".format(gcAutoThreshold))
+
+            logger.info(
+                "Garbage Collection is enabled with gc.auto threshold {}".format(gcAutoThreshold)
+            )
+        except Exception as e:
+            # Disable garbage collection for the rest of the run because it
+            # is likely that git is not available
+            logger.info('Git garbage collection could not be configured and was disabled')
+            logger.debug(e)
+
 
     @property
     def is_empty(self):
