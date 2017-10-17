@@ -452,7 +452,7 @@ class Quit(object):
 
         oid = index.commit(message, author.name, author.email, ref=ref)
 
-        if config.hasFeature(Feature.GarbageCollection):
+        if self.config.hasFeature(Feature.GarbageCollection):
             self.garbagecollection()
 
         if oid:
