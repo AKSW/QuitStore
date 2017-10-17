@@ -119,11 +119,9 @@ class QuitAppTestCase(unittest.TestCase):
 
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
         objects = quitApp.initialize(args)
-        # time.sleep(2)
 
         config = objects['config']
         app = create_app(config).test_client()
-        # time.sleep(2)
 
         # get state before update query
         query_resp_before = app.post(
