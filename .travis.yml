@@ -46,6 +46,7 @@ script:
     - coverage run -a --source=quit tests/test_helpers.py
     - coverage run -a --source=quit tests/test_namespace.py
     - coverage run -a --source=quit tests/test_provenance.py
+    - coverage run -a --source=quit tests/test_failing_no_versioning.py
 
 after_success:
     coveralls
