@@ -8,8 +8,9 @@ from os.path import join, isdir
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Repository, Signature, init_repository
 import quit.quit as quitApp
 from quit.web.app import create_app
-import unittest
 import tempfile
+import time
+import unittest
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -60,9 +61,12 @@ class QuitAppTestCase(unittest.TestCase):
         # remove(configfile)
         repoline = '  <pathOfGitRepo>  "' + path + '" .'
 
-        with open(configfile, 'w+') as f:
-            # for line in content:
-                line = f.readline()
+
+        with open(configfile, 'r') as f:
+            content = f.readlines()
+
+        with open(configfile, 'w') as f:
+            for line in content:
                 if line.startswith('  <pathOfGitRepo'):
                     f.write(repoline)
                 else:
@@ -102,6 +106,49 @@ class QuitAppTestCase(unittest.TestCase):
         tree = index.write_tree()
         message = "First commit of temporary test repo"
         self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+    def testVersioning(self):
+        """Test quit with versioning."""
+        query = "SELECT * WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+        update = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
+        self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)
+
+        self.createcommit()
+        with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
+            file_content_before = f.read()
+
+        args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
+        objects = quitApp.initialize(args)
+        # time.sleep(2)
+
+        config = objects['config']
+        app = create_app(config).test_client()
+        # time.sleep(2)
+
+        # get state before update query
+        query_resp_before = app.post(
+            '/sparql',
+            data=dict(query=query),
+            headers={'Accept': 'application/json'}
+        ).data
+
+        # update query
+        update_resp = app.post('/sparql', data=dict(query=update))
+
+        # get state after update query
+        with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
+            file_content_after = f.read()
+
+        query_resp_after = app.post(
+            '/sparql',
+            data=dict(query=query),
+            headers={'Accept': 'application/json'}
+        ).data
+
+        # compare states
+        self.assertNotEqual(file_content_before, file_content_after)
+        self.assertNotEqual(query_resp_before, query_resp_after)
+
 
     def testStartApp(self):
         """Test start of quit store."""
