@@ -9,7 +9,6 @@ from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Repository, Signature
 import quit.quit as quitApp
 from quit.web.app import create_app
 import tempfile
-import time
 import unittest
 
 class QuitAppTestCase(unittest.TestCase):
@@ -28,7 +27,6 @@ class QuitAppTestCase(unittest.TestCase):
         copy_tree(self.testData, self.remote)
         self.localConfigFile = join(self.local, 'config.ttl')
         self.remoteConfigFile = join(self.local, 'config.ttl')
-
 
     def tearDown(self):
         def __deleteFiles(directory):
@@ -60,7 +58,6 @@ class QuitAppTestCase(unittest.TestCase):
         #
         # remove(configfile)
         repoline = '  <pathOfGitRepo>  "' + path + '" .'
-
 
         with open(configfile, 'r') as f:
             content = f.readlines()
@@ -107,14 +104,41 @@ class QuitAppTestCase(unittest.TestCase):
         self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
     def testVersioning(self):
-        """Test versioning."""
-        query = "SELECT * WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
-        update = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
+        """
+        Test quit with versioning.
+
+        Compare the state (SPARQL query result, file content, commit messages) before and after an
+        update query.
+        """
+        SELECT = "SELECT ?s ?p ?o WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+        UPDATE = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
+        COMMIT_MSG_INITIAL = 'First commit of temporary test repo'
+        COMMIT_MSG_UPDATE= 'query: INSERT DATA {graph <http://example.org/1/>'
+        COMMIT_MSG_UPDATE += ' {<newSub> <newPred> <newObj> .}}\n\nNew Commit from QuitStore'
+        QRB = 's,p,o\r\n'
+        QRB += 'http://example.org/Subject,http://example.org/Predicate,'
+        QRB += 'http://example.org/Object\r\n'
+        FCB = '<http://example.org/Subject> <http://example.org/Predicate>'
+        FCB += ' <http://example.org/Object> <http://example.org/1/> .\n'
+        QRA = QRB + 'newSub,newPred,newObj\r\n'
+        FCA = FCB + '<newSub> <newPred> <newObj> <http://example.org/1/> .'
+
         self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)
 
         self.createcommit()
+        repo = Repository(self.tmpdir.name)
+
+        commits_before = []
+
+        # get commits before update query
+        for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+            commits_before.append(commit.message)
+
+        self.assertEqual(commits_before, [COMMIT_MSG_INITIAL])
+
         with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
             file_content_before = f.read()
+        self.assertEqual(FCB, file_content_before)
 
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
         objects = quitApp.initialize(args)
@@ -125,27 +149,87 @@ class QuitAppTestCase(unittest.TestCase):
         # get state before update query
         query_resp_before = app.post(
             '/sparql',
-            data=dict(query=query),
-            headers={'Accept': 'application/json'}
+            data=dict(query=SELECT),
+            headers={'Accept': 'text/csv'}
         ).data
+        self.assertEqual(query_resp_before.decode('utf-8'), QRB)
 
         # update query
-        update_resp = app.post('/sparql', data=dict(query=update))
+        update_resp = app.post('/sparql', data=dict(query=UPDATE))
 
         # get state after update query
         with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
             file_content_after = f.read()
+        self.assertEqual(FCA, file_content_after)
 
         query_resp_after = app.post(
             '/sparql',
-            data=dict(query=query),
-            headers={'Accept': 'application/json'}
+            data=dict(query=SELECT),
+            headers={'Accept': 'text/csv'}
         ).data
+        self.assertEqual(query_resp_after.decode('utf-8'), QRA)
 
-        # compare states
-        self.assertNotEqual(file_content_before, file_content_after)
-        self.assertNotEqual(query_resp_before, query_resp_after)
+        commits_after = []
+        for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+            commits_after.append(commit.message)
+        self.assertEqual(commits_after, [COMMIT_MSG_UPDATE, COMMIT_MSG_INITIAL])
 
+    def testContentNegotiation(self):
+        """Test SPARQL with different Accept Headers."""
+        query = 'SELECT * WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
+        construct = 'CONSTRUCT {?s ?p ?o} WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
+        self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)
+        self.createcommit()
+
+        args = quitApp.parseArgs(
+            ['-c', self.localConfigFile, '-cm', 'localconfig', '-f', 'provenance']
+        )
+        objects = quitApp.initialize(args)
+
+        config = objects['config']
+        app = create_app(config).test_client()
+
+        test_values = {
+            'sparql': [query, {
+                    '*/*': 'application/sparql-results+xml',
+                    'application/sparql-results+xml': 'application/sparql-results+xml',
+                    'application/xml': 'application/xml',
+                    'application/rdf+xml': 'application/rdf+xml',
+                    'application/sparql-results+json': 'application/sparql-results+json',
+                    'text/csv': 'text/csv',
+                    'text/html': 'text/html',
+                    'application/xhtml_xml': 'text/html'
+                }
+            ],
+            'construct': [construct, {
+                    '*/*': 'text/turtle',
+                    'text/turtle': 'text/turtle',
+                    'application/x-turtle': 'application/x-turtle',
+                    'application/rdf+xml': 'application/rdf+xml',
+                    'application/xml': 'application/xml',
+                    'application/n-triples': 'application/n-triples',
+                    'application/trig': 'application/trig'
+                }
+            ]
+        }
+
+        for ep_path in ['/sparql', '/provenance']:
+            for query_type, values in test_values.items():
+                query = values[0]
+
+                # test supported
+                for accept_type, content_type in values[1].items():
+                    response = app.post(
+                        ep_path,
+                        data=dict(query=query),
+                        headers={'Accept': accept_type}
+                    )
+                    self.assertEqual(response.status, '200 OK')
+                    self.assertEqual(response.headers['Content-Type'], content_type)
+
+                # test unsupported
+                resp = app.post(ep_path, data=dict(query=query), headers={'Accept': 'foo/bar'})
+                self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
     def testStartApp(self):
         """Test start of quit store."""
@@ -265,8 +349,7 @@ class QuitAppTestCase(unittest.TestCase):
         # get state before update query
         query_resp_before = app.post(
             '/sparql',
-            data=dict(query=query),
-            headers={'Accept': 'application/json'}
+            data=dict(query=query)
         ).data
 
         # update query
@@ -278,12 +361,12 @@ class QuitAppTestCase(unittest.TestCase):
 
         query_resp_after = app.post(
             '/sparql',
-            data=dict(query=query),
-            headers={'Accept': 'application/json'}
+            data=dict(query=query)
         ).data
 
         self.assertNotEqual(file_example1_before, file_example1_after)
         self.assertNotEqual(query_resp_before, query_resp_after)
+
 
 if __name__ == '__main__':
     unittest.main()
