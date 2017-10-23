@@ -83,7 +83,6 @@ class QuitAppTestCase(unittest.TestCase):
         index = self.repo.index
         index.read()
         index.add('example1.nq')
-        index.add('example1.nq.graph')
         index.add('example2.nq')
         index.add('example2.nq.graph')
         index.add('example3.nq')
@@ -246,6 +245,45 @@ class QuitAppTestCase(unittest.TestCase):
         response = app.get('/commits')
         self.assertEqual(response.status, '200 OK')
 
+    def testInitWithGraphfiles(self):
+        """Test quit with versioning."""
+        query = "SELECT * WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+        update = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
+        self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)
+
+        self.createcommit()
+        with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
+            file_example1_before = f.read()
+
+        args = quitApp.parseArgs(['-t', self.tmpdir.name, '-cm', 'graphfiles'])
+        objects = quitApp.initialize(args)
+        config = objects['config']
+        app = create_app(config).test_client()
+
+        self.assertFalse(os.path.isfile(join(self.tmpdir.name, 'unassigned.nq')))
+
+        # get state before update query
+        query_resp_before = app.post(
+            '/sparql',
+            data=dict(query=query),
+            headers={'Accept': 'application/json'}
+        ).data
+
+        # update query
+        update_resp = app.post('/sparql', data=dict(query=update))
+
+        # get state after update query
+        with open(join(self.tmpdir.name, 'example1.nq'), 'r') as f:
+            file_example1_after = f.read()
+
+        query_resp_after = app.post(
+            '/sparql',
+            data=dict(query=query),
+            headers={'Accept': 'application/json'}
+        ).data
+
+        self.assertNotEqual(file_example1_before, file_example1_after)
+        self.assertNotEqual(query_resp_before, query_resp_after)
 
 if __name__ == '__main__':
     unittest.main()
