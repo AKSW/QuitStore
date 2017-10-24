@@ -214,19 +214,10 @@ class Repository(object):
 class Revision(object):
 
     def __init__(self, repository, commit):
-        author = pygit2.Signature(
-            commit.author.name, commit.author.email,
-            commit.author.time, commit.author.offset
-        )
-        committer = pygit2.Signature(
-            commit.committer.name, commit.committer.email,
-            commit.committer.time, commit.committer.offset
-        )
-
         self.id = commit.hex
         self.short_id = self.id[:10]
-        self.author = author
-        self.committer = committer
+        self.author = commit.author
+        self.committer = commit.committer
 
         self._repository = repository
         self._commit = commit
