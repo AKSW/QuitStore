@@ -56,20 +56,6 @@ class TestConfiguration(unittest.TestCase):
 
         return
 
-    def testConfigParams(self):
-        init_repository(self.local, False)
-        # no params given
-        conf = QuitConfiguration(configfile=self.localConfigFile)
-        self.assertTrue(conf.isversioningon)
-
-        # all params set
-        conf = QuitConfiguration(versioning=True, configfile=self.localConfigFile)
-        self.assertTrue(conf.isversioningon)
-
-        # all params unset
-        conf = QuitConfiguration(versioning=False, configfile=self.localConfigFile)
-        self.assertTrue(conf.isversioningon)
-
     def testInitExistingFolder(self):
         conf = QuitConfiguration(configfile=self.localConfigFile)
         self.assertEqual(conf.getRepoPath(), self.local)

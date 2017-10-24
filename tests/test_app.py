@@ -107,7 +107,7 @@ class QuitAppTestCase(unittest.TestCase):
         self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
     def testVersioning(self):
-        """Test quit with versioning."""
+        """Test versioning."""
         query = "SELECT * WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
         update = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
         self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)
@@ -246,7 +246,7 @@ class QuitAppTestCase(unittest.TestCase):
         self.assertEqual(response.status, '200 OK')
 
     def testInitWithGraphfiles(self):
-        """Test quit with versioning."""
+        """Test quit with mode graphfiles."""
         query = "SELECT * WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
         update = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
         self.setPathOfGitrepo(self.localConfigFile, self.tmpdir.name)

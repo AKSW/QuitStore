@@ -46,7 +46,7 @@ class Queryable:
         """
         pass
 
-    def update(self, querystring, versioning=True):
+    def update(self, querystring):
         """Execute a SPARQL update query and update the store.
 
         This method executes a SPARQL update query and updates and commits all affected files.
@@ -94,7 +94,7 @@ class VirtualGraph(Queryable):
     def query(self, querystring):
         return self.store.query(querystring)
 
-    def update(self, querystring, versioning=True):
+    def update(self, querystring):
         return self.store.update(querystring)
 
 

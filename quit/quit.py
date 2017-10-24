@@ -58,13 +58,6 @@ def initialize(args):
             logger.error("Can not create logfile: {}".format(args.logfile))
             sys.exit('Exiting quit')
 
-    if args.disableversioning:
-        logger.info('Versioning: disabled')
-        v = False
-    else:
-        logger.info('Versioning: enabled')
-        v = True
-
     if args.garbagecollection:
         logger.info(
             "Please use the option \"--feature garbagecollection\" instead of "
@@ -74,7 +67,6 @@ def initialize(args):
 
     try:
         config = QuitConfiguration(
-            versioning=v,
             configfile=args.configfile,
             targetdir=args.targetdir,
             repository=args.repourl,
@@ -141,7 +133,6 @@ def parseArgs(args):
     targethelp = 'The directory of the local store repository.'
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-nv', '--disableversioning', action='store_true')
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-vv', '--verboseverbose', action='store_true')

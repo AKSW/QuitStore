@@ -54,7 +54,6 @@ class FileReference:
         """Initialize a new FileReference instance.
         Args:
             filelocation: A string of the filepath.
-            versioning: Boolean if versioning is enabled or not. (Defaults true)
             filecontentinmem: Boolean to decide if local filesystem should be used to
                 or if file content should be kept in memory too . (Defaults false)
         Raises:
