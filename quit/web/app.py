@@ -16,6 +16,7 @@ from jinja2 import Environment, contextfilter, Markup
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
 from quit.git import Repository
+import quit.utils as utils
 
 from quit.namespace import QUIT
 from quit.web.service import register
@@ -225,7 +226,8 @@ def render_template(template_name_or_list, **kwargs):
 
     context = {
         'available_branches': available_branches,
-        'available_tags': available_tags
+        'available_tags': available_tags,
+        'git_timestamp': utils.git_timestamp
     }
     context.update(kwargs)
 

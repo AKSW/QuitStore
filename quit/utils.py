@@ -4,7 +4,7 @@ import os
 import contextlib
 import signal
 import sys
-from datetime import tzinfo, timedelta
+from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InMemoryAggregatedGraph
 
 ZERO = timedelta(0)
@@ -26,6 +26,17 @@ class TZ(tzinfo):
 
     def dst(self, dt):
         return ZERO
+
+
+def git_timestamp(ts, offset):
+    import quit.utils as tzinfo
+    if offset == 0:
+        tz = tzinfo.TZ(0, "UTC")
+    else:
+        hours, rem = divmod(abs(offset), 60)
+        tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
+        tz = tzinfo.TZ(offset, tzname)
+    return datetime.fromtimestamp(ts, tz)
 
 
 def sparqlresponse(result, format):

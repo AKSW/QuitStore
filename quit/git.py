@@ -27,17 +27,6 @@ role_committer = QUIT['committer']
 CACHE = Cache()
 
 
-def _git_timestamp(ts, offset):
-    import quit.utils as tzinfo
-    if offset == 0:
-        tz = tzinfo.TZ(0, "UTC")
-    else:
-        hours, rem = divmod(abs(offset), 60)
-        tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
-        tz = tzinfo.TZ(offset, tzname)
-    return datetime.fromtimestamp(ts, tz)
-
-
 class Repository(object):
     def __init__(self, path, **params):
         origin = params.get('origin', None)
@@ -225,23 +214,19 @@ class Repository(object):
 class Revision(object):
 
     def __init__(self, repository, commit):
-        author = Signature(
-            commit.author.name, commit.author.email, _git_timestamp(
-                commit.author.time, commit.author.offset
-            ), commit.author.offset
+        author = pygit2.Signature(
+            commit.author.name, commit.author.email,
+            commit.author.time, commit.author.offset
         )
-        committer = Signature(
-            commit.committer.name, commit.committer.email, _git_timestamp(
-                commit.committer.time, commit.committer.offset
-            ), commit.committer.offset
+        committer = pygit2.Signature(
+            commit.committer.name, commit.committer.email,
+            commit.committer.time, commit.committer.offset
         )
 
         self.id = commit.hex
         self.short_id = self.id[:10]
         self.author = author
-        self.author_date = author.datetime
         self.committer = committer
-        self.committer_date = committer.datetime
 
         self._repository = repository
         self._commit = commit
@@ -289,21 +274,6 @@ class Revision(object):
 
     def node(self, path=None):
         return Node(self._repository, self._commit, path)
-
-
-class Signature(object):
-
-    def __init__(self, name, email, datetime, offset):
-        self.name = name
-        self.email = email
-        self.offset = offset
-        self.datetime = datetime
-
-    def __str__(self):
-        return '{name} <{email}> {date}{offset}'.format(**self.__dict__)
-
-    def __repr__(self):
-        return '<{0}> {1}'.format(self.__class__.__name__, self.name).encode('UTF-8')
 
 
 class Node(object):
