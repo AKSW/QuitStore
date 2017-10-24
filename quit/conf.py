@@ -32,7 +32,6 @@ class QuitConfiguration:
         features=None,
         repository=None,
         targetdir=None,
-        versioning=True
     ):
         """The init method.
 
@@ -47,7 +46,6 @@ class QuitConfiguration:
         self.configchanged = False
         self.sysconf = Graph()
         self.graphconf = None
-        self.versioning = versioning
         self.origin = None
         self.graphs = {}
         self.files = {}
@@ -469,9 +467,6 @@ class QuitConfiguration:
                     graphfiles[filename] = format
 
         return graphfiles
-
-    def isversioningon(self):
-        return self.versioning
 
     def hasFeature(self, flags):
         return flags == (self.features & flags)
