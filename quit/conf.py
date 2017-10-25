@@ -332,10 +332,10 @@ class QuitConfiguration:
             return str(o)
 
     def getDefaultBranch(self):
-        """Get the path of Git repository from configuration.
+        """Get the default branch on the Git repository from configuration.
 
         Returns:
-            A string containig the path of the git repo.
+            A string containing the branch name.
         """
         nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
@@ -347,10 +347,10 @@ class QuitConfiguration:
         return "master"
 
     def getGlobalFile(self):
-        """Get the path of Git repository from configuration.
+        """Get the graph file which should be used for unassigned graphs.
 
         Returns:
-            A string containig the path of the git repo.
+            The filename of the graph file where unassigned graphs should be stored.
         """
         nsQuit = 'http://quit.aksw.org/'
         storeuri = URIRef('http://my.quit.conf/store')
