@@ -3,13 +3,9 @@ import pygit2
 import re
 import logging
 
-from datetime import datetime
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
-from rdflib import Literal, ConjunctiveGraph
-from quit.namespace import FOAF, RDFS, PROV, QUIT, is_a
-from quit.cache import Cache
-import pygit2
+from quit.namespace import QUIT
 
 import subprocess
 
@@ -23,8 +19,6 @@ logger = logging.getLogger('quit.git')
 # roles
 role_author = QUIT['author']
 role_committer = QUIT['committer']
-
-CACHE = Cache()
 
 
 class Repository(object):
