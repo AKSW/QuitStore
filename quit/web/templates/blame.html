@@ -31,7 +31,7 @@
             <td>{{ row.blame['p']|term_to_string }}</td>
             <td>{{ row.blame['o']|term_to_string }}</td>
             <td>{{ row.blame['context']|term_to_string }}</td>
-            <td>{{ row.commit.author_date }}</td>
+            <td>{{ git_timestamp(row.commit.author.time, row.commit.author.offset) }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -45,8 +45,3 @@ No results found
 {% block scripts %}
 {{super()}}
 {% endblock %}
-
-
-
-
-

@@ -1,6 +1,5 @@
 import pygit2
 
-from datetime import datetime
 import logging
 from os import makedirs, environ
 from os.path import exists, isfile, join, expanduser
@@ -22,7 +21,7 @@ from rdflib.plugins.serializers.nquads import _nq_row as _nq
 from quit.conf import Feature, QuitConfiguration
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
-from quit.utils import graphdiff
+from quit.utils import graphdiff, git_timestamp
 from quit.cache import Cache, FileReference
 
 import subprocess
@@ -228,6 +227,7 @@ class Quit(object):
         return VirtualGraph(instance)
 
     def changeset(self, commit, delta=None):
+
         if (
             not self.config.hasFeature(Feature.Persistence)
         ) and (
@@ -263,9 +263,11 @@ class Quit(object):
 
             g.add((commit_uri, QUIT['hex'], Literal(commit.id)))
             g.add((commit_uri, PROV['startedAtTime'], Literal(
-                commit.author_date, datatype=XSD.dateTime)))
+                git_timestamp(commit.author.time, commit.author.offset),
+                datatype=XSD.dateTime)))
             g.add((commit_uri, PROV['endedAtTime'], Literal(
-                commit.committer_date, datatype=XSD.dateTime)))
+                git_timestamp(commit.committer.time, commit.committer.offset),
+                datatype=XSD.dateTime)))
             g.add((commit_uri, RDFS['label'],
                    Literal(commit.message.strip())))
 
