@@ -173,8 +173,9 @@ class Quit(object):
         if commit_id:
             commit = self.repository.revision(commit_id)
 
-            blobs = self._commits.get(commit.id)
-            if not blobs:
+            try:
+                blobs = self._commits.get(commit.id)
+            except KeyError:
                 blobs = set()
                 map = self.config.getgraphurifilemap()
 
@@ -189,8 +190,9 @@ class Quit(object):
                         oid = entity.oid
                         blobs.add(oid)
 
-                        f, contexts = self._blobs.get(oid) or (None, [])
-                        if not contexts:
+                        try:
+                            f, contexts = self._blobs.get(oid) or (None, [])
+                        except KeyError:
                             tmp = ConjunctiveGraph()
                             tmp.parse(data=entity.content, format='nquads')
 
@@ -207,19 +209,22 @@ class Quit(object):
 
             # now all blobs in commit are known
             for oid in blobs:
-                f, contexts = self._blobs.get(oid)
-                for context in contexts:
-                    internal_identifier = context.identifier + '-' + str(oid)
+                try:
+                    f, contexts = self._blobs.get(oid)
+                    for context in contexts:
+                        internal_identifier = context.identifier + '-' + str(oid)
 
-                    if force or not self.config.hasFeature(Feature.Persistence):
-                        g = context
-                    else:
-                        g = RewriteGraph(
-                            self.store.store.store,
-                            internal_identifier,
-                            context.identifier
-                        )
-                    default_graphs.append(g)
+                        if force or not self.config.hasFeature(Feature.Persistence):
+                            g = context
+                        else:
+                            g = RewriteGraph(
+                                self.store.store.store,
+                                internal_identifier,
+                                context.identifier
+                            )
+                        default_graphs.append(g)
+                except KeyError:
+                    pass
 
         instance = InMemoryAggregatedGraph(
             graphs=default_graphs, identifier='default')
@@ -341,8 +346,9 @@ class Quit(object):
                 graphUris = self.config.getgraphuriforfile(entity.name)
                 fixed = set((Graph(identifier=i) for i in graphUris))
 
-                f, contexts = self._blobs.get(entity.oid) or (None, None)
-                if not contexts:
+                try:
+                    f, contexts = self._blobs.get(entity.oid) or (None, None)
+                except KeyError:
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')
 
@@ -419,21 +425,27 @@ class Quit(object):
         index = self.repository.index(commit.id)
 
         blobs_new = set()
-        blobs = self._commits.get(commit.id) or []
+        try:
+            blobs = self._commits.get(commit.id)
+        except KeyError:
+            blobs = []
         for oid in blobs:
-            f, contexts = self._blobs.get(oid) or (None, [])
-            for context in contexts:
-                changeset = delta.get(context.identifier, [])
-                if changeset:
-                    _apply(f, changeset)
-                    del delta[context.identifier]
+            try:
+                f, contexts = self._blobs.get(oid) or (None, [])
+                for context in contexts:
+                    changeset = delta.get(context.identifier, [])
+                    if changeset:
+                        _apply(f, changeset)
+                        del delta[context.identifier]
 
-            index.add(f.path, f.content)
+                index.add(f.path, f.content)
 
-            self._blobs.remove(oid)
-            oid = index.stash[f.path][0]
-            self._blobs.set(oid, (f, contexts))
-            blobs_new.add(oid)
+                self._blobs.remove(oid)
+                oid = index.stash[f.path][0]
+                self._blobs.set(oid, (f, contexts))
+                blobs_new.add(oid)
+            except KeyError:
+                pass
 
         if delta:
             f_name = self.config.getGlobalFile() or 'unassigned.nq'
