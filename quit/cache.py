@@ -9,12 +9,14 @@ class Cache:
         self.capacity = capacity
 
     def get(self, key):
-        try:
-            value = self.stack.pop(key)
-            self.stack[key] = value
-            return value
-        except KeyError:
-            return None
+        """Get a value from the cache.
+
+        Raises:
+            KeyError if no value was found for the given key
+        """
+        value = self.stack.pop(key)
+        self.stack[key] = value
+        return value
 
     def set(self, key, value):
         try:
