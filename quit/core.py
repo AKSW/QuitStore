@@ -436,10 +436,10 @@ class Quit(object):
 
                 index.add(f.path, f.content)
 
-                self._blobs.remove(oid)
-                oid = index.stash[f.path][0]
-                self._blobs.set(oid, (f, contexts))
-                blobs_new.add(oid)
+                self._blobs.remove(blob)
+                blob = name, index.stash[f.path][0]
+                self._blobs.set(blob, (f, contexts))
+                blobs_new.add(blob)
             except KeyError:
                 pass
 
