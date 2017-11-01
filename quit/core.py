@@ -202,7 +202,7 @@ class Quit(object):
             # now all blobs in commit are known
             for blob in blobs:
                 try:
-                    name, oid = blob
+                    (name, oid) = blob
                     f, contexts = self._blobs.get(blob)
                     for context in contexts:
                         internal_identifier = context.identifier + '-' + str(oid)
@@ -425,7 +425,7 @@ class Quit(object):
         except KeyError:
             blobs = []
         for blob in blobs:
-            name, oid = blob
+            (name, oid) = blob
             try:
                 f, contexts = self._blobs.get(blob)
                 for context in contexts:
