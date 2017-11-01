@@ -179,11 +179,11 @@ class Quit(object):
                         graphUris = self.config.getgraphuriforfile(entity.name)
                         fixed = set((Graph(identifier=i) for i in graphUris))
 
-                        oid = entity.oid
-                        blobs.add(oid)
+                        blob = (entity.name, entity.oid)
+                        blobs.add(blob)
 
                         try:
-                            f, contexts = self._blobs.get(oid) or (None, [])
+                            f, contexts = self._blobs.get(blob)
                         except KeyError:
                             tmp = ConjunctiveGraph()
                             tmp.parse(data=entity.content, format='nquads')
@@ -195,14 +195,15 @@ class Quit(object):
                                             if context.identifier in map)) | fixed
 
                             self._blobs.set(
-                                oid, (FileReference(entity.name, entity.content), contexts)
+                                blob, (FileReference(entity.name, entity.content), contexts)
                             )
                 self._commits.set(commit.id, blobs)
 
             # now all blobs in commit are known
-            for oid in blobs:
+            for blob in blobs:
                 try:
-                    f, contexts = self._blobs.get(oid)
+                    name, oid = blob
+                    f, contexts = self._blobs.get(blob)
                     for context in contexts:
                         internal_identifier = context.identifier + '-' + str(oid)
 
@@ -338,8 +339,10 @@ class Quit(object):
                 graphUris = self.config.getgraphuriforfile(entity.name)
                 fixed = set((Graph(identifier=i) for i in graphUris))
 
+                blob = (entity.name, entity.oid)
+
                 try:
-                    f, contexts = self._blobs.get(entity.oid) or (None, None)
+                    f, contexts = self._blobs.get(blob)
                 except KeyError:
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')
@@ -351,7 +354,7 @@ class Quit(object):
                     ) | fixed
 
                     self._blobs.set(
-                        entity.oid, (FileReference(entity.name, entity.content), contexts)
+                        blob, (FileReference(entity.name, entity.content), contexts)
                     )
 
                 for index, context in enumerate(contexts):
@@ -400,11 +403,11 @@ class Quit(object):
                 out.append(message)
             return "\n".join(out)
 
-        def _apply(f, changeset):
+        def _apply(f, changeset, identifier):
             for (op, triples) in changeset:
                 for triple in triples:
                     # the internal _nq serializer appends '\n'
-                    line = _nq(triple, context.identifier).rstrip()
+                    line = _nq(triple, identifier).rstrip()
                     if op == 'additions':
                         f.add(line)
                     elif op == 'removals':
@@ -421,13 +424,14 @@ class Quit(object):
             blobs = self._commits.get(commit.id)
         except KeyError:
             blobs = []
-        for oid in blobs:
+        for blob in blobs:
+            name, oid = blob
             try:
-                f, contexts = self._blobs.get(oid) or (None, [])
+                f, contexts = self._blobs.get(blob)
                 for context in contexts:
                     changeset = delta.get(context.identifier, [])
                     if changeset:
-                        _apply(f, changeset)
+                        _apply(f, changeset, context.identifier)
                         del delta[context.identifier]
 
                 index.add(f.path, f.content)
@@ -445,13 +449,13 @@ class Quit(object):
             unassigned = set(graph.store.get_context(i) for i in delta.keys())
             for identifier, changeset in delta.items():
                 if changeset:
-                    _apply(f_new, changeset)
+                    _apply(f_new, changeset, graph.store.identifier)
 
             index.add(f_new.path, f_new.content)
 
-            oid = index.stash[f_new.path][0]
-            self._blobs.set(oid, (f_new, unassigned))
-            blobs_new.add(oid)
+            blob = f_name, index.stash[f_new.path][0]
+            self._blobs.set(blob, (f_new, unassigned))
+            blobs_new.add(blob)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
