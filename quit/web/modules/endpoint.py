@@ -15,19 +15,39 @@ __all__ = ['endpoint']
 
 endpoint = Blueprint('endpoint', __name__)
 
-queryTypeRegex = r"(?P<queryType>("
-queryTypeRegex += r"CONSTRUCT|SELECT|ASK|DESCRIBE|"
-queryTypeRegex += r"INSERT|DELETE|CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD"
-queryTypeRegex += r"))"
+queryTypeRegex = r"""
+    (?P<queryType>(CONSTRUCT|SELECT|ASK|DESCRIBE|INSERT|DELETE|
+    CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD))
+"""
 queryTypePattern = re.compile(queryTypeRegex, re.VERBOSE | re.IGNORECASE)
+
+# querytype: { accept type: [content type, serializer_format]}
+resultSetMimetypes = {
+    '*/*': ['application/sparql-results+xml', 'xml'],
+    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
+    'application/xml': ['application/xml', 'xml'],
+    'application/rdf+xml': ['application/rdf+xml', 'xml'],
+    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
+    'text/csv': ['text/csv', 'csv'],
+    'text/html': ['text/html', 'html'],
+    'application/xhtml_xml': ['text/html', 'html']
+}
+rdfMimetypes = {
+    '*/*': ['text/turtle', 'turtle'],
+    'text/turtle': ['text/turtle', 'turtle'],
+    'application/x-turtle': ['application/x-turtle', 'turtle'],
+    'application/rdf+xml': ['application/rdf+xml', 'xml'],
+    'application/xml': ['application/xml', 'xml'],
+    'application/n-triples': ['application/n-triples', 'nt'],
+    'application/trig': ['application/trig', 'trig']
+}
 
 
 def parse_query_type(query):
     try:
-        query_type = queryTypePattern.search(query).group("queryType").upper()
+        return queryTypePattern.search(query).group("queryType").upper()
     except AttributeError:
-        query_type = None
-    return query_type
+        raise UnSupportedQueryType
 
 
 @endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
@@ -38,7 +58,7 @@ def sparql(branch_or_ref):
     Returns:
         HTTP Response with query result: If query was a valid select query.
         HTTP Response 200: If request contained a valid update query.
-        HTTP Response 400: If request doesn't contain a valid sparql query.
+        HTTP Response 406: If accept header is not acceptable.
     """
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch()
@@ -51,39 +71,28 @@ def sparql(branch_or_ref):
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
-        mimetype = 'text/html'
+        mimetype = '*/*'
 
     if q:
         try:
             query_type = parse_query_type(q)
             graph = quit.instance(branch_or_ref)
+        except UnSupportedQueryType as e:
+            logger.exception(e)
+            return make_response('Unsupported Query Type', 400)
+        except Exception as e:
+            logger.exception(e)
+            return make_response('No branch or reference given.', 400)
 
-            if query_type in ['SELECT', 'CONSTRUCT', 'ASK', 'DESCRIBE']:
-                res = graph.query(q)
-
-                if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-                    results = res.serialize(format='html')
-                    response = make_response(render_template(
-                        "results.html", results=Markup(results.decode())))
-                    response.headers['Content-Type'] = 'text/html'
-                    return response
-                elif mimetype in ['application/json', 'application/sparql-results+json']:
-                    response = make_response(res.serialize(format='json'), 200)
-                    response.headers['Content-Type'] = 'application/json'
-                    return response
-                elif mimetype in [
-                    'application/rdf+xml', 'application/xml', 'application/sparql-results+xml'
-                ]:
-                    response = make_response(res.serialize(format='xml'), 200)
-                    response.headers['Content-Type'] = 'application/rdf+xml'
-                    return response
-                elif mimetype in ['application/csv', 'text/csv']:
-                    response = make_response(res.serialize(format='csv'), 200)
-                    response.headers['Content-Type'] = 'text/csv'
-                    return response
-            else:
+        if query_type not in ['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']:
+            try:
                 res = graph.update(q)
+            except Exception as e:
+                # Update query wrong
+                logger.exception(e)
+                return make_response('Something wrong with your query.', 400)
 
+            try:
                 ref = request.values.get('ref', None) or default_branch
                 ref = 'refs/heads/{}'.format(ref)
                 quit.commit(
@@ -91,15 +100,27 @@ def sparql(branch_or_ref):
                     branch_or_ref, ref, query=q
                 )
                 return '', 200
+            except Exception as e:
+                # query ok, but unsupported query type or other problem during commit
+                logger.exception(e)
+                return make_response('Error after executing the update query.', 400)
 
-        except UnSupportedQueryType as e:
-            logger.exception(e)
-            return "Unsupported Query Type: <pre>{}</pre>".format(traceback.format_exc()), 200
+        try:
+            res = graph.query(q)
         except Exception as e:
             logger.exception(e)
-            return "<pre>{}</pre>".format(traceback.format_exc()), 400
+            return make_response('Something wrong with your query.', 400)
+
+        try:
+            if query_type in ['SELECT', 'ASK']:
+                return create_result_response(res, resultSetMimetypes[mimetype])
+            elif query_type in ['CONSTRUCT', 'DESCRIBE']:
+                return create_result_response(res, rdfMimetypes[mimetype])
+        except KeyError as e:
+            return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
     else:
-        return render_template('sparql.html')
+        if mimetype == 'text/html':
+            return render_template('sparql.html')
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
@@ -111,6 +132,7 @@ def provenance():
         HTTP Response with query result: If query was a valid select query.
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 400: If request doesn't contain a valid sparql query.
+        HTTP Response 406: If accept header is not acceptable.
     """
     quit = current_app.config['quit']
 
@@ -119,44 +141,50 @@ def provenance():
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
-        mimetype = 'text/html'
+        mimetype = '*/*'
 
     if q:
         try:
             query_type = parse_query_type(q)
             graph = quit.store.store
-
-            if query_type in ['SELECT', 'CONSTRUCT', 'ASK', 'DESCRIBE']:
-                res = graph.query(q)
-
-                if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-                    results = res.serialize(format='html')
-                    response = make_response(render_template(
-                        "results.html", results=Markup(results.decode())))
-                    response.headers['Content-Type'] = 'text/html'
-                    return response
-                elif mimetype in ['application/json', 'application/sparql-results+json']:
-                    response = make_response(res.serialize(format='json'), 200)
-                    response.headers['Content-Type'] = 'application/json'
-                    return response
-                elif mimetype in [
-                    'application/rdf+xml', 'application/xml', 'application/sparql-results+xml'
-                ]:
-                    response = make_response(res.serialize(format='xml'), 200)
-                    response.headers['Content-Type'] = 'application/rdf+xml'
-                    return response
-                elif mimetype in ['application/csv', 'text/csv']:
-                    response = make_response(res.serialize(format='csv'), 200)
-                    response.headers['Content-Type'] = 'text/csv'
-                    return response
-            else:
-                raise UnSupportedQueryType()
-
+        except UnSupportedQueryType as e:
+            logger.exception(e)
+            return make_response('Unsupported Query Type', 400)
         except Exception as e:
             logger.exception(e)
-            return "<pre>{}</pre>".format(traceback.format_exc()), 400
+            return make_response('Something wrong with query', 400)
+
+        if query_type not in ['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']:
+            return make_response('Unsupported Query Type', 400)
+
+        try:
+            res = graph.query(q)
+        except Exception as e:
+            logger.exception(e)
+            return make_response('Something wrong with your query.', 400)
+
+        try:
+            if query_type in ['SELECT', 'ASK']:
+                return create_result_response(res, resultSetMimetypes[mimetype])
+            elif query_type in ['CONSTRUCT', 'DESCRIBE']:
+                return create_result_response(res, rdfMimetypes[mimetype])
+        except KeyError as e:
+            logger.exception(e)
+            return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
     else:
-        return render_template('provenance.html')
+        if mimetype == 'text/html':
+            return render_template('provenance.html')
+
+
+def create_result_response(res, mimetype):
+    """Create a response with the requested serialization."""
+    response = make_response(
+        res.serialize(format=mimetype[1]),
+        200
+    )
+    response.headers['Content-Type'] = mimetype[0]
+    return response
 
 
 def negotiate(accept_header):
