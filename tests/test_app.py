@@ -3,13 +3,14 @@ import os
 
 from distutils.dir_util import copy_tree, remove_tree
 from glob import glob
-from os import remove, stat, path
+from os import remove, stat
 from os.path import join, isdir
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Repository, Signature, init_repository
 import quit.quit as quitApp
 from quit.web.app import create_app
 import tempfile
 import unittest
+
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -103,6 +104,135 @@ class QuitAppTestCase(unittest.TestCase):
         message = "First commit of temporary test repo"
         self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
+    def testEmptyGraphsOnStartup(self):
+        """Test behaviour whith empty graphs."""
+        def createFile(filepath, content=None):
+            with open(filepath, 'a') as f:
+                if content:
+                    f.write(content)
+
+        UPDATE = """INSERT DATA {{
+            graph <{graph}> {{<urn:{seed}Sub> <urn:{seed}Pred> <urn:{seed}Obj> .}}
+        }}"""
+
+        DELETE = """DELETE WHERE {{
+            graph <{graph}> {{ ?s ?p ?o .}}
+        }}"""
+
+        QUERY = {1: UPDATE, 2: UPDATE, 3: DELETE}
+
+        SELECT = """
+            SELECT ?s ?p ?o ?g
+            WHERE {{
+                graph ?g {{ ?s ?p ?o . }}
+                FILTER (sameTerm(?g, <{graph}>))
+            }}
+            ORDER BY ?s ?p ?o
+        """
+        QUAD = "<urn:{seed}Sub> <urn:{seed}Pred> <urn:{seed}Obj> <{graph}> ."
+        QUAD_CSV = "urn:{seed}Sub,urn:{seed}Pred,urn:{seed}Obj,{graph}"
+
+        self.initrepo()
+        index = self.repo.index
+        fileA = 'graphA'
+        fileB = 'graphB'
+        files = [fileA, fileB]
+        index.read()
+
+        for file in files:
+            createFile(
+                join(self.tmpdir.name, file + '.nq')
+            )
+            createFile(
+                join(self.tmpdir.name, file + '.nq.graph'),
+                "http://ex.org/{}".format(file)
+            )
+            index.add(file + '.nq')
+            index.add(file + '.nq.graph')
+            index.add(file + '.nq.graph')
+
+        index.write()
+        tree = index.write_tree()
+        message = "First commit of temporary test repo"
+        self.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        args = quitApp.parseArgs(['-t', self.tmpdir.name, '-cm', 'graphfiles'])
+
+        data = {'quit': {}, 'expected': {}}
+
+        for run in [1, 2, 3]:
+            # (Re)start quitApp after each run
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+            data['quit'][run] = {}
+            data['expected'][run] = {}
+
+            # GET test values from quitApp and file system
+            for file in files:
+                data['quit'][run][file] = {}
+                data['expected'][run][file] = {}
+
+                # UPDATE/DELETE
+                resp = app.post(
+                    '/sparql',
+                    data=dict(
+                        query=QUERY[run].format(
+                            graph="http://ex.org/" + file, seed='same{}'.format(run)
+                            )
+                        )
+                )
+                self.assertEqual(resp.status, '200 OK')
+
+                # collect response data
+                data['quit'][run][file]['response'] = app.post(
+                    '/sparql',
+                    data=dict(query=SELECT.format(graph='http://ex.org/' + file)),
+                    headers={'Accept': 'text/csv'}
+                ).data.decode('utf-8')
+
+                # collect file content
+                with open(join(self.tmpdir.name, file +'.nq'), 'r') as f:
+                    data['quit'][run][file]['file_content'] = f.read()
+
+            # SET expected values for each run
+            if run == 1:
+                for file in files:
+                    data['expected'][run][file]['response'] = 's,p,o,g\r\n' + QUAD_CSV.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(1)
+                    ) + '\r\n'
+                    data['expected'][run][file]['file_content'] = QUAD.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(1)
+                    )
+            elif run == 2:
+                for file in files:
+                    data['expected'][run][file]['response'] = 's,p,o,g\r\n' + QUAD_CSV.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(1)
+                    ) + '\r\n' + QUAD_CSV.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(2)
+                    ) + '\r\n'
+                    data['expected'][run][file]['file_content'] = QUAD.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(1)
+                    ) + '\n' + QUAD.format(
+                        graph='http://ex.org/' + file, seed='same{}'.format(2)
+                    )
+            elif run == 3:
+                for file in files:
+                    data['expected'][run][file]['response'] = 's,p,o,g\r\n'
+                    data['expected'][run][file]['file_content'] = ''
+
+        # TEST
+        for run in [1, 2, 3]:
+            for file in files:
+                self.assertEqual(
+                    data['quit'][run][file]['file_content'],
+                    data['expected'][run][file]['file_content']
+                )
+                self.assertEqual(
+                    data['quit'][run][file]['response'],
+                    data['expected'][run][file]['response']
+                )
+
     def testVersioning(self):
         """
         Test quit with versioning.
@@ -110,7 +240,11 @@ class QuitAppTestCase(unittest.TestCase):
         Compare the state (SPARQL query result, file content, commit messages) before and after an
         update query.
         """
-        SELECT = "SELECT ?s ?p ?o WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+        SELECT = """
+            SELECT ?s ?p ?o
+            WHERE {graph <http://example.org/1/> {?s ?p ?o .}}
+            ORDER BY ?s ?p ?o
+        """
         UPDATE = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
         COMMIT_MSG_INITIAL = 'First commit of temporary test repo'
         COMMIT_MSG_UPDATE= 'query: INSERT DATA {graph <http://example.org/1/>'
