@@ -9,7 +9,7 @@ from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
 from flask import request, url_for, redirect, make_response
-from flask.ext.cors import CORS
+from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
