@@ -11,6 +11,7 @@ from quit.web.app import create_app
 import tempfile
 import unittest
 import json
+from helpers import TemporaryRepositoryFactory
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -114,7 +115,7 @@ class QuitAppTestCase(unittest.TestCase):
         SELECT = "SELECT ?s ?p ?o WHERE {graph <http://example.org/1/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
         UPDATE = "INSERT DATA {graph <http://example.org/1/> {<newSub> <newPred> <newObj> .}}"
         COMMIT_MSG_INITIAL = 'First commit of temporary test repo'
-        COMMIT_MSG_UPDATE= 'query: INSERT DATA {graph <http://example.org/1/>'
+        COMMIT_MSG_UPDATE = 'query: INSERT DATA {graph <http://example.org/1/>'
         COMMIT_MSG_UPDATE += ' {<newSub> <newPred> <newObj> .}}\n\nNew Commit from QuitStore'
         QRB = 's,p,o\r\n'
         QRB += 'http://example.org/Subject,http://example.org/Predicate,'
@@ -391,6 +392,90 @@ class QuitAppTestCase(unittest.TestCase):
 
         self.assertNotEqual(file_example1_before, file_example1_after)
         self.assertNotEqual(query_resp_before, query_resp_after)
+
+    def testInsertDataAndSelectFromEmptyGraph(self):
+        """Test inserting data and selecting it, starting with an empty graph.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(query=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            try:
+                assert len(obj["results"]["bindings"]) == 1
+            except AssertionError as e:
+                e.args += ('It was expected, that the graph contains 1 (one) statement.', select_resp.data.decode("utf-8"))
+                raise
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/a'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
+    def testInsertDataAndSelectFromNonEmptyGraph(self):
+        """Test inserting data and selecting it, starting with a non empty graph.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+
+        # Prepate a git Repository
+        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(query=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            try:
+                assert len(obj["results"]["bindings"]) == 2
+            except AssertionError as e:
+                e.args += ('It was expected, that the graph contains 2 (two) statement.', select_resp.data.decode("utf-8"))
+                raise
+
+            # obj = json.load(select_resp.data)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/a'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
 
 
 if __name__ == '__main__':
