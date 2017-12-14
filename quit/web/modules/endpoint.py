@@ -27,10 +27,11 @@ resultSetMimetypes = {
     'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
     'application/xml': ['application/xml', 'xml'],
     'application/rdf+xml': ['application/rdf+xml', 'xml'],
+    'application/json': ['application/json', 'json'],
     'application/sparql-results+json': ['application/sparql-results+json', 'json'],
     'text/csv': ['text/csv', 'csv'],
     'text/html': ['text/html', 'html'],
-    'application/xhtml_xml': ['text/html', 'html']
+    'application/xhtml+xml': ['application/xhtml+xml', 'html']
 }
 rdfMimetypes = {
     '*/*': ['text/turtle', 'turtle'],
@@ -38,7 +39,7 @@ rdfMimetypes = {
     'application/x-turtle': ['application/x-turtle', 'turtle'],
     'application/rdf+xml': ['application/rdf+xml', 'xml'],
     'application/xml': ['application/xml', 'xml'],
-    'application/n-triples': ['application/n-triples', 'nt'],
+    'application/n-triples': ['application/n-triples', 'nt11'],
     'application/trig': ['application/trig', 'trig']
 }
 
