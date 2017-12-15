@@ -170,9 +170,7 @@ def provenance():
             elif query_type in ['CONSTRUCT', 'DESCRIBE']:
                 return create_result_response(res, rdfMimetypes[mimetype])
         except KeyError as e:
-            logger.exception(e)
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
-
     else:
         if mimetype == 'text/html':
             return render_template('provenance.html')
