@@ -195,10 +195,11 @@ class QuitAppTestCase(unittest.TestCase):
                     'application/sparql-results+xml': 'application/sparql-results+xml',
                     'application/xml': 'application/xml',
                     'application/rdf+xml': 'application/rdf+xml',
+                    'application/json': 'application/json',
                     'application/sparql-results+json': 'application/sparql-results+json',
                     'text/csv': 'text/csv',
                     'text/html': 'text/html',
-                    'application/xhtml_xml': 'text/html'
+                    'application/xhtml+xml': 'application/xhtml+xml'
                 }
             ],
             'construct': [construct, {
