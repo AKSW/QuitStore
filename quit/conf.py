@@ -2,11 +2,11 @@ import logging
 
 import os
 from os import walk
-from os.path import join, isfile, abspath, relpath
+from os.path import join, isfile
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import UnknownConfigurationError
 from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
-from rdflib.plugins.parsers import notation3, nquads, ntriples
+from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse, urlencode

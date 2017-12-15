@@ -1,26 +1,18 @@
 import pygit2
 
 import logging
-from os import makedirs, environ
-from os.path import exists, isfile, join, expanduser
-from quit.exceptions import QuitGitRepoError
 
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
-from pygit2 import init_repository, clone_repository
-from pygit2 import Repository, Signature, RemoteCallbacks
-from pygit2 import KeypairFromAgent, Keypair, UserPass
-from pygit2 import credentials
 
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal
-from rdflib.graph import ReadOnlyGraphAggregate
 from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
-from quit.conf import Feature, QuitConfiguration
+from quit.conf import Feature
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
-from quit.graphs import RewriteGraph, InMemoryAggregatedGraph, CopyOnEditGraph
+from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff, git_timestamp
 from quit.cache import Cache, FileReference
 
