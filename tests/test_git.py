@@ -3,11 +3,15 @@
 import unittest
 from context import quit
 import quit.git
+from quit.exceptions import QuitGitPushError
 from os import path, environ
+import pygit2
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import subprocess
+from helpers import TemporaryRepository, TemporaryRepositoryFactory
+
 
 class GitRevisionTests(unittest.TestCase):
 
@@ -106,6 +110,7 @@ class GitIndexTests(unittest.TestCase):
                 "QuitTest",
                 "test@quitstore.example.org"
             )
+
 
 class GitRepositoryTests(unittest.TestCase):
 
@@ -226,6 +231,90 @@ class GitRepositoryTests(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
         dir.cleanup()
+
+    def testPushRepo(self):
+        """Test if it is possible to push to an empty remote repository."""
+        with TemporaryRepository(True) as remote:
+            graphContent = """
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                local.remotes.create("origin", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                quitRepo.push()
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoNotConfiguredRemote(self):
+        """Test if the push failes if the origin remote was not defined."""
+        with TemporaryRepository(True) as remote:
+            graphContent = """
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                local.remotes.create("upstream", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                with self.assertRaises(QuitGitPushError):
+                    quitRepo.push()
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoWithRemoteName(self):
+        """Test if it is possible to push to a remote repository, which is not called orign."""
+        with TemporaryRepository(True) as remote:
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                local.remotes.create("upstream", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                quitRepo.push("upstream")
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoNotConfiguredNamedRemote(self):
+        """Test if the push failes if the specified remote was not defined."""
+        with TemporaryRepository(True) as remote:
+            graphContent = """
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                local.remotes.create("origin", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                with self.assertRaises(QuitGitPushError):
+                    quitRepo.push("upstream")
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoWithDivergedRemote(self):
+        """Test for an exception, if the local and remote repositories are diverged."""
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as remote:
+            graphContent = """
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                local.remotes.create("origin", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                with self.assertRaises(pygit2.GitError):
+                    quitRepo.push()
 
     def testRepositoryIsEmpty(self):
         """Test that adding data causes a new commit."""
