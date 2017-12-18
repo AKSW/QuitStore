@@ -196,7 +196,9 @@ class Repository(object):
     def push(self, remote_name='origin', ref='refs/heads/master:refs/heads/master'):
         for remote in self._repository.remotes:
             if remote.name == remote_name:
-                remote.push(ref)
+                remote.push([ref])
+                return
+        raise Exception("There is no remote \"{}\".", remote_name)
 
     def merge(self, reference='', target='', branch=''):
         raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')

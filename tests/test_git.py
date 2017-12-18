@@ -8,6 +8,8 @@ from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import subprocess
+from helpers import TemporaryRepository, TemporaryRepositoryFactory
+
 
 class GitRevisionTests(unittest.TestCase):
 
@@ -106,6 +108,7 @@ class GitIndexTests(unittest.TestCase):
                 "QuitTest",
                 "test@quitstore.example.org"
             )
+
 
 class GitRepositoryTests(unittest.TestCase):
 
@@ -226,6 +229,68 @@ class GitRepositoryTests(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
         dir.cleanup()
+
+    def testPushRepo(self):
+        with TemporaryRepository(True) as remote:
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                remoteObj = local.remotes.create("origin", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                quitRepo.push()
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoNotConfiguredRemote(self):
+        with TemporaryRepository(True) as remote:
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                with self.assertRaises(Exception):
+                    quitRepo.push()
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoWithRemoteName(self):
+        with TemporaryRepository(True) as remote:
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+                remoteObj = local.remotes.create("upstream", remote.path)
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                quitRepo.push("upstream")
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+    def testPushRepoNotConfiguredNamedRemote(self):
+        with TemporaryRepository(True) as remote:
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+
+                quitRepo = quit.git.Repository(local.workdir)
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
+
+                with self.assertRaises(Exception):
+                    quitRepo.push("upstream")
+
+                self.assertTrue(remote.is_empty)
+                self.assertFalse(local.is_empty)
 
     def testRepositoryIsEmpty(self):
         """Test that adding data causes a new commit."""
