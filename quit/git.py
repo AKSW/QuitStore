@@ -4,7 +4,7 @@ import re
 import logging
 
 from os.path import expanduser, join
-from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound
+from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, QuitGitPushError
 from quit.namespace import QUIT
 
 import subprocess
@@ -25,6 +25,8 @@ class Repository(object):
     def __init__(self, path, **params):
         origin = params.get('origin', None)
 
+        self.callback = QuitRemoteCallbacks()
+
         try:
             self._repository = pygit2.Repository(path)
         except KeyError:
@@ -33,7 +35,6 @@ class Repository(object):
                     'Repository "%s" does not exist' % path)
 
             if origin:
-                self.callback = QuitRemoteCallbacks()
                 self._repository = pygit2.clone_repository(
                     url=origin, path=path, bare=False, callbacks=self.callback
                 )
@@ -196,9 +197,9 @@ class Repository(object):
     def push(self, remote_name='origin', ref='refs/heads/master:refs/heads/master'):
         for remote in self._repository.remotes:
             if remote.name == remote_name:
-                remote.push([ref])
+                remote.push([ref], callbacks=self.callback)
                 return
-        raise Exception("There is no remote \"{}\".", remote_name)
+        raise QuitGitPushError("There is no remote \"{}\".", remote_name)
 
     def merge(self, reference='', target='', branch=''):
         raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')

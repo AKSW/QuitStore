@@ -90,3 +90,8 @@ class UnknownConfigurationError(Error):
 
 class QuitGitRepoError(Error):
     pass
+
+
+class QuitGitPushError(QuitGitRepoError):
+    """Raised when it is not possible to push to a remote repository."""
+    pass
