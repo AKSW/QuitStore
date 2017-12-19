@@ -554,3 +554,10 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
                 )
         else:
             raise Exception("Only unsupported credential types allowed by remote end")
+
+    def push_update_reference(self, refname, message):
+        if message:
+            raise QuitGitPushError(
+                "The reference \"{}\" could not be pushed. Remote tells us: {}".format(
+                    refname, message))
+        pass
