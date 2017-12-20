@@ -22,15 +22,30 @@ role_committer = QUIT['committer']
 
 
 class Repository(object):
-    def __init__(self, path, **params):
-        origin = params.get('origin', None)
+    """The Quit class for wrapping a git repository.
 
+    TODO:
+    - There is no possibility to set remotes on a Quit Repository object.
+    """
+
+    def __init__(self, path, origin=None, create=False, garbageCollection=False):
+        """Initialize a quit repo at a given location of the filesystem.
+
+        Keyword arguments:
+        path -- the location of an existing git repository or where the repository should be created
+        origin -- if the repository does not exist and origin is given the origin repository is
+                  cloned to the given path (default: None)
+        create -- boolean whether to create a new repository if the specified path is empty
+                  (default: False)
+        garbageCollection -- boolean whether to activate the garbage collection on the git
+                  repository (default: False)
+        """
         self.callback = QuitRemoteCallbacks()
 
         try:
             self._repository = pygit2.Repository(path)
         except KeyError:
-            if not params.get('create', False):
+            if not create:
                 raise RepositoryNotFound(
                     'Repository "%s" does not exist' % path)
 
@@ -41,16 +56,13 @@ class Repository(object):
             else:
                 self._repository = pygit2.init_repository(path)
 
-        garbagecollection = params.get('garbageCollection', False)
-
-        if garbagecollection:
+        if garbageCollection:
             self.init_garbageCollection(path)
 
         self.path = path
-        self.params = params
 
     def init_garbageCollection(self, path):
-        """Set the threshold for automatic garbage collection for the git repository"""
+        """Set the threshold for automatic garbage collection for the git repository."""
         try:
             with subprocess.Popen(
                 ["git", "config", "gc.auto"],
@@ -147,6 +159,16 @@ class Repository(object):
         return index
 
     def pull(self, remote_name='origin', branch='master'):
+        """Fetch and merge changes from a remote repository.
+
+        Keyword arguments:
+        remote_name -- The name of a remote repository as configured on the underlaying git
+                       repository (default: "origin")
+        branch -- The local branch to push to remote
+
+        TODO:
+        - Clarify relation to remote tracking branches
+        """
         logger.debug('Pulling branch: {} from {}'.format(branch, remote_name))
         for remote in self._repository.remotes:
             if remote.name == remote_name:
@@ -195,6 +217,16 @@ class Repository(object):
                     raise AssertionError('Unknown merge analysis result')
 
     def push(self, remote_name='origin', ref='refs/heads/master:refs/heads/master'):
+        """Push changes on a local repository to a remote repository.
+
+        Keyword arguments:
+        remote_name -- The name of a remote repository as configured on the underlaying git
+                       repository (default: "origin")
+        ref -- The local and remote reference to push
+
+        TODO:
+        - Clarify relation to remote tracking branches and between references.
+        """
         for remote in self._repository.remotes:
             if remote.name == remote_name:
                 remote.push([ref], callbacks=self.callback)
