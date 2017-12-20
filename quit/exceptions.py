@@ -92,6 +92,21 @@ class QuitGitRepoError(Error):
     pass
 
 
+class RemoteNotFound(QuitGitRepoError):
+    """Raised when a requested remote is not configured on the repository."""
+    pass
+
+
+class QuitGitRefNotFound(QuitGitRepoError):
+    """Raised when a reference could not be found."""
+    pass
+
+
 class QuitGitPushError(QuitGitRepoError):
     """Raised when it is not possible to push to a remote repository."""
+    pass
+
+
+class QuitMergeConflict(QuitGitRepoError):
+    """Raised for a merge conflict."""
     pass
