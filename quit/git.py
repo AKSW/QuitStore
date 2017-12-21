@@ -234,9 +234,25 @@ class Repository(object):
         raise QuitGitPushError("There is no remote \"{}\".", remote_name)
 
     def merge(self, reference='', target='', branch=''):
+        """Merge two commits and set the reference to the result.
+
+        merge 'branch' into 'target' and set 'reference' to the resulting commit
+        - if only 'reference' is given, do nothing
+        - if 'reference' and 'branch' are given, merge 'branch' into 'reference' and set 'reference'
+          to the resulting commit
+        - if 'reference', 'branch' and 'target' are given, merge 'branch' into 'target' and set
+          'reference' to the resulting commit
+
+        Keyword arguments:
+        reference -- The reference which should point ot the result of the merge
+        target -- The target of the merge operation (if omitted, 'branch' will be merged into
+                  'reference')
+        branch -- The branche which should be merged into 'target' respective 'reference'
+        """
         raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')
 
     def revert(self, reference='', target='', branch=''):
+        """Revert a commit."""
         raise Exception('Not yet supported')
 
 
