@@ -4,7 +4,8 @@ import re
 import logging
 
 from os.path import expanduser, join
-from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, QuitGitPushError
+from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
+from quit.exceptions import QuitMergeConflict, QuitGitRefNotFound, QuitGitRepoError
 from quit.namespace import QUIT
 
 import subprocess
@@ -158,84 +159,143 @@ class Repository(object):
             index.set_revision(revision)
         return index
 
-    def pull(self, remote_name='origin', branch='master'):
-        """Fetch and merge changes from a remote repository.
+    def getUpstreamOfHead(self):
+        if self._repository.head_is_unborn:
+            return (None, None, None)
+        localBranchName = re.sub("^refs/heads/", "", self._repository.head.name)
+        localBranch = self._repository.lookup_branch(localBranchName)
+        if localBranch.upstream is not None:
+            refspecPattern = re.compile("^refs/remotes/([^/]*)/(.*)$")
+            remote_name = localBranch.upstream.remote_name
+            remote_ref = localBranch.upstream.name
+            if remote_ref.startswith("refs/remotes/"):
+                matchgroups = refspecPattern.match(remote_ref)
+                remote_branch = matchgroups.group(2)
+            else:
+                remote_branch = remote_ref
+            return (remote_name, remote_branch, remote_ref)
+        return (None, None, None)
+
+    def fetch(self, remote_name=None, remote_branch=None):
+        """Fetch changes from a remote.
+
+        If no remote_name and no remote_branch is given, the method will fetch changes from the
+        remote called origin or if the current branch referenced by HEAD has upstream configured, it
+        will fetch the configured upstream branch.
+
+        Keyword arguments:
+        remote_name --The name of the remote from where to fetch.
+        remote_branch -- The name of the remote branch to fetch or a local reference to a remote
+                         branch (refs/remotes/.../...)
+        """
+        remote_ref = None
+        if (remote_name is None and
+                remote_branch is not None and
+                remote_branch.startswith("refs/remotes/")):
+            refspecPattern = re.compile("^refs/remotes/([^/]*)/(.*)$")
+            remote_ref = remote_branch
+            matchgroups = refspecPattern.match(remote_branch)
+            remote_name = matchgroups.group(1)
+            remote_branch = matchgroups.group(2)
+        if remote_branch is None and not self._repository.head_is_unborn:
+            (head_remote_name, head_remote_branch, head_remote_ref) = self.getUpstreamOfHead()
+            if remote_name is None or remote_name == head_remote_name:
+                remote_name = head_remote_name
+                remote_branch = head_remote_branch
+                remote_ref = head_remote_ref
+        if remote_name is None:
+            remote_name = 'origin'
+        else:
+            remote_ref = 'refs/remotes/{remote}/{remote_branch}'.format(remote=remote_name,
+                                                                        remote_branch=remote_branch)
+        logger.debug('Fetching: {} from {} ({})'.format(remote_branch or "all references",
+                                                        remote_name, remote_ref))
+        for remote in self._repository.remotes:
+            if remote.name == remote_name:
+                if remote_branch is not None:
+                    remote_branch = [remote_branch]
+                remote.fetch(remote_branch)
+
+                if remote_branch is None:
+                    return None
+
+                return self._repository.lookup_reference(remote_ref).target
+        raise RemoteNotFound("There is no remote \"{}\".".format(remote_name))
+
+    def pull(self, remote_name=None, refspec=None):
+        """Pull (fetch and merge) changes from a remote repository.
 
         Keyword arguments:
         remote_name -- The name of a remote repository as configured on the underlaying git
                        repository (default: "origin")
-        branch -- The local branch to push to remote
-
-        TODO:
-        - Clarify relation to remote tracking branches
+        refspec -- The refspec of remote branch to fetch and the local reference/branch to update.
+                   An optional plus (+) in the beginning of the refspec is ignored.
         """
-        logger.debug('Pulling branch: {} from {}'.format(branch, remote_name))
-        for remote in self._repository.remotes:
-            if remote.name == remote_name:
-                remote.fetch()
-                remote_master_id = self._repository.lookup_reference(
-                    'refs/remotes/origin/{}'.format(branch)
-                ).target
-                merge_result, _ = self._repository.merge_analysis(
-                    remote_master_id)
+        remote_branch = None
+        local_branch = None
+        if refspec is not None:
+            rerefspec = re.compile("^(?P<plus>[+]?)(?P<src>[^:]*)(:(?P<dst>.*))?$")
+            groups = rerefspec.match(refspec)
+            if groups is None:
+                raise QuitGitRepoError("The respec \"{}\" could not be understood".format(refspec))
+            plus = groups.group("plus")
+            remote_branch = groups.group("src")
+            local_branch = groups.group("dst")
+            logger.debug("pull: parsed refspec is: {}, {}, {}".format(plus, remote_branch,
+                                                                      local_branch))
+        remote_master_id = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
+        if remote_master_id is not None:
+            self.merge(reference=local_branch, branch=remote_master_id)
 
-                # Up to date, do nothing
-                if merge_result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
-                    return
-
-                # We can just fastforward
-                elif merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
-                    self._repository.checkout_tree(
-                        self._repository.get(remote_master_id))
-                    try:
-                        master_ref = self._repository.lookup_reference(
-                            'refs/heads/%s' % (branch))
-                        master_ref.set_target(remote_master_id)
-                    except KeyError:
-                        self._repository.create_branch(
-                            branch, self._repository.get(remote_master_id))
-                    self._repository.head.set_target(remote_master_id)
-
-                elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
-                    self._repository.merge(remote_master_id)
-
-                    if self._repository.index.conflicts is not None:
-                        for conflict in self._repository.index.conflicts:
-                            logger.error(
-                                'Conflicts found in: {}'.format(conflict[0].path))
-                        raise AssertionError('Conflicts, ahhhhh!!')
-
-                    user = self._repository.default_signature
-                    tree = self._repository.index.write_tree()
-                    self._repository.create_commit(
-                        'HEAD', user, user, 'Merge!', tree,
-                        [self._repository.head.target, remote_master_id]
-                    )
-                    # We need to do this or git CLI will think we are still merging.
-                    self._repository.state_cleanup()
-                else:
-                    raise AssertionError('Unknown merge analysis result')
-
-    def push(self, remote_name='origin', ref='refs/heads/master:refs/heads/master'):
+    def push(self, remote_name=None, refspec=None):
         """Push changes on a local repository to a remote repository.
 
         Keyword arguments:
         remote_name -- The name of a remote repository as configured on the underlaying git
                        repository (default: "origin")
-        ref -- The local and remote reference to push
-
-        TODO:
-        - Clarify relation to remote tracking branches and between references.
+        refspec -- The local and remote reference to push divided with a colon.
+                   (refs/heads/master:refs/heads/master)
         """
+
+        if refspec is None:
+            (head_remote_name, head_remote_branch, head_remote_ref) = self.getUpstreamOfHead()
+            if head_remote_ref is None:
+                raise QuitGitRefNotFound("There is no upstream configured for the current branch")
+            refspec = '{src}:{dst}'.format(self._repository.head.name, head_remote_ref)
+            remote_name = head_remote_name
+
+        if remote_name is None:
+            remote_name = 'origin'
+
+        try:
+            left, right = refspec.split(':')
+        except Exception:
+            left = refspec
+            right = None
+
+        refspec = ""
+        if left:
+            if not left.startswith("refs/heads/"):
+                refspec = "refs/heads/" + left
+            else:
+                refspec = left
+        if right:
+            if not right.startswith('refs/heads/'):
+                refspec += ':refs/heads/' + right
+            else:
+                refspec += ':' + right
+
+        logger.debug("push: refspec {} to {}".format(refspec, remote_name))
+
         for remote in self._repository.remotes:
             if remote.name == remote_name:
-                remote.push([ref], callbacks=self.callback)
+                remote.push([refspec], callbacks=self.callback)
                 if self.callback.push_error is not None:
                     raise self.callback.push_error
                 return
-        raise QuitGitPushError("There is no remote \"{}\".", remote_name)
+        raise RemoteNotFound("There is no remote \"{}\".".format(remote_name))
 
-    def merge(self, reference='', target='', branch=''):
+    def merge(self, reference=None, target=None, branch=None):
         """Merge two commits and set the reference to the result.
 
         merge 'branch' into 'target' and set 'reference' to the resulting commit
@@ -251,6 +311,60 @@ class Repository(object):
                   'reference')
         branch -- The branche which should be merged into 'target' respective 'reference'
         """
+
+        if reference is None:
+            reference = "master"
+        if target is None:
+            target = "HEAD"
+        if branch is None:
+            branch = "FETCH_HEAD"
+
+        logger.debug("merge: {}, {}, {}".format(reference, target, branch))
+
+        merge_result, _ = self._repository.merge_analysis(branch)
+
+        if reference != "master":
+            raise Exception("We first have to implement switching branches")
+
+        if target != "HEAD":
+            raise Exception("We currently are only able to merge into the HEAD of a branch")
+
+        # Up to date, do nothing
+        if merge_result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
+            return
+
+        # We can just fastforward
+        elif merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
+            self._repository.checkout_tree(self._repository.get(branch))
+            try:
+                master_ref = self._repository.lookup_reference(
+                    'refs/heads/{}'.format(reference))
+                master_ref.set_target(branch)
+            except KeyError:
+                self._repository.create_branch(
+                    reference, self._repository.get(branch))
+            self._repository.head.set_target(branch)
+            return
+
+        elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
+            self._repository.merge(branch)
+
+            if self._repository.index.conflicts is not None:
+                for conflict in self._repository.index.conflicts:
+                    logger.error('Conflicts found in: {}'.format(conflict[0].path))
+                raise QuitMergeConflict('Conflicts, ahhhhh!!')
+
+            user = self._repository.default_signature
+            tree = self._repository.index.write_tree()
+            self._repository.create_commit(
+                'HEAD', user, user, 'Merge!', tree,
+                [self._repository.head.target, branch]
+            )
+            # We need to do this or git CLI will think we are still merging.
+            self._repository.state_cleanup()
+            return
+        else:
+            raise AssertionError('Unknown merge analysis result')
         raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')
 
     def revert(self, reference='', target='', branch=''):
