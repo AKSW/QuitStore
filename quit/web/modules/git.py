@@ -110,7 +110,7 @@ def merge(branch_or_ref):
     """Merge two commits and set the result to branch_or_ref.
 
     merge branch into target and set branch_or_ref to the resulting commit
-    - if ony branch_or_ref is given, do nothing
+    - if only branch_or_ref is given, do nothing
     - if branch_or_ref and branch is given, merge branch into branch_or_ref and set branch_or_ref to
         the resulting commit
     - if branch_or_ref, branch and target are given, merge branch into target and set branch_or_ref
