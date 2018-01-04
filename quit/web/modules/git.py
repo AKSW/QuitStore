@@ -3,9 +3,12 @@ import traceback
 import re
 import pygit2
 
-from flask import Blueprint, flash, redirect, request, url_for, current_app
+from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response
+from werkzeug.http import parse_accept_header
 from quit.web.app import render_template
 from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
+from quit.utils import git_timestamp
+import json
 
 __all__ = ['git']
 
@@ -30,20 +33,37 @@ def commits(branch_or_ref):
     try:
         results = quit.repository.revisions(
             branch_or_ref, order=pygit2.GIT_SORT_TIME) if branch_or_ref else []
-        data = generate_graph_data(CommitGraph.gets(results))
 
-        return render_template('commits.html', results=results, data=data)
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
-            results = res.serialize(format='html')
-            response = make_response(render_template(
-                "results.html", results=Markup(results.decode())))
+            data = generate_graph_data(CommitGraph.gets(results))
+            response = make_response(render_template('commits.html', results=results, data=data))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:
-            response = make_response(res.serialize(format='json'), 200)
+            res = []
+            for revision in results:
+                res.append({"id": revision.id,
+                            "author_name": revision.author.name,
+                            "author_email": revision.author.email,
+                            "author_time": str(git_timestamp(revision.author.time,
+                                                             revision.author.offset)),
+                            "committer_name": revision.committer.name,
+                            "committer_email": revision.committer.email,
+                            "committer_time": str(git_timestamp(revision.committer.time,
+                                                                revision.committer.offset)),
+                            "committer_offset": revision.committer.offset,
+                            "message": revision.message,
+                            "parrents": [parent.id for parent in revision.parents]})
+            response = make_response(json.dumps(res), 200)
             response.headers['Content-Type'] = 'application/json'
             return response
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
