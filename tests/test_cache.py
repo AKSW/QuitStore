@@ -16,6 +16,37 @@ class CacheTests(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def testCacheCapacity(self):
+        cache = Cache(capacity=1)
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+
+        with self.assertRaises(KeyError):
+            cache.get("key1")
+
+        self.assertEqual(cache.get("key2"), "value2")
+        self.assertEqual(cache.size, 1)
+
+    def testRemoveEntry(self):
+        cache = Cache()
+        cache.set("key", "value")
+        self.assertEqual(cache.size, 1)
+        cache.remove("key")
+        self.assertEqual(cache.size, 0)
+
+    def testSetEntry(self):
+        cache = Cache()
+        cache.set("key", "value")
+        self.assertEqual(cache.get("key"), "value")
+        self.assertEqual(cache.size, 1)
+
+    def testOverwriteEntry(self):
+        cache = Cache()
+        cache.set("key", "value")
+        cache.set("key", "value2")
+        self.assertEqual(cache.get("key"), "value2")
+        self.assertEqual(cache.size, 1)
+
 
 class FileReferenceTests(unittest.TestCase):
     def setUp(self):
