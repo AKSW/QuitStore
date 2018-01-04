@@ -62,6 +62,8 @@ def commits(branch_or_ref):
             response = make_response(json.dumps(res), 200)
             response.headers['Content-Type'] = 'application/json'
             return response
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
