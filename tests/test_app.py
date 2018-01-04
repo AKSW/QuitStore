@@ -10,6 +10,7 @@ import quit.quit as quitApp
 from quit.web.app import create_app
 import tempfile
 import unittest
+import json
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -321,13 +322,33 @@ class QuitAppTestCase(unittest.TestCase):
     def testCommits(self):
         """Test /commits API request."""
 
+        self.setPathOfGitrepo(self.localConfigFile, str(self.tmpdir.name))
+
         args = quitApp.parseArgs(['-c', self.localConfigFile, '-cm', 'localconfig'])
         objects = quitApp.initialize(args)
 
         config = objects['config']
         app = create_app(config).test_client()
 
-        response = app.get('/commits')
+        response = app.get('/commits', headers={'Accept': 'application/json'})
+        self.assertEqual(response.status, '200 OK')
+        responseData = json.loads(response.data.decode("utf-8"))
+        self.assertListEqual(responseData, [])
+
+        response = app.get('/commits', headers={'Accept': 'text/html'})
+        self.assertEqual(response.status, '200 OK')
+
+        response = app.get('/commits', headers={'Accept': 'test/nothing'})
+        self.assertEqual(response.status, '406 NOT ACCEPTABLE')
+
+        self.createcommit()
+
+        response = app.get('/commits', headers={'Accept': 'application/json'})
+        self.assertEqual(response.status, '200 OK')
+        responseData = json.loads(response.data.decode("utf-8"))
+        self.assertEqual(len(responseData), 1)
+
+        response = app.get('/commits', headers={'Accept': 'text/html'})
         self.assertEqual(response.status, '200 OK')
 
     def testInitWithGraphfiles(self):
