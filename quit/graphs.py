@@ -1,7 +1,7 @@
 import functools
 import logging
 from itertools import chain
-from rdflib import Graph, ConjunctiveGraph
+from rdflib import Graph, ConjunctiveGraph, URIRef
 from rdflib.graph import ModificationException
 from rdflib.graph import Path
 
@@ -109,11 +109,8 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         logger = logging.getLogger('quit.graphs.InMemoryAggregatedGraph')
         super().__init__(store=store, identifier=None)
 
-        assert (
-            isinstance(graphs, list)
-        ) and (
-            all(isinstance(g, Graph) for g in graphs)
-        ), "graphs argument must be a list of Graphs!!"
+        if not (isinstance(graphs, list) and all(isinstance(g, Graph) for g in graphs)):
+            raise Exception("graphs argument must be a list of Graphs!!")
         self._contexts = graphs
 
     def __repr__(self):
@@ -197,7 +194,10 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         Returns:
             Graph if found, else None
         """
-        return next((x for x in self._contexts if x.identifier == identifier), None)
+        if isinstance(identifier, URIRef):
+            return next((x for x in self._contexts if x.identifier == identifier), None)
+        else:
+            return next((x for x in self._contexts if str(x.identifier) == identifier), None)
 
     def get_context(self, identifier, quoted=False):
         """Return the requested context/Graph.
@@ -209,9 +209,15 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         """
         if isinstance(identifier, Graph):
             identifier = identifier.identifier
-        return self._get_context(identifier) or Graph(
-            store=self.store, identifier=identifier, namespace_manager=self
-        )
+
+        context = self._get_context(identifier)
+
+        if context is not None:
+            logger.debug('Context {} found'.format(identifier))
+            return context
+        else:
+            logger.debug('Context {} not found'.format(identifier))
+            return Graph(store=self.store, identifier=identifier, namespace_manager=self)
 
 
 class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
