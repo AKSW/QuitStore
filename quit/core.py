@@ -168,7 +168,7 @@ class Quit(object):
 
         logger = logging.getLogger('quit.core.Quit.instance')
         logger.debug('Enter instance')
-        default_graphs = list()
+        default_graphs = []
 
         if commit_id:
             commit = self.repository.revision(commit_id)
@@ -188,7 +188,7 @@ class Quit(object):
                         if entity.name not in map.values():
                             continue
                         graphUris = self.config.getgraphuriforfile(entity.name)
-                        fixed = set((Graph(identifier=i) for i in graphUris))
+                        graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
 
                         blob = (entity.name, entity.oid)
                         blobs.add(blob)
@@ -207,7 +207,7 @@ class Quit(object):
                             #       config
                             # Todo: is this the wanted behaviour?
                             contexts = set((context for context in tmp.contexts(None)
-                                            if context.identifier in map)) | fixed
+                                            if context.identifier in map)) | graphsFromConfig
 
                             logger.debug('Add blob {} to Cache'.format(blob))
                             self._blobs.set(
@@ -361,7 +361,7 @@ class Quit(object):
                     continue
 
                 graphUris = self.config.getgraphuriforfile(entity.name)
-                fixed = set((Graph(identifier=i) for i in graphUris))
+                graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
 
                 blob = (entity.name, entity.oid)
 
@@ -377,9 +377,8 @@ class Quit(object):
 
                     # Info: currently filter graphs from file that were not defined in config
                     # Todo: is this the wanted behaviour?
-                    contexts = set(
-                        (context for context in tmp.contexts(None) if context.identifier in map)
-                    ) | fixed
+                    contexts = set((context for context in tmp.contexts(None)
+                                    if context.identifier in map)) | graphsFromConfig
 
                     self._blobs.set(
                         blob, (FileReference(entity.name, entity.content), contexts)
@@ -464,26 +463,26 @@ class Quit(object):
             blobs = []
 
         for blob in blobs:
-            (name, oid) = blob
+            (fileName, oid) = blob
             try:
-                f, contexts = self._blobs.get(blob)
                 logger.debug('Get Blob {} from Cache.'.format(blob))
+                file_reference, contexts = self._blobs.get(blob)
                 logger.debug('Blob found')
                 for context in contexts:
                     logger.debug('Current context {}'.format(context.identifier))
                     changeset = delta.get(context.identifier, [])
                     if changeset:
-                        _apply(f, changeset, context.identifier)
+                        _apply(file_reference, changeset, context.identifier)
                         del delta[context.identifier]
 
-                index.add(f.path, f.content)
+                index.add(file_reference.path, file_reference.content)
 
                 logger.debug('Remove Blob {} from Cache.'.format(blob))
                 self._blobs.remove(blob)
-                blob = name, index.stash[f.path][0]
+                blob = fileName, index.stash[file_reference.path][0]
                 logger.debug('Set Blob {}.'.format(blob))
-                logger.debug('FileReference {}'.format(f.content))
-                self._blobs.set(blob, (f, contexts))
+                logger.debug('FileReference {}'.format(file_reference.content))
+                self._blobs.set(blob, (file_reference, contexts))
                 blobs_new.add(blob)
             except KeyError:
                 logger.debug('Blob not found')
