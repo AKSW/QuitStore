@@ -335,6 +335,9 @@ class QuitAppTestCase(unittest.TestCase):
         responseData = json.loads(response.data.decode("utf-8"))
         self.assertListEqual(responseData, [])
 
+        response = app.get('/commits')
+        self.assertEqual(response.status, '200 OK')
+
         response = app.get('/commits', headers={'Accept': 'text/html'})
         self.assertEqual(response.status, '200 OK')
 
