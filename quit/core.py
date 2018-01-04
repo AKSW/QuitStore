@@ -436,12 +436,15 @@ class Quit(object):
         def _apply(f, changeset, identifier):
             """Update the FileReference (graph uri) of a file with help of the changeset."""
             for (op, triples) in changeset:
-                for triple in triples:
-                    # the internal _nq serializer appends '\n'
-                    line = _nq(triple, identifier).rstrip()
-                    if op == 'additions':
+                if op == 'additions':
+                    for triple in triples:
+                        # the internal _nq serializer appends '\n'
+                        line = _nq(triple, identifier).rstrip()
                         f.add(line)
-                    elif op == 'removals':
+                elif op == 'removals':
+                    for triple in triples:
+                        # the internal _nq serializer appends '\n'
+                        line = _nq(triple, identifier).rstrip()
                         f.remove(line)
 
         logger.debug('enter commit')
