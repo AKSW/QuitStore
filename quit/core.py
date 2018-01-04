@@ -78,14 +78,17 @@ class MemoryStore(Store):
 
 class VirtualGraph(Queryable):
     def __init__(self, store):
+        logger = logging.getLogger('quit.core.Quit')
         if not isinstance(store, InMemoryAggregatedGraph):
             raise Exception()
         self.store = store
 
     def query(self, querystring):
+        logger.debug('Query {} executed at {}'.format(querystring, self.store))
         return self.store.query(querystring)
 
     def update(self, querystring):
+        logger.debug('Update {} executed at {}'.format(querystring, self.store))
         return self.store.update(querystring)
 
 
@@ -99,6 +102,7 @@ class Quit(object):
         self.store = store
         self._commits = Cache()
         self._blobs = Cache()
+        logger = logging.getLogger('quit.core.Quit')
 
     def _exists(self, cid):
         uri = QUIT['commit-' + cid]
@@ -136,6 +140,7 @@ class Quit(object):
                     commits[idx:idx] = traverse(parent, seen)
             return commits
 
+        logger.debug('Enter syncAll')
         seen = set()
 
         for name in self.repository.tags_or_branches:
@@ -147,6 +152,7 @@ class Quit(object):
                 self.syncSingle(commit)
 
     def syncSingle(self, commit, delta=None):
+        logger.debug('Enter syncSingle')
         if not self._exists(commit.id):
             self.changeset(commit, delta)
 
@@ -160,14 +166,19 @@ class Quit(object):
             Instance of VirtualGraph representing the respective dataset
         """
 
+        logger = logging.getLogger('quit.core.Quit.instance')
+        logger.debug('Enter instance')
         default_graphs = list()
 
         if commit_id:
             commit = self.repository.revision(commit_id)
 
             try:
+                logger.debug('Get Commit {} from Cache.'.format(commit.id))
                 blobs = self._commits.get(commit.id)
+                logger.debug('Commit found')
             except KeyError:
+                logger.debug('Commit not found')
                 blobs = set()
                 map = self.config.getgraphurifilemap()
 
@@ -183,9 +194,13 @@ class Quit(object):
                         blobs.add(blob)
 
                         try:
+                            logger.debug('instanace() - Get Blob {} from Cache.'.format(blob))
                             f, contexts = self._blobs.get(blob)
+                            logger.debug('Blob found')
                         except KeyError:
+                            logger.debug('Blob not found')
                             tmp = ConjunctiveGraph()
+                            logger.debug('Parse file {}'.format(entity.name))
                             tmp.parse(data=entity.content, format='nquads')
 
                             # Info: currently filter graphs from file that were not defined in
@@ -194,16 +209,21 @@ class Quit(object):
                             contexts = set((context for context in tmp.contexts(None)
                                             if context.identifier in map)) | fixed
 
+                            logger.debug('Add blob {} to Cache'.format(blob))
                             self._blobs.set(
                                 blob, (FileReference(entity.name, entity.content), contexts)
                             )
+                logger.debug('Add commit {} to Cache'.format(commit.id))
                 self._commits.set(commit.id, blobs)
 
+            logger.debug('Cache is up-to-date')
             # now all blobs in commit are known
             for blob in blobs:
                 try:
                     (name, oid) = blob
+                    logger.debug('Get Blob {} from Cache'.format(blob))
                     f, contexts = self._blobs.get(blob)
+                    logger.debug('Blob found')
                     for context in contexts:
                         internal_identifier = context.identifier + '-' + str(oid)
 
@@ -217,20 +237,24 @@ class Quit(object):
                             )
                         default_graphs.append(g)
                 except KeyError:
+                    logger.debug('Blob found')
                     pass
 
         instance = InMemoryAggregatedGraph(
             graphs=default_graphs, identifier='default')
 
+        logger.debug('Instance returned')
         return VirtualGraph(instance)
 
     def changeset(self, commit, delta=None):
 
+        logger.debug('Enter changeset')
         if (
             not self.config.hasFeature(Feature.Persistence)
         ) and (
             not self.config.hasFeature(Feature.Provenance)
         ):
+            logger.debug('Leave changeset immediately')
             return
 
         g = self.store.store
@@ -342,9 +366,13 @@ class Quit(object):
                 blob = (entity.name, entity.oid)
 
                 try:
+                    logger.debug('Cachezugriff in changeset()')
                     f, contexts = self._blobs.get(blob)
+                    logger.debug('Blob gefunden')
                 except KeyError:
+                    logger.debug('Blob nicht gefunden')
                     tmp = ConjunctiveGraph()
+                    logger.debug('Changeset() - Parse Datei', entity.name)
                     tmp.parse(data=entity.content, format='nquads')
 
                     # Info: currently filter graphs from file that were not defined in config
@@ -391,6 +419,8 @@ class Quit(object):
                                in context.triples((None, None, None)))
 
     def commit(self, graph, delta, message, commit_id, ref, **kwargs):
+        logger = logging.getLogger('quit.core.Quit.commit')
+
         def build_message(message, kwargs):
             out = list()
             for k, v in kwargs.items():
@@ -413,6 +443,11 @@ class Quit(object):
                     elif op == 'removals':
                         f.remove(line)
 
+        logger.debug('enter commit')
+        logger.debug('graph {}, delta {}, message {}, commit_id {}, ref {}'.format(
+            graph, delta, message, commit_id, ref)
+        )
+
         if not delta:
             return
 
@@ -421,14 +456,21 @@ class Quit(object):
 
         blobs_new = set()
         try:
+            logger.debug('Get Commit {} from Cache.'.format(commit.id))
             blobs = self._commits.get(commit.id)
+            logger.debug('Commit found')
         except KeyError:
+            logger.debug('Commit not found')
             blobs = []
+
         for blob in blobs:
             (name, oid) = blob
             try:
                 f, contexts = self._blobs.get(blob)
+                logger.debug('Get Blob {} from Cache.'.format(blob))
+                logger.debug('Blob found')
                 for context in contexts:
+                    logger.debug('Current context {}'.format(context.identifier))
                     changeset = delta.get(context.identifier, [])
                     if changeset:
                         _apply(f, changeset, context.identifier)
@@ -436,15 +478,20 @@ class Quit(object):
 
                 index.add(f.path, f.content)
 
+                logger.debug('Remove Blob {} from Cache.'.format(blob))
                 self._blobs.remove(blob)
                 blob = name, index.stash[f.path][0]
+                logger.debug('Set Blob {}.'.format(blob))
+                logger.debug('FileReference {}'.format(f.content))
                 self._blobs.set(blob, (f, contexts))
                 blobs_new.add(blob)
             except KeyError:
+                logger.debug('Blob not found')
                 pass
 
         if delta:
             f_name = self.config.getGlobalFile() or 'unassigned.nq'
+            logger.debug('Write in {}'.f_name)
             f_new = FileReference(f_name, "")
             unassigned = set(graph.store.get_context(i) for i in delta.keys())
             for identifier, changeset in delta.items():

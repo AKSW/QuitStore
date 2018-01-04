@@ -61,6 +61,7 @@ def sparql(branch_or_ref):
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 406: If accept header is not acceptable.
     """
+    logger.debug('Query received')
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch()
 
