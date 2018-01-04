@@ -93,6 +93,7 @@ class VirtualGraph(Queryable):
 
 
 class Quit(object):
+    """Quit object which keeps the store syncronised with the repository."""
 
     gcProcess = None
 
@@ -433,6 +434,7 @@ class Quit(object):
             return "\n".join(out)
 
         def _apply(f, changeset, identifier):
+            """Update the FileReference (graph uri) of a file with help of the changeset."""
             for (op, triples) in changeset:
                 for triple in triples:
                     # the internal _nq serializer appends '\n'

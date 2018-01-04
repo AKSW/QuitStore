@@ -190,9 +190,23 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         return functools.reduce(lambda a, b: a + len(b), self.contexts(None), 0)
 
     def _get_context(self, identifier):
+        """Search for a context and return the Graph if search was sucessfull.
+
+        Args:
+            identifier: URIRef or string of a Graph identifier
+        Returns:
+            Graph if found, else None
+        """
         return next((x for x in self._contexts if x.identifier == identifier), None)
 
     def get_context(self, identifier, quoted=False):
+        """Return the requested context/Graph.
+
+        Args:
+            identifier: URIRef, Graph or string
+        Returns:
+            Graph if found, newly created Graph if not found
+        """
         if isinstance(identifier, Graph):
             identifier = identifier.identifier
         return self._get_context(identifier) or Graph(
