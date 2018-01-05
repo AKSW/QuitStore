@@ -40,7 +40,7 @@ import rdflib
 from jinja2 import Environment, contextfilter, Markup
 from rdflib.query import ResultSerializer
 
-__all__ = ['HTMLResultSerializer']
+__all__ = ('HTMLResultSerializer')
 
 namespace_manager = rdflib.Graph().namespace_manager
 namespace_manager.bind('xsd', rdflib.XSD)

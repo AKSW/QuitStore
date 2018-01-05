@@ -10,7 +10,7 @@ from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
 from quit.utils import git_timestamp
 import json
 
-__all__ = ['git']
+__all__ = ('git')
 
 git = Blueprint('git', __name__)
 

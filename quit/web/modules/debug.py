@@ -6,7 +6,7 @@ from flask import Blueprint, flash, redirect, request, url_for, current_app, mak
 from quit.conf import Feature
 from quit.web.app import render_template, feature_required
 
-__all__ = ['debug']
+__all__ = ('debug')
 
 debug = Blueprint('debug', __name__)
 
