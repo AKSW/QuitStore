@@ -1,6 +1,29 @@
 from tempfile import TemporaryDirectory
 from pygit2 import init_repository, Signature
-from os import path
+from os import path, walk
+from os.path import join
+
+
+def createCommit(repository, message=None):
+    """Create an commit."""
+    message = "First commit of temporary test repo"
+    author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+    comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+
+    def _addAll(index, path, dir=''):
+        for (dirpath, dirnames, filenames) in walk(path):
+            if dirpath.startswith(join(repository.workdir, '.git')):
+                continue
+            for filename in filenames:
+                index.add(join(dir, filename))
+
+    index = repository.index
+    index.read()
+    _addAll(index, repository.workdir)
+
+    # Create commit
+    tree = index.write_tree()
+    repository.create_commit('HEAD', author, comitter, message, tree, [])
 
 
 class TemporaryRepository(object):
