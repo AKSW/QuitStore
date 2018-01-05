@@ -1,8 +1,11 @@
 import functools
+import logging
 from itertools import chain
-from rdflib import Graph, ConjunctiveGraph
+from rdflib import Graph, ConjunctiveGraph, URIRef
 from rdflib.graph import ModificationException
 from rdflib.graph import Path
+
+logger = logging.getLogger('quit.graphs')
 
 
 class RewriteGraph(Graph):
@@ -102,17 +105,16 @@ class CopyOnEditGraph(Graph):
 
 
 class InMemoryAggregatedGraph(ConjunctiveGraph):
-    def __init__(self, store='default', identifier=None, graphs=list()):
+    def __init__(self, store='default', identifier=None, graphs=[]):
+        logger = logging.getLogger('quit.graphs.InMemoryAggregatedGraph')
         super().__init__(store=store, identifier=None)
 
-        assert (
-            isinstance(graphs, list)
-        ) and (
-            all(isinstance(g, Graph) for g in graphs)
-        ), "graphs argument must be a list of Graphs!!"
+        if not (isinstance(graphs, list) and all(isinstance(g, Graph) for g in graphs)):
+            raise Exception("graphs argument must be a list of Graphs!!")
         self._contexts = graphs
 
     def __repr__(self):
+        logger.debug('Enter magic function repr')
         return "<{}: {}|{} graphs>".format(
             type(self).__name__,
             len(self.store.contexts()),
@@ -120,6 +122,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         )
 
     def _graph(self, c):
+        logger.debug('Enter _graph()')
         if c is None:
             return None
         if not isinstance(c, Graph):
@@ -128,6 +131,8 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             return self.get_context(c.identifier)
 
     def contexts(self, triple=None):
+        logger.debug('Enter contexts()')
+
         def collect():
             if triple is None or triple is (None, None, None):
                 contexts = (context for context in self._contexts)
@@ -181,15 +186,38 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
     def __len__(self):
         return functools.reduce(lambda a, b: a + len(b), self.contexts(None), 0)
 
-    def _lookup(self, identifier):
-        return next((x for x in self._contexts if x.identifier == identifier), None)
+    def _get_context(self, identifier):
+        """Search for a context and return the Graph if search was sucessfull.
+
+        Args:
+            identifier: URIRef or string of a Graph identifier
+        Returns:
+            Graph if found, else None
+        """
+        if isinstance(identifier, URIRef):
+            return next((x for x in self._contexts if x.identifier == identifier), None)
+        else:
+            return next((x for x in self._contexts if str(x.identifier) == identifier), None)
 
     def get_context(self, identifier, quoted=False):
+        """Return the requested context/Graph.
+
+        Args:
+            identifier: URIRef, Graph or string
+        Returns:
+            Graph if found, newly created Graph if not found
+        """
         if isinstance(identifier, Graph):
             identifier = identifier.identifier
-        return self._lookup(identifier) or Graph(
-            store=self.store, identifier=identifier, namespace_manager=self
-        )
+
+        context = self._get_context(identifier)
+
+        if context is not None:
+            logger.debug('Context {} found'.format(identifier))
+            return context
+        else:
+            logger.debug('Context {} not found'.format(identifier))
+            return Graph(store=self.store, identifier=identifier, namespace_manager=self)
 
 
 class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
@@ -197,7 +225,7 @@ class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
     def add(self, triple_or_quad):
         s, p, o, c = self._spoc(triple_or_quad, default=True)
 
-        _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+        _copyIfNotExists(self.store, c, self._get_context(self.identifier))
 
         self.store.add((s, p, o), context=c, quoted=False)
 
@@ -205,7 +233,7 @@ class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
         def do(g):
             c = self._graph(g)
 
-            _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+            _copyIfNotExists(self.store, c, self._get_context(self.identifier))
 
             return g
 
@@ -214,7 +242,7 @@ class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
     def remove(self, triple_or_quad):
         s, p, o, c = self._spoc(triple_or_quad)
 
-        _copyIfNotExists(self.store, c, self._lookup(self.identifier))
+        _copyIfNotExists(self.store, c, self._get_context(self.identifier))
 
         self.store.remove((s, p, o), context=c)
 
@@ -223,5 +251,5 @@ class InMemoryCopyOnEditAggregatedGraph(InMemoryAggregatedGraph):
             identifier = identifier.identifier
         return CopyOnEditGraph(
             store=self.store, identifier=identifier, namespace_manager=self,
-            template=self._lookup(identifier)
+            template=self._get_context(identifier)
         )

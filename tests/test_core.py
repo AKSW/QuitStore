@@ -8,9 +8,11 @@ import unittest
 from context import quit
 import quit.core
 import quit.git
+from quit.graphs import InMemoryAggregatedGraph
 from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
+from rdflib import Graph, URIRef
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 
@@ -40,11 +42,62 @@ class MemoryStoreTests(unittest.TestCase):
 
 
 class VirtualGraphTests(unittest.TestCase):
+    SELECT = """SELECT ?g ?s ?p ?o WHERE {GRAPH ?g {?s ?p ?o}}"""
+    INSERT = """INSERT DATA {
+                    GRAPH <urn:graph> {
+                        <urn:A> <urn:B> <urn:C> .
+                    }
+                }"""
+
     def setUp(self):
         pass
 
     def tearDown(self):
         pass
+
+    def testInsertIntoEmptyGraph(self):
+        g = quit.core.VirtualGraph(
+            InMemoryAggregatedGraph(
+                graphs=[Graph()]
+            )
+        )
+
+        g.update(self.INSERT)
+        result = g.query(self.SELECT)
+
+        resultCount = 0
+        graphs = set()
+
+        for r in result:
+            graphs.add(str(r['g']))
+            resultCount += 1
+
+        self.assertEqual(resultCount, 1)
+        self.assertIn('urn:graph', graphs)
+
+    def testInsertIntoNonEmptyGraph(self):
+        g = Graph(identifier='urn:existing.graph')
+        g.add((URIRef('urn:1'), URIRef('urn:2'), URIRef('urn:3')))
+
+        virtGraph = quit.core.VirtualGraph(
+            InMemoryAggregatedGraph(
+                graphs=[g]
+            )
+        )
+
+        virtGraph.update(self.INSERT)
+        result = virtGraph.query(self.SELECT)
+
+        resultCount = 0
+        graphs = set()
+
+        for r in result:
+            graphs.add(str(r['g']))
+            resultCount += 1
+
+        self.assertEqual(resultCount, 2)
+        self.assertIn('urn:graph', graphs)
+        self.assertIn('urn:existing.graph', graphs)
 
 
 class QuitTests(unittest.TestCase):
