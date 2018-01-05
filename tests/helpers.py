@@ -5,7 +5,7 @@ from os.path import join
 
 
 def createCommit(repository, message=None):
-    """Create an commit."""
+    """Create a commit."""
     message = "First commit of temporary test repo"
     author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
     comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
