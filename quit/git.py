@@ -139,12 +139,26 @@ class Repository(object):
         return iter_commits(name, seen)
 
     @property
+    def current_head(self):
+        if not self._repository.head_is_unborn:
+            return re.sub("refs/heads/", "", self._repository.head.name)
+        return None
+
+    @property
     def branches(self):
         return [x for x in self._repository.listall_references() if x.startswith('refs/heads/')]
 
     @property
     def tags(self):
         return [x for x in self._repository.listall_references() if x.startswith('refs/tags/')]
+
+    @property
+    def references(self):
+        return self._repository.listall_references()
+
+    @property
+    def remotes(self):
+        return [{"name": x.name, "url": x.url} for x in self._repository.remotes]
 
     @property
     def tags_or_branches(self):

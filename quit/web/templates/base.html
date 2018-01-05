@@ -16,6 +16,9 @@
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/font-awesome.min.css') }}" />
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/quit.css') }}" />
 {%- endblock styles %}
+<script type="text/javascript">
+var inline_functions = [];
+</script>
 {%- endblock head %}
 </head>
 <body{% block body_attribs %}{% endblock body_attribs %}>
@@ -28,6 +31,13 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    for (f in inline_functions) {
+        inline_functions[f]();
+    }
+});
+</script>
 {%- endblock scripts %}
 {%- endblock body %}
 </body>

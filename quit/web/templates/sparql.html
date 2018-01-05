@@ -3,7 +3,7 @@
 {% block headline %}<div class="lead">Query</div>{% endblock %}
 
 {% block quit_content %}
-{{ render_dropdown(available_branches, available_tags)|safe }}
+{{ render_branches_dropdown(current_ref, available_branches, available_tags)|safe }}
 <div id="yasqe"></div>
 <div id="yasr"></div>
 {% endblock %}
@@ -15,7 +15,7 @@
 <script src="{{ url_for('static', filename='js/yasr.min.js') }}"></script>
 <script>
     var yasqe = YASQE(document.getElementById("yasqe"), {
-    	createShareLink: null, 
+    	createShareLink: null,
 		sparql: {
 			showQueryButton: true,
 			endpoint: '{{ request.url }}'

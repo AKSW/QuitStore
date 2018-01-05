@@ -91,6 +91,11 @@ def pull(remote, refspec):
     HTTP Response 409: If pull produces a conflict*
     (* not yet implemented)
     """
+    if remote is None:
+        remote = request.values.get('remote', None)
+    if refspec is None:
+        refspec = request.values.get('refspec', None)
+
     try:
         current_app.config['quit'].repository.pull(remote_name=remote, refspec=refspec)
         current_app.config['quit'].syncAll()
@@ -119,6 +124,11 @@ def fetch(remote, refspec):
     HTTP Response 409: If fetch produces a conflict*
     (* not yet implemented)
     """
+    if remote is None:
+        remote = request.values.get('remote', None)
+    if refspec is None:
+        refspec = request.values.get('refspec', None)
+
     try:
         current_app.config['quit'].repository.fetch(remote, refspec)
         current_app.config['quit'].syncAll()
@@ -146,6 +156,11 @@ def push(remote, refspec):
     HTTP Response 409: If push produces a conflict on the remote end*
     (* not yet implemented)
     """
+    if remote is None:
+        remote = request.values.get('remote', None)
+    if refspec is None:
+        refspec = request.values.get('refspec', None)
+
     try:
         current_app.config['quit'].repository.push(remote, refspec)
         return '', 200
