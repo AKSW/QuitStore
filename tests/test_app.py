@@ -25,131 +25,47 @@ class QuitAppTestCase(unittest.TestCase):
     def tearDown(self):
         return
 
-    def testRepoDataAfterInitWithNonEmptyGraph(self):
-        """Test file content from newly created app, starting with a non empty graph/repository.
-
-        1. Prepare a git repository with a non empty graph
-        2. Start Quit
-        3. check file content
-        """
-        # Prepate a git Repository
-        with TemporaryRepositoryFactory().withGraph('urn:graph') as repo:
-
+    def testCommits(self):
+        """Test /commits API request."""
+        with TemporaryRepository() as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
 
-            # get commit message
-            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                self.assertEqual(commit.message, 'init')
+            response = app.get('/commits', headers={'Accept': 'application/json'})
+            self.assertEqual(response.status, '200 OK')
+            responseData = json.loads(response.data.decode("utf-8"))
+            self.assertListEqual(responseData, [])
 
-            # compare file content
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+            response = app.get('/commits')
+            self.assertEqual(response.status, '200 OK')
 
-    def testRepoDataAfterInitWithEmptyContent(self):
-        """Test file content from newly created app, starting with an empty graph.
+            response = app.get('/commits', headers={'Accept': 'text/html'})
+            self.assertEqual(response.status, '200 OK')
 
-        1. Prepare a git repository with a non empty graph
-        2. Start Quit
-        3. check file content
-        """
-        # Prepate a git Repository
-        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
-        with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            response = app.get('/commits', headers={'Accept': 'test/nothing'})
+            self.assertEqual(response.status, '406 NOT ACCEPTABLE')
 
-            # get commit message
-            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                self.assertEqual(commit.message, 'init')
+            # Create graph with content and commit
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            with open(join(repo.workdir, "graph.nq"), "w") as graphFile:
+                graphFile.write(graphContent)
 
-            # compare file content
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
+            with open(path.join(repo.workdir, "graph.nq.graph"), "w") as graphFile:
+                graphFile.write('http://example.org')
 
-    def testRepoDataAfterInsertStaringWithNonEmptyGraph(self):
-        """Test inserting data and check the file content, starting with a non empty graph.
+            createCommit(repository=repo)
 
-        1. Prepare a git repository with an empty graph
-        2. Start Quit
-        3. execute INSERT DATA query
-        4. check file content
-        """
-        # Prepate a git Repository
-        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
-        with TemporaryRepositoryFactory().withGraph("urn:graph", graphContent) as repo:
+            # go on with tests
+            response = app.get('/commits', headers={'Accept': 'application/json'})
+            self.assertEqual(response.status, '200 OK')
+            responseData = json.loads(response.data.decode("utf-8"))
+            self.assertEqual(len(responseData), 1)
 
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            # execute INSERT DATA query
-            update = "INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> <urn:z2> .}}"
-            app.post('/sparql', data=dict(query=update))
-
-            # test file content
-            expectedFileContent = '<urn:x2> <urn:y2> <urn:z2> <urn:graph> .\n'
-            expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .'
-
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
-                self.assertEqual(expectedFileContent, f.read())
-
-            # check commit messages
-            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}\n\nNew Commit from QuitStore'
-
-            commits = []
-
-            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                commits.append(commit.message)
-
-            self.assertEqual(commits, [expectedCommitMsg, 'init'])
-
-    def testRepoDataAfterInsertStaringWithEmptyGraph(self):
-        """Test inserting data and check the file content, starting with an empty graph.
-
-        1. Prepare a git repository with an empty graph
-        2. Start Quit
-        3. execute INSERT DATA query
-        4. check file content
-        """
-        # Prepate a git Repository
-        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            # execute INSERT DATA query
-            update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
-            app.post('/sparql', data=dict(query=update))
-
-            # test file content
-            expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .'
-
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
-                self.assertEqual(expectedFileContent, f.read())
-
-            # check commit messages
-            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}\n\nNew Commit from QuitStore'
-
-            commits = []
-
-            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                commits.append(commit.message)
-
-            self.assertEqual(commits, [expectedCommitMsg, 'init'])
+            response = app.get('/commits', headers={'Accept': 'text/html'})
+            self.assertEqual(response.status, '200 OK')
 
     def testContentNegotiation(self):
         """Test SPARQL with different Accept Headers."""
@@ -208,23 +124,6 @@ class QuitAppTestCase(unittest.TestCase):
                     resp = app.post(ep_path, data=dict(query=query), headers={'Accept': 'foo/bar'})
                     self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
-    def testStartApp(self):
-        """Test start of quit store."""
-        # Prepate a git Repository
-        with TemporaryRepository() as repo:
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
-            response = app.post('/sparql', data=dict(query=query))
-            self.assertEqual(response.status, '200 OK')
-
-            response = app.post('/provenance', data=dict(query=query))
-            self.assertEqual(response.status, '404 NOT FOUND')
-
     def testFeatureProvenance(self):
         """Test if feature is active or not."""
         # Prepate a git Repository
@@ -237,119 +136,6 @@ class QuitAppTestCase(unittest.TestCase):
 
             query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
             response = app.post('/provenance', data=dict(query=query))
-            self.assertEqual(response.status, '200 OK')
-
-    def testReloadStore(self):
-        """Test reload of quit store, starting with an emtpy graph.
-
-        1. Start app
-        2. Execute INSERT query
-        3. Restart app
-        4. Execute SELECT query and expect one result
-        """
-        # Prepate a git Repository
-        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            # execute INSERT DATA query
-            update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
-            app.post('/sparql', data=dict(query=update))
-
-            # reload the store
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            newApp = create_app(config).test_client()
-
-            # execute SELECT query
-            select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
-            select_resp = newApp.post(
-                '/sparql',
-                data=dict(query=select),
-                headers=dict(accept="application/sparql-results+json")
-            )
-
-            obj = json.loads(select_resp.data.decode("utf-8"))
-
-            self.assertEqual(len(obj["results"]["bindings"]), 1)
-
-            self.assertDictEqual(obj["results"]["bindings"][0], {
-                "s": {'type': 'uri', 'value': 'urn:x'},
-                "p": {'type': 'uri', 'value': 'urn:y'},
-                "o": {'type': 'uri', 'value': 'urn:z'}})
-
-    def testLogfileExists(self):
-        """Test if a logfile is created."""
-        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-            logFile = join(repo.workdir, 'quit.log')
-            self.assertFalse(os.path.isfile(logFile))
-
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-l', logFile])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            self.assertTrue(os.path.isfile(logFile))
-
-    def testLogfileNotExists(self):
-        """Test start of quit store without logfile."""
-        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-            logFile = join(repo.workdir, 'quit.log')
-            self.assertFalse(os.path.isfile(logFile))
-
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            self.assertFalse(os.path.isfile(logFile))
-
-    def testCommits(self):
-        """Test /commits API request."""
-        with TemporaryRepository() as repo:
-            # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
-
-            response = app.get('/commits', headers={'Accept': 'application/json'})
-            self.assertEqual(response.status, '200 OK')
-            responseData = json.loads(response.data.decode("utf-8"))
-            self.assertListEqual(responseData, [])
-
-            response = app.get('/commits')
-            self.assertEqual(response.status, '200 OK')
-
-            response = app.get('/commits', headers={'Accept': 'text/html'})
-            self.assertEqual(response.status, '200 OK')
-
-            response = app.get('/commits', headers={'Accept': 'test/nothing'})
-            self.assertEqual(response.status, '406 NOT ACCEPTABLE')
-
-            # Create graph with content and commit
-            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
-            with open(join(repo.workdir, "graph.nq"), "w") as graphFile:
-                graphFile.write(graphContent)
-
-            with open(path.join(repo.workdir, "graph.nq.graph"), "w") as graphFile:
-                graphFile.write('http://example.org')
-
-            createCommit(repository=repo)
-
-            # go on with tests
-            response = app.get('/commits', headers={'Accept': 'application/json'})
-            self.assertEqual(response.status, '200 OK')
-            responseData = json.loads(response.data.decode("utf-8"))
-            self.assertEqual(len(responseData), 1)
-
-            response = app.get('/commits', headers={'Accept': 'text/html'})
             self.assertEqual(response.status, '200 OK')
 
     def testInitAndSelectFromEmptyGraph(self):
@@ -493,6 +279,219 @@ class QuitAppTestCase(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'http://ex.org/b'},
                 "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
 
+    def testLogfileExists(self):
+        """Test if a logfile is created."""
+        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
+            logFile = join(repo.workdir, 'quit.log')
+            self.assertFalse(os.path.isfile(logFile))
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-l', logFile])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            self.assertTrue(os.path.isfile(logFile))
+
+    def testLogfileNotExists(self):
+        """Test start of quit store without logfile."""
+        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
+            logFile = join(repo.workdir, 'quit.log')
+            self.assertFalse(os.path.isfile(logFile))
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            self.assertFalse(os.path.isfile(logFile))
+
+    def testReloadStore(self):
+        """Test reload of quit store, starting with an emtpy graph.
+
+        1. Start app
+        2. Execute INSERT query
+        3. Restart app
+        4. Execute SELECT query and expect one result
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
+            app.post('/sparql', data=dict(query=update))
+
+            # reload the store
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            newApp = create_app(config).test_client()
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = newApp.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+    def testRepoDataAfterInitWithEmptyContent(self):
+        """Test file content from newly created app, starting with an empty graph.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. check file content
+        """
+        # Prepate a git Repository
+        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
+        with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # get commit message
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                self.assertEqual(commit.message, 'init')
+
+            # compare file content
+            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
+
+    def testRepoDataAfterInitWithNonEmptyGraph(self):
+        """Test file content from newly created app, starting with a non empty graph/repository.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. check file content
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withGraph('urn:graph') as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # get commit message
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                self.assertEqual(commit.message, 'init')
+
+            # compare file content
+            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testRepoDataAfterInsertStaringWithEmptyGraph(self):
+        """Test inserting data and check the file content, starting with an empty graph.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. check file content
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
+            app.post('/sparql', data=dict(query=update))
+
+            # test file content
+            expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .'
+
+            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual(expectedFileContent, f.read())
+
+            # check commit messages
+            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}\n\nNew Commit from QuitStore'
+
+            commits = []
+
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                commits.append(commit.message)
+
+            self.assertEqual(commits, [expectedCommitMsg, 'init'])
+
+    def testRepoDataAfterInsertStaringWithNonEmptyGraph(self):
+        """Test inserting data and check the file content, starting with a non empty graph.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. check file content
+        """
+        # Prepate a git Repository
+        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
+        with TemporaryRepositoryFactory().withGraph("urn:graph", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> <urn:z2> .}}"
+            app.post('/sparql', data=dict(query=update))
+
+            # test file content
+            expectedFileContent = '<urn:x2> <urn:y2> <urn:z2> <urn:graph> .\n'
+            expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .'
+
+            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual(expectedFileContent, f.read())
+
+            # check commit messages
+            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}\n\nNew Commit from QuitStore'
+
+            commits = []
+
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                commits.append(commit.message)
+
+            self.assertEqual(commits, [expectedCommitMsg, 'init'])
+
+    def testStartApp(self):
+        """Test start of quit store."""
+        # Prepate a git Repository
+        with TemporaryRepository() as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+            response = app.post('/sparql', data=dict(query=query))
+            self.assertEqual(response.status, '200 OK')
+
+            response = app.post('/provenance', data=dict(query=query))
+            self.assertEqual(response.status, '404 NOT FOUND')
 
 if __name__ == '__main__':
     unittest.main()
