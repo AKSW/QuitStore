@@ -445,11 +445,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             obj = json.loads(select_resp.data.decode("utf-8"))
 
-            try:
-                assert len(obj["results"]["bindings"]) == 1
-            except AssertionError as e:
-                e.args += ('It was expected, that the graph contains 1 (one) statement.', select_resp.data.decode("utf-8"))
-                raise
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
 
             self.assertDictEqual(obj["results"]["bindings"][0], {
                 "s": {'type': 'uri', 'value': 'http://ex.org/a'},
@@ -489,11 +485,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             obj = json.loads(select_resp.data.decode("utf-8"))
 
-            try:
-                assert len(obj["results"]["bindings"]) == 2
-            except AssertionError as e:
-                e.args += ('It was expected, that the graph contains 2 (two) statement.', select_resp.data.decode("utf-8"))
-                raise
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
 
             # obj = json.load(select_resp.data)
             self.assertDictEqual(obj["results"]["bindings"][0], {
