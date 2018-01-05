@@ -11,7 +11,7 @@ from quit.exceptions import UnSupportedQueryType
 
 logger = logging.getLogger('quit.modules.endpoint')
 
-__all__ = ['endpoint']
+__all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
 

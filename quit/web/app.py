@@ -25,7 +25,7 @@ from quit.provenance import Blame
 logger = logging.getLogger('quit.web.app')
 
 # For import *
-__all__ = ['create_app']
+__all__ = ('create_app')
 
 DROPDOWN_TEMPLATE = """
 <div class="dropdown branch-select">
