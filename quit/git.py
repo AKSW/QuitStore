@@ -198,6 +198,8 @@ class Repository(object):
         for remote in self._repository.remotes:
             if remote.name == remote_name:
                 remote.push([ref], callbacks=self.callback)
+                if self.callback.push_error is not None:
+                    raise self.callback.push_error
                 return
         raise QuitGitPushError("There is no remote \"{}\".", remote_name)
 
@@ -556,8 +558,16 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
             raise Exception("Only unsupported credential types allowed by remote end")
 
     def push_update_reference(self, refname, message):
+        """This callback is called if for a push.
+
+        In the case, that te remote rejects a push, message will be set.
+        Because we can't raise an Exception here, we have to write it to self.push_error, thus it is
+        important to check on the callback object if push_error is not None after a push.
+        """
+        self.push_error = None
         if message:
-            raise QuitGitPushError(
-                "The reference \"{}\" could not be pushed. Remote tells us: {}".format(
-                    refname, message))
+            self.push_error = QuitGitPushError(
+                "The reference \"{}\" could not be pushed. Remote told us: {}".format(
+                    refname.decode("utf-8"), message))
+            return -1
         pass
