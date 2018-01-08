@@ -61,7 +61,6 @@ def sparql(branch_or_ref):
         HTTP Response 200: If request contained a valid update query.
         HTTP Response 406: If accept header is not acceptable.
     """
-    logger.debug('Query received')
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch()
 
@@ -69,6 +68,7 @@ def sparql(branch_or_ref):
         branch_or_ref = default_branch
 
     q = request.values.get('query', None) or request.values.get('update', None)
+    logger.info('Received query: {}'.format(q))
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
@@ -139,6 +139,7 @@ def provenance():
     quit = current_app.config['quit']
 
     q = request.values.get('query', None)
+    logger.info('Received provenance query: {}'.format(q))
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best
@@ -307,8 +308,6 @@ def statements(branch_or_ref):
     mimetype = request.mimetype
     args = request.args
     body = request.data.decode('utf-8')
-
-    logger.debug("{} {} {} {}".format(method, mimetype, args, body))
 
     if 'Accept' in request.headers:
         mimetype = parse_accept_header(request.headers['Accept']).best

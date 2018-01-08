@@ -5,8 +5,6 @@ from rdflib import Graph, ConjunctiveGraph, URIRef
 from rdflib.graph import ModificationException
 from rdflib.graph import Path
 
-logger = logging.getLogger('quit.graphs')
-
 
 class RewriteGraph(Graph):
     def __init__(
@@ -106,7 +104,6 @@ class CopyOnEditGraph(Graph):
 
 class InMemoryAggregatedGraph(ConjunctiveGraph):
     def __init__(self, store='default', identifier=None, graphs=[]):
-        logger = logging.getLogger('quit.graphs.InMemoryAggregatedGraph')
         super().__init__(store=store, identifier=None)
 
         if not (isinstance(graphs, list) and all(isinstance(g, Graph) for g in graphs)):
@@ -114,7 +111,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         self._contexts = graphs
 
     def __repr__(self):
-        logger.debug('Enter magic function repr')
         return "<{}: {}|{} graphs>".format(
             type(self).__name__,
             len(self.store.contexts()),
@@ -122,7 +118,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         )
 
     def _graph(self, c):
-        logger.debug('Enter _graph()')
         if c is None:
             return None
         if not isinstance(c, Graph):
@@ -131,7 +126,6 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             return self.get_context(c.identifier)
 
     def contexts(self, triple=None):
-        logger.debug('Enter contexts()')
 
         def collect():
             if triple is None or triple is (None, None, None):
@@ -213,10 +207,8 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
         context = self._get_context(identifier)
 
         if context is not None:
-            logger.debug('Context {} found'.format(identifier))
             return context
         else:
-            logger.debug('Context {} not found'.format(identifier))
             return Graph(store=self.store, identifier=identifier, namespace_manager=self)
 
 
