@@ -1,12 +1,12 @@
 from tempfile import TemporaryDirectory
-from pygit2 import init_repository, Signature
+from pygit2 import init_repository, clone_repository, Signature
 from os import path, walk
 from os.path import join
 
 
 def createCommit(repository, message=None):
     """Create a commit."""
-    message = "First commit of temporary test repo"
+    message = "Commit to temporary test repo"
     author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
     comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
 
@@ -23,7 +23,10 @@ def createCommit(repository, message=None):
 
     # Create commit
     tree = index.write_tree()
-    repository.create_commit('HEAD', author, comitter, message, tree, [])
+    parents = []
+    if not repository.is_empty:
+        parents.append(repository.head.target)
+    repository.create_commit('HEAD', author, comitter, message, tree, parents)
 
 
 class TemporaryRepository(object):
@@ -40,9 +43,12 @@ class TemporaryRepository(object):
         repo.create_commit('HEAD', author, comitter, message, tree, [])
     """
 
-    def __init__(self, is_bare=False):
+    def __init__(self, is_bare=False, clone_from_repo=None):
         self.temp_dir = TemporaryDirectory()
-        self.repo = init_repository(self.temp_dir.name, is_bare)
+        if clone_from_repo:
+            self.repo = clone_repository(clone_from_repo.path, self.temp_dir.name)
+        else:
+            self.repo = init_repository(self.temp_dir.name, is_bare)
 
     def __enter__(self):
         return self.repo
@@ -87,3 +93,14 @@ class TemporaryRepositoryFactory(object):
         tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
         return tmpRepo
+
+
+def assertResultBindingsEqual(self, listA, listB):
+    """Assert that two lists of SPARQL JSON result bindings are equal."""
+    def sort(item):
+        key = ""
+        for spog in ['s', 'p', 'o', 'g']:
+            key += item[spog]['value'] + item[spog]['type']
+        return key
+
+    self.assertListEqual(sorted(listA, key=sort), sorted(listB, key=sort))
