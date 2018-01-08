@@ -558,9 +558,9 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
             raise Exception("Only unsupported credential types allowed by remote end")
 
     def push_update_reference(self, refname, message):
-        """This callback is called if for a push.
+        """This callback is called for a push operation.
 
-        In the case, that te remote rejects a push, message will be set.
+        In the case, that the remote rejects a push, message will be set.
         Because we can't raise an Exception here, we have to write it to self.push_error, thus it is
         important to check on the callback object if push_error is not None after a push.
         """
