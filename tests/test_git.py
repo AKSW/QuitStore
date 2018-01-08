@@ -285,7 +285,7 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPushRepoNotConfiguredNamedRemote(self):
         """Test if the push failes if the specified remote was not defined."""
-        with TemporaryRepository(True) as remote:
+        with TemporaryRepository(is_bare=True) as remote:
             graphContent = """
                 <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
@@ -315,6 +315,24 @@ class GitRepositoryTests(unittest.TestCase):
 
                 with self.assertRaises(pygit2.GitError):
                     quitRepo.push()
+
+    @unittest.skip("requires a remote with pre-receive hook")
+    def testPushRepoWithRemoteReject(self):
+        """Test for an exception, if the remote repositories rejects a push.
+
+        CAUTION: This test is disabled, because it requires a remote with pre-receive hook.
+        Unfortunately the libgit2 does not execute pre-receive hooks on local repositories.
+        """
+        graphContent = """
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
+            local.remotes.create("origin", "ssh://git@git.docker/testing.git")
+            quitRepo = quit.git.Repository(local.workdir)
+
+            self.assertFalse(local.is_empty)
+
+            with self.assertRaises(QuitGitPushError):
+                quitRepo.push()
 
     def testRepositoryIsEmpty(self):
         """Test that adding data causes a new commit."""
