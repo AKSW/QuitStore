@@ -68,7 +68,7 @@ class Blame(object):
                         quit:updates ?update ;
                         quit:hex ?hex .
                 ?qa     prov:agent ?user ;
-                        prov:role quit:author .
+                        prov:role quit:Author .
                 ?user   foaf:mbox ?email ;
                         rdfs:label ?name .
                 ?update quit:graph ?context ;
