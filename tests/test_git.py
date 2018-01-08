@@ -316,13 +316,13 @@ class GitRepositoryTests(unittest.TestCase):
                 with self.assertRaises(pygit2.GitError):
                     quitRepo.push()
 
+    @unittest.skip("requires a remote with pre-receive hook")
     def testPushRepoWithRemoteReject(self):
         """Test for an exception, if the remote repositories rejects a push.
 
         CAUTION: This test is disabled, because it requires a remote with pre-receive hook.
         Unfortunately the libgit2 does not execute pre-receive hooks on local repositories.
         """
-        return
         graphContent = """
             <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
