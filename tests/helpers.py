@@ -95,11 +95,11 @@ class TemporaryRepositoryFactory(object):
         return tmpRepo
 
 
-def assertResultBindingsEqual(self, listA, listB):
+def assertResultBindingsEqual(self, listA, listB, queryVariables=['s', 'p', 'o', 'g']):
     """Assert that two lists of SPARQL JSON result bindings are equal."""
     def sort(item):
         key = ""
-        for spog in ['s', 'p', 'o', 'g']:
+        for spog in queryVariables:
             key += item[spog]['value'] + item[spog]['type']
         return key
 
