@@ -68,7 +68,7 @@ class Blame(object):
                         quit:updates ?update ;
                         quit:hex ?hex .
                 ?qa     prov:agent ?user ;
-                        prov:role quit:author .
+                        prov:role quit:Author .
                 ?user   foaf:mbox ?email ;
                         rdfs:label ?name .
                 ?update quit:graph ?context ;
@@ -91,10 +91,8 @@ class Blame(object):
             }
             """ % values_string
 
-        return list(
-            self.quit.store.store.query(
-                q,
-                initNs={'foaf': FOAF, 'prov': PROV, 'quit': QUIT},
-                initBindings={'commit': QUIT['commit-' + commit.id]}
-            )
+        return self.quit.store.store.query(
+            q,
+            initNs={'foaf': FOAF, 'prov': PROV, 'quit': QUIT},
+            initBindings={'commit': QUIT['commit-' + commit.id]}
         )

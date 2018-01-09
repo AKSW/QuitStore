@@ -1,6 +1,7 @@
 from context import quit
 import os
 
+from datetime import datetime
 from distutils.dir_util import copy_tree, remove_tree
 from glob import glob
 from os import remove, stat, path
@@ -12,7 +13,7 @@ import tempfile
 import unittest
 import json
 from helpers import TemporaryRepository, TemporaryRepositoryFactory
-from helpers import createCommit
+from helpers import createCommit, assertResultBindingsEqual
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -24,6 +25,105 @@ class QuitAppTestCase(unittest.TestCase):
 
     def tearDown(self):
         return
+
+    def testBlame(self):
+        """Test if feature responds with correct values.
+
+        1. Prepare a git repository with a non empty graph
+        2. Get id of the existing commit
+        3. Call /blame/master and /blame/{commitId} with all specified accept headers and test the
+           response data
+        """
+        # Prepate a git Repository
+        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                oid = str(commit.id)
+
+            expected = {
+                's': {'type': 'uri', 'value': 'http://ex.org/x'},
+                'p': {'type': 'uri', 'value': 'http://ex.org/y'},
+                'o': {'type': 'uri', 'value': 'http://ex.org/z'},
+                'context': {'type': 'uri', 'value': 'http://example.org/'},
+                'hex': {'type': 'literal', 'value': oid},
+                'name': {'type': 'literal', 'value': 'QuitStoreTest'},
+                'email': {'type': 'literal', 'value': 'quit@quit.aksw.org'}
+            }
+
+            for apiPath in ['master', oid]:
+                response = app.get('/blame/{}'.format(apiPath))
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+                results = resultBindings[0]
+
+                self.assertEqual(len(resultBindings), 1)
+                # compare expected date separately without time
+                self.assertTrue(
+                    results['date']['value'].startswith(datetime.now().strftime('%Y-%m-%d'))
+                )
+                self.assertEqual(
+                    results['date']['datatype'], 'http://www.w3.org/2001/XMLSchema#dateTime'
+                )
+                self.assertEqual(results['date']['type'], 'typed-literal')
+
+                del results['date']
+
+                queryVariables = ['s', 'p', 'o', 'context', 'hex', 'name', 'email']
+
+                # compare lists (without date)
+                assertResultBindingsEqual(self, [expected], resultBindings, queryVariables)
+
+    def testBlameApi(self):
+        """Test if feature is active or not.
+
+        1. Prepare a git repository with a non empty graph
+        2. Get id of the existing commit
+        3. Call /blame/master and /blame/{commitId} with all specified accept headers and test the
+           response status
+        """
+        # Prepate a git Repository
+        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                oid = str(commit.id)
+
+            graphUri = 'http://example.org/'
+
+            mimetypes = [
+                'text/html', 'application/xhtml_xml', '*/*',
+                'application/json', 'application/sparql-results+json',
+                'application/rdf+xml', 'application/xml', 'application/sparql-results+xml',
+                'application/csv', 'text/csv'
+            ]
+
+            # Test API with existing paths and specified accept headers
+            for apiPath in ['master', oid]:
+                for header in mimetypes:
+                    response = app.get('/blame/{}'.format(apiPath), headers={'Accept': header})
+                    self.assertEqual(response.status, '200 OK')
+
+            # Test API default accept header
+            response = app.get('/blame/master')
+            self.assertEqual(response.status, '200 OK')
+
+            # Test API with not acceptable header
+            response = app.get('/blame/foobar', headers={'Accept': 'foo/bar'})
+            self.assertEqual(response.status, '400 BAD REQUEST')
+
+            # Test API with non existing path
+            response = app.get('/blame/foobar')
+            self.assertEqual(response.status, '400 BAD REQUEST')
 
     def testCommits(self):
         """Test /commits API request."""
