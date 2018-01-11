@@ -2,10 +2,34 @@
 
 import logging
 
+import hashlib
+from os import path
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 
 logger = logging.getLogger('quit.helpers')
+
+
+def createGraphfile(graphUri, repoPath, suffix='nq'):
+    """Create an empty rdf file and the corresponding .graph file containing the graph URI.
+
+    Args:
+        graphUri: The URI of the named graphUri
+        repoPath: The path where the file will be created
+        suffix: The file suffix (defaults nq)
+
+    Returns:
+        f_name: The file name
+    """
+    f_name = 'quit.' + hashlib.md5(graphUri.lower().encode()).hexdigest() + '.' + suffix
+
+    with open(path.join(repoPath, f_name), "w") as graphFile:
+        pass
+
+    with open(path.join(repoPath, f_name + '.graph'), "w") as graphFile:
+        graphFile.write(graphUri)
+
+    return f_name
 
 
 class QueryAnalyzer:

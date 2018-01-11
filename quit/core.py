@@ -13,6 +13,7 @@ from rdflib.plugins.serializers.nquads import _nq_row as _nq
 from quit.conf import Feature
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
+from quit.helpers import createGraphfile
 from quit.utils import graphdiff, git_timestamp
 from quit.cache import Cache, FileReference
 
@@ -448,18 +449,15 @@ class Quit(object):
                 pass
 
         if delta:
-            f_name = self.config.getGlobalFile() or 'unassigned.nq'
-            f_new = FileReference(f_name, "")
-            unassigned = set(graph.store.get_context(i) for i in delta.keys())
             for identifier, changeset in delta.items():
                 if changeset:
-                    _apply(f_new, changeset, graph.store.identifier)
-
-            index.add(f_new.path, f_new.content)
-
-            blob = f_name, index.stash[f_new.path][0]
-            self._blobs.set(blob, (f_new, unassigned))
-            blobs_new.add(blob)
+                    f_name = createGraphfile(identifier, self.config.getRepoPath())
+                    f_new = FileReference(f_name, "")
+                    _apply(f_new, changeset, identifier)
+                    index.add(f_new.path, f_new.content)
+                    blob = f_name, index.stash[f_new.path][0]
+                    self._blobs.set(blob, (f_new, f_name))
+                    blobs_new.add(blob)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
