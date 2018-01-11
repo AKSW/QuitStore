@@ -42,4 +42,7 @@ EXPOSE 80
 # Quit writes its log file to the current directory
 WORKDIR /var/log
 
+# Set default git user
+RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
+
 CMD quit --configfile ${QUIT_CONFIGFILE} --port ${QUIT_PORT}

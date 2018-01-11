@@ -1,0 +1,78 @@
+/* roboto-condensed-regular - latin */
+@font-face {
+  font-family: 'Roboto Condensed';
+  font-style: normal;
+  font-weight: 400;
+  src: url('../fonts/roboto-condensed-v14-latin-regular.eot'); /* IE9 Compat Modes */
+  src: local('Roboto Condensed'), local('RobotoCondensed-Regular'),
+       url('../fonts/roboto-condensed-v14-latin-regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('../fonts/roboto-condensed-v14-latin-regular.woff2') format('woff2'), /* Super Modern Browsers */
+       url('../fonts/roboto-condensed-v14-latin-regular.woff') format('woff'), /* Modern Browsers */
+       url('../fonts/roboto-condensed-v14-latin-regular.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('../fonts/roboto-condensed-v14-latin-regular.svg#RobotoCondensed') format('svg'); /* Legacy iOS */
+}
+
+body { 
+    padding-top: 70px; 
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+}
+
+canvas {
+    display: block;
+}
+
+i.fa {
+    height: 16px;
+    width: 16px;
+    text-align: center;
+}
+
+.lead {
+    padding-bottom: 9px;
+    margin: 40px 0 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.table>tbody>tr>td, 
+.table>tbody>tr>th, 
+.table>tfoot>tr>td, 
+.table>tfoot>tr>th, 
+.table>thead>tr>td, 
+.table>thead>tr>th {
+    padding: 5px 10px;
+}
+
+.branch-select {
+	margin-bottom: 10px;
+}
+
+.avatar {
+    border-radius: 50%;
+}
+
+.table>tbody>tr>td {
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.commit-group {
+    display: table;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.commit-group>.commit-item {
+    display: table-cell;
+    vertical-align: top;
+}
+
+.commit-row .btn{
+    padding: 3px 6px;
+}
+
+#commit-graph {
+	margin-bottom: 20px;
+}

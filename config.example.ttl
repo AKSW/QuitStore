@@ -1,18 +1,35 @@
-@base <http://my.quit.conf/> .
+@prefix conf: <http://my.quit.conf/> .
 @prefix quit: <http://quit.aksw.org/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-<exampleStore> a quit:QuitStore ;
+conf:exampleStore a quit:QuitStore ;
   quit:allowNewGraphs 1 ;
-  quit:pathOfGitRepo "../store.default" .
+  quit:pathOfGitRepo "../store.default" ;
+  quit:defaultBranch "master" ;
+  quit:globalFile "global.nq" .
 
-<exampleDBpedia> a quit:Graph ;
+conf:exampleDBpedia a quit:Graph ;
   quit:graphUri <http://dbpedia.org/> ;
   quit:isVersioned 1 ;
   quit:graphFile "dbpedia.nq" .
 
-<exampleGraph> a quit:Graph ;
+conf:exampleGraph a quit:Graph ;
   quit:graphUri <http://my.quit.graph/> ;
   quit:isVersioned 1 ;
+  quit:graphFile "default.nq" .
+
+conf:default a <Graph> ;
+  quit:graphUri <http://aksw.org/NormanRadtke> ;
+  quit:isVersioned 1 ;
+  quit:graphFile "radtke.nq" .
+
+conf:default1 a <Graph> ;
+  quit:graphUri <http://aksw.org/NatanaelArndt> ;
+  quit:isVersioned 1 ;
+  quit:graphFile "arndt.nq" .
+
+conf:aksw a <Binding> ;
+  quit:prefix "aksw" ;
+  quit:namespace <http://aksw.org/> .
   quit:graphFile "default.nq" .

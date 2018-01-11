@@ -1,0 +1,47 @@
+{% extends "default.html" %}
+
+{% block headline %}<div class="lead">Blame</div>{% endblock %}
+
+{%- block styles %}
+{{super()}}
+{%- endblock styles %}
+
+{% block quit_content %}
+{{ render_dropdown(available_branches, available_tags)|safe }}
+{% if results|length > 0 %}
+<table id="blame" class="table">
+    <thead>
+        <tr>
+            <th>Author</th>
+            <th>Commit</th>
+            <th>Subject</th>
+            <th>Predicate</th>
+            <th>Object</th>
+            <th>Graph</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in results %}
+        <tr>
+            <td><img src="{{ row.commit.author.email|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row.commit.author.name }}</td>
+            <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.commit.id) }}">{{ row.commit.short_id }}</a></td>
+            <td>{{ row.blame['s']|term_to_string }}</td>
+            <td>{{ row.blame['p']|term_to_string }}</td>
+            <td>{{ row.blame['o']|term_to_string }}</td>
+            <td>{{ row.blame['context']|term_to_string }}</td>
+            <td>{{ git_timestamp(row.commit.author.time, row.commit.author.offset) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+No results found
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+{% endblock %}

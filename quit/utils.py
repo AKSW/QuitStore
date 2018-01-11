@@ -1,16 +1,50 @@
 from __future__ import with_statement
 from flask import Response
+import os
 import contextlib
 import signal
 import sys
+from datetime import tzinfo, timedelta, datetime
+from quit.graphs import InMemoryAggregatedGraph
+
+ZERO = timedelta(0)
+HOUR = timedelta(hours=1)
+
+
+class TZ(tzinfo):
+    """Fixed offset in minutes east from UTC."""
+
+    def __init__(self, offset, name):
+        self.__offset = timedelta(minutes=offset)
+        self.__name = name
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return self.__name
+
+    def dst(self, dt):
+        return ZERO
+
+
+def git_timestamp(ts, offset):
+    import quit.utils as tzinfo
+    if offset == 0:
+        tz = tzinfo.TZ(0, "UTC")
+    else:
+        hours, rem = divmod(abs(offset), 60)
+        tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
+        tz = tzinfo.TZ(offset, tzname)
+    return datetime.fromtimestamp(ts, tz)
 
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
     return Response(
-            result.serialize(format=format['format']).decode('utf-8'),
-            content_type=format['mime']
-            )
+        result.serialize(format=format['format']).decode('utf-8'),
+        content_type=format['mime']
+    )
 
 
 def splitinformation(quads, GraphObject):
@@ -28,15 +62,58 @@ def splitinformation(quads, GraphObject):
         else:
             graphsInRequest.add(graph.strip('<>'))
             data.append(
-                            {
-                                'graph': graph.strip('<>'),
-                                'quad': quad[0].n3() + ' ' +
-                                quad[1].n3() + ' ' +
-                                quad[2].n3() + ' ' +
-                                graph + ' .\n'
-                            }
-                        )
+                {
+                    'graph': graph.strip('<>'),
+                    'quad': quad[0].n3() + ' ' +
+                    quad[1].n3() + ' ' +
+                    quad[2].n3() + ' ' +
+                    graph + ' .\n'
+                }
+            )
     return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
+
+
+def graphdiff(first, second):
+    """
+    Diff between graph instances, should be replaced/included in quit diff
+    """
+    from rdflib.compare import to_isomorphic, graph_diff
+
+    diffs = {}
+    iris = set()
+
+    if first is not None and isinstance(first, InMemoryAggregatedGraph):
+        first_identifiers = list((g.identifier for g in first.graphs()))
+        iris = iris.union(first_identifiers)
+    if second is not None and isinstance(second, InMemoryAggregatedGraph):
+        second_identifiers = list((g.identifier for g in second.graphs()))
+        iris = iris.union(second_identifiers)
+
+    for iri in iris:
+        changes = diffs.get(iri, [])
+
+        if (
+            first is not None and iri in first_identifiers
+        ) and (
+            second is not None and iri in second_identifiers
+        ):
+            g1 = first.get_context(iri)
+            g2 = second.get_context(iri)
+            in_both, in_first, in_second = graph_diff(to_isomorphic(g1), to_isomorphic(g2))
+
+            if len(in_second) > 0:
+                changes.append(('additions', ((s, p, o) for s, p, o in in_second)))
+            if len(in_first) > 0:
+                changes.append(('removals', ((s, p, o) for s, p, o in in_first)))
+        elif first is not None and iri in first_identifiers:
+            changes.append(('removals', ((s, p, o) for s, p, o in first.get_context(iri))))
+        elif second is not None and iri in second_identifiers:
+            changes.append(('additions', ((s, p, o) for s, p, o in second.get_context(iri))))
+        else:
+            continue
+
+        diffs[iri] = changes
+    return diffs
 
 
 def _sigterm_handler(signum, frame):

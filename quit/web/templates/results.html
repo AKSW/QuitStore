@@ -1,0 +1,11 @@
+{% extends "default.html" %}
+
+{% block quit_content %}
+
+{% if results|length > 0 %}
+{{ results }}
+{% else %}
+No results found
+{% endif %}
+
+{% endblock %}

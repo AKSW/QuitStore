@@ -1,0 +1,72 @@
+{% extends "default.html" %}
+
+{% block headline %}<div class="lead">Commits</div>{% endblock %}
+
+{% block quit_content %}
+{{ render_dropdown(available_branches, available_tags)|safe }}
+{% if results|length > 0 %}
+<div class="commit-group">
+    <div class="commit-item" style="vertical-align: bottom">
+        <div id="commit-graph" data-graph='{{ data }}'></div>
+    </div>
+    <div class="commit-item" style="width: 100%">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Author</th>
+                    <th>Commit</th>
+                    <th width="100%">Message</th>
+                    <th>Date</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                <tr class="commit-row">
+                    <td><img src="{{ row.author.email|gravatar(16) }}" width="16" height="16" class="avatar" /> {{ row.author.name }}</td>
+                    <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}">{{ row.short_id }}</a></td>
+                    <td>{{ row.message }}</td>
+                    <td>{{ git_timestamp(row.author.time, row.author.offset) }}</td>
+                    <td><a href="{{ url_for('endpoint.sparql', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-code" aria-hidden="true"></i></a> <a href="{{ url_for('debug.blame', branch_or_ref=row.id) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+No commits
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<script src="{{ url_for('static', filename='js/jquery.commits-graph.js') }}"></script>
+<script>
+    var $els = $('.commit-row');
+
+    var dotRadius = 3
+    var cellHeight = $els.eq(0).outerHeight()
+
+    $("[data-graph]").each(function () {
+        self = this;
+        self.$container = $(this);
+        self.data = self.$container.data("graph");
+
+        defaults = {
+            y_step: cellHeight,
+            x_step: 10,
+            orientation: "vertical",
+            dotRadius: dotRadius,
+            lineWidth: 2,
+        }
+        defaults.width = (branchCount(self.data) + 1) * defaults.x_step;
+        defaults.height = (self.data.length) * defaults.y_step;
+
+        self.$container.commits(defaults);
+        self.$container.parent.height = defaults.height
+    })
+
+</script>
+{% endblock %}
