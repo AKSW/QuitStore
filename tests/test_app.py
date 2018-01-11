@@ -474,6 +474,42 @@ class QuitAppTestCase(unittest.TestCase):
             with open(join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
 
+    def testRepoDataAfterCreationOfNewGraph(self):
+        """Test file content from newly created app, starting with an empty graph.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. check file content
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph('http://example.org/') as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <urn:graph> { <urn:x> <urn:y> <urn:z> . }}"
+            app.post('/sparql', data=dict(query=update))
+
+            hash = ''
+
+            for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
+                for entity in commit.tree:
+                    if path.isfile(path.join(repo.workdir, entity.name)):
+                        if entity.name.startswith('quit.'):
+                            hash = entity.name[5:37]
+                            break
+
+            createdFile = 'quit.' + hash + '.nq'
+
+            # compare file content
+            with open(path.join(repo.workdir, createdFile), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
+            with open(path.join(repo.workdir, createdFile + '.graph'), 'r') as f:
+                self.assertEqual('urn:graph', f.read())
+
     def testRepoDataAfterInitWithNonEmptyGraph(self):
         """Test file content from newly created app, starting with a non empty graph/repository.
 
