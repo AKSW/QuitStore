@@ -1,19 +1,16 @@
 from context import quit
 import os
+from os import path
 
 from datetime import datetime
-from distutils.dir_util import copy_tree, remove_tree
-from glob import glob
-from os import remove, stat, path
-from os.path import join, isdir
-from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Repository, Signature, init_repository
+from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
 import quit.quit as quitApp
 from quit.web.app import create_app
-import tempfile
 import unittest
-import json
 from helpers import TemporaryRepository, TemporaryRepositoryFactory
+import json
 from helpers import createCommit, assertResultBindingsEqual
+
 
 class QuitAppTestCase(unittest.TestCase):
 
@@ -150,7 +147,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Create graph with content and commit
             graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
-            with open(join(repo.workdir, "graph.nq"), "w") as graphFile:
+            with open(path.join(repo.workdir, "graph.nq"), "w") as graphFile:
                 graphFile.write(graphContent)
 
             with open(path.join(repo.workdir, "graph.nq.graph"), "w") as graphFile:
@@ -382,7 +379,7 @@ class QuitAppTestCase(unittest.TestCase):
     def testLogfileExists(self):
         """Test if a logfile is created."""
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-            logFile = join(repo.workdir, 'quit.log')
+            logFile = path.join(repo.workdir, 'quit.log')
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
@@ -396,7 +393,7 @@ class QuitAppTestCase(unittest.TestCase):
     def testLogfileNotExists(self):
         """Test start of quit store without logfile."""
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
-            logFile = join(repo.workdir, 'quit.log')
+            logFile = path.join(repo.workdir, 'quit.log')
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
@@ -406,6 +403,146 @@ class QuitAppTestCase(unittest.TestCase):
             app = create_app(config).test_client()
 
             self.assertFalse(os.path.isfile(logFile))
+
+    def testPull(self):
+        """Test /pull API request."""
+        graphContent = """
+            <http://ex.org/x> <http://ex.org/x> <http://ex.org/x> <http://example.org/> ."""
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
+            with TemporaryRepository(clone_from_repo=remote) as local:
+
+                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                    graphContent = """
+                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                    graphFile.write(graphContent)
+
+                createCommit(repository=remote)
+
+                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                objects = quitApp.initialize(args)
+
+                config = objects['config']
+                app = create_app(config).test_client()
+
+                beforePull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
+                              'p': {'type': 'uri', 'value': 'http://ex.org/x'},
+                              'o': {'type': 'uri', 'value': 'http://ex.org/x'},
+                              'g': {'type': 'uri', 'value': 'http://example.org/'}}
+
+                query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(len(resultBindings), 1)
+                self.assertDictEqual(resultBindings[0], beforePull)
+                assertResultBindingsEqual(self, resultBindings, [beforePull])
+
+                response = app.get('/pull/origin')
+                self.assertEqual(response.status, '200 OK')
+
+                afterPull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
+                             'p': {'type': 'uri', 'value': 'http://ex.org/y'},
+                             'o': {'type': 'uri', 'value': 'http://ex.org/z'},
+                             'g': {'type': 'uri', 'value': 'http://example.org/'}}
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(response.status, '200 OK')
+                self.assertEqual(len(resultBindings), 2)
+
+                assertResultBindingsEqual(self, resultBindings, [beforePull, afterPull])
+
+    def testPullEmptyInitialGraph(self):
+        """Test /pull API request starting with an initially empty graph."""
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", "") as remote:
+            with TemporaryRepository(clone_from_repo=remote) as local:
+
+                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                    graphContent = """
+                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                    graphFile.write(graphContent)
+
+                createCommit(repository=remote)
+
+                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                objects = quitApp.initialize(args)
+
+                config = objects['config']
+                app = create_app(config).test_client()
+
+                query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(len(resultBindings), 0)
+                assertResultBindingsEqual(self, resultBindings, [])
+
+                response = app.get('/pull/origin')
+                self.assertEqual(response.status, '200 OK')
+
+                afterPull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
+                             'p': {'type': 'uri', 'value': 'http://ex.org/y'},
+                             'o': {'type': 'uri', 'value': 'http://ex.org/z'},
+                             'g': {'type': 'uri', 'value': 'http://example.org/'}}
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(response.status, '200 OK')
+                self.assertEqual(len(resultBindings), 1)
+
+                assertResultBindingsEqual(self, resultBindings, [afterPull])
+
+    @unittest.skip("See https://github.com/AKSW/QuitStore/issues/81")
+    def testPullStartFromEmptyRepository(self):
+        """Test /pull API request starting the store from an empty repository.
+
+        CAUTION: This test is disabled, because we currently have problems starting a store when no
+        graph is configured. See https://github.com/AKSW/QuitStore/issues/81
+        """
+        graphContent = """
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
+            with TemporaryRepository() as local:
+                local.remotes.create("origin", remote.path)
+
+                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                objects = quitApp.initialize(args)
+
+                config = objects['config']
+                app = create_app(config).test_client()
+
+                query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(len(resultBindings), 0)
+
+                response = app.get('/pull/origin')
+                self.assertEqual(response.status, '200 OK')
+
+                afterPull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
+                             'p': {'type': 'uri', 'value': 'http://ex.org/y'},
+                             'o': {'type': 'uri', 'value': 'http://ex.org/z'},
+                             'g': {'type': 'uri', 'value': 'http://example.org/'}}
+
+                response = app.post('/sparql', data=dict(query=query),
+                                    headers={'Accept': 'application/sparql-results+json'})
+                resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
+
+                self.assertEqual(response.status, '200 OK')
+                self.assertEqual(len(resultBindings), 1)
+
+                assertResultBindingsEqual(self, resultBindings, [afterPull])
 
     def testReloadStore(self):
         """Test reload of quit store, starting with an emtpy graph.
@@ -471,7 +608,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(commit.message, 'init')
 
             # compare file content
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
 
     def testRepoDataAfterInitWithNonEmptyGraph(self):
@@ -495,7 +632,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(commit.message, 'init')
 
             # compare file content
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
     def testRepoDataAfterInsertStaringWithEmptyGraph(self):
@@ -522,7 +659,7 @@ class QuitAppTestCase(unittest.TestCase):
             # test file content
             expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .'
 
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
@@ -562,7 +699,7 @@ class QuitAppTestCase(unittest.TestCase):
             expectedFileContent = '<urn:x2> <urn:y2> <urn:z2> <urn:graph> .\n'
             expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .'
 
-            with open(join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages

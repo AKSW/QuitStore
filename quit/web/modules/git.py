@@ -22,7 +22,9 @@ def commits(branch_or_ref):
     Lists all commits of a given git branch.
 
     Returns:
-        HTTP Response with commits.
+    HTTP Response 200: a list of commits
+    HTTP Response 403: unknown branch or ref
+    HTTP Response 406: Unsupported Mimetype requested
     """
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch()
@@ -70,58 +72,87 @@ def commits(branch_or_ref):
         return "<pre>" + traceback.format_exc() + "</pre>", 403
 
 
-@git.route("/pull", defaults={'remote': None}, methods=['POST', 'GET'])
-@git.route("/pull/<path:remote>", methods=['GET', 'POST'])
-def pull(remote):
+@git.route("/pull", defaults={'remote': None, "refspec": None}, methods=['POST', 'GET'])
+@git.route("/pull/<remote>", defaults={"refspec": None}, methods=['GET', 'POST'])
+@git.route("/pull/<remote>/<path:refspec>", methods=['GET', 'POST'])
+def pull(remote, refspec):
     """Pull from remote.
 
+    Arguments:
+    remote -- The remote repository that is the source of the pull operation. The remote with
+    its url has to be configured on the repository.
+    refspec -- Specifies which refs to fetch and which local refs to update.
+
     Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
+    HTTP Response 200: If pull was possible
+    HTTP Response 201: If pull was possible and new commits were fetched or a merge commit was
+                       created*
+    HTTP Response 400: If pull did not work
+    HTTP Response 409: If pull produces a conflict*
+    (* not yet implemented)
     """
     try:
-        current_app.config['quit'].repository.pull(remote)
-        return '', 201
+        current_app.config['quit'].repository.pull(remote_name=remote, refspec=refspec)
+        current_app.config['quit'].syncAll()
+        return '', 200
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
-        return "<pre>" + traceback.format_exc() + "</pre>", 403
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 
-@git.route("/fetch", defaults={'remote': None}, methods=['POST', 'GET'])
-@git.route("/fetch/<path:remote>", methods=['GET', 'POST'])
-def fetch(remote):
+@git.route("/fetch", defaults={'remote': None, "refspec": None}, methods=['POST', 'GET'])
+@git.route("/fetch/<remote>", defaults={"refspec": None}, methods=['GET', 'POST'])
+@git.route("/fetch/<remote>/<path:refspec>", methods=['GET', 'POST'])
+def fetch(remote, refspec):
     """Fetch from remote.
 
+    Arguments:
+    remote -- The remote repository that is the source of the fetch operation. The remote with its
+              url has to be configured on the repository.
+    refspec -- Specifies which refs to fetch and which local refs to update.
+
     Returns:
-        HTTP Response 201: If pull was possible
-        HTTP Response: 403: If pull did not work
+    HTTP Response 200: If fetch was possible
+    HTTP Response 201: If fetch was possible and new commits were fetched*
+    HTTP Response 400: If fetch did not work
+    HTTP Response 409: If fetch produces a conflict*
+    (* not yet implemented)
     """
     try:
-        current_app.config['quit'].repository.fetch(remote)
-        return '', 201
+        current_app.config['quit'].repository.fetch(remote, refspec)
+        current_app.config['quit'].syncAll()
+        return '', 200
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
-        return "<pre>" + traceback.format_exc() + "</pre>", 403
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 
-@git.route("/push", defaults={'remote': None}, methods=['POST', 'GET'])
-@git.route("/push/<path:remote>", methods=['GET', 'POST'])
-def push(remote):
-    """Pull from remote.
+@git.route("/push", defaults={'remote': None, "refspec": None}, methods=['POST', 'GET'])
+@git.route("/push/<remote>", defaults={"refspec": None}, methods=['GET', 'POST'])
+@git.route("/push/<remote>/<path:refspec>", methods=['GET', 'POST'])
+def push(remote, refspec):
+    """Push to remote.
+
+    Arguments:
+    remote -- The remote repository that is the destination of the push operation. The remote with
+              its url has to be configured on the repository.
+    refspec -- Specifies which refs to push and which remote refs to update.
 
     Returns:
-        HTTP Response 201: If push was possible
-        HTTP Response: 403: If push did not work
+    HTTP Response 200: If push was possible
+    HTTP Response 400: If push did not work
+    HTTP Response 409: If push produces a conflict on the remote end*
+    (* not yet implemented)
     """
     try:
-        current_app.config['quit'].repository.push(remote)
-        return '', 201
+        current_app.config['quit'].repository.push(remote, refspec)
+        return '', 200
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
-        return "<pre>" + traceback.format_exc() + "</pre>", 403
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 
 @git.route("/merge", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
@@ -137,19 +168,23 @@ def merge(branch_or_ref):
         to the resulting commit
 
     Returns:
-        HTTP Response 201: If merge was possible
-        HTTP Response: 403: If merge did fail
+    HTTP Response 200: If merge was possible
+    HTTP Response 201: If merge was possible and a merge commit was created*
+    HTTP Response 400: If merge did not work
+    HTTP Response 409: If merge produces a conflict*
+    (* not yet implemented)
     """
     try:
 
         branch = request.values.get('branch', None) or None
         target = request.values.get('target', None) or branch_or_ref
         current_app.config['quit'].repository.merge(branch_or_ref, target, branch)
-        return '', 201
+        current_app.config['quit'].syncAll()
+        return '', 200
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
-        return "<pre>" + traceback.format_exc() + "</pre>", 403
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 
 @git.route("/revert", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
@@ -158,13 +193,14 @@ def revert(branch_or_ref):
     """Revert a commit.
 
     Returns:
-        HTTP Response 201: If revert was possible
-        HTTP Response: 403: If revert did fail
+    HTTP Response 201: If revert was possible and a revert commit was created
+    HTTP Response 400: If revert did fail
     """
     try:
         current_app.config['quit'].repository.revert()
+        current_app.config['quit'].syncAll()
         return '', 201
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
-        return "<pre>" + traceback.format_exc() + "</pre>", 403
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
