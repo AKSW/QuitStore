@@ -122,7 +122,7 @@ def sparql(branch_or_ref):
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
     else:
         if mimetype == 'text/html':
-            return render_template('sparql.html')
+            return render_template('sparql.html', current_ref=branch_or_ref)
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])

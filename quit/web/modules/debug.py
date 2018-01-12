@@ -35,7 +35,8 @@ def blame(branch_or_ref):
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             results = [{'commit': quit.repository.revision(
                 row['hex']), 'blame': row} for row in res]
-            response = make_response(render_template("blame.html", results=results))
+            response = make_response(render_template("blame.html", results=results,
+                                     current_ref=branch_or_ref))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:

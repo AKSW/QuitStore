@@ -27,10 +27,11 @@ logger = logging.getLogger('quit.web.app')
 # For import *
 __all__ = ('create_app')
 
-DROPDOWN_TEMPLATE = """
-<div class="dropdown branch-select">
+BRANCHES_DROPDOWN_TEMPLATE = """
+<span class="dropdown branch-select">
     <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
-        <i class="fa fa-code-fork" aria-hidden="true"></i> Branches <span class="caret"></span>
+        <i class="fa fa-code-fork" aria-hidden="true"></i> {{ current_ref }}
+        <span class="caret"></span>
     </button>
     <ul class="dropdown-menu">
         <li class="dropdown-header">Branches</li>
@@ -47,6 +48,20 @@ DROPDOWN_TEMPLATE = """
             {% endfor %}
         {% endif %}
     </ul>
+</span>
+"""
+
+REMOTES_DROPDOWN_TEMPLATE = """
+<div class="form-group">
+<label class="control-label" for="remote">
+    <i class="fa fa-cloud" aria-hidden="true"></i> Remote:</span>
+</label>
+<select name="remote" class="form-control branch-select">
+    {% for remote in remotes %}
+        <option value="{{ remote.name }}"> {{ remote.name }}
+        <small>({{ remote.url }})</small></option>
+    {% endfor %}
+</select>
 </div>
 """
 
@@ -205,28 +220,39 @@ def register_template_helpers(app):
 
     @app.context_processor
     def context_processor():
-        def render_dropdown(available_branches, available_tags):
+        def render_branches_dropdown(current_ref, available_branches, available_tags):
             branches_prefix = 'refs/heads/'
             branches = [x[len(branches_prefix):] if x.startswith(
                 branches_prefix) else x for x in available_branches]
             tags_prefix = 'refs/heads/'
             tags = [x[len(tags_prefix):] if x.startswith(
                 tags_prefix) else x for x in available_tags]
-            return rts(DROPDOWN_TEMPLATE, branches=branches, tags=tags)
+            return rts(BRANCHES_DROPDOWN_TEMPLATE, current_ref=current_ref, branches=branches,
+                       tags=tags)
 
-        return dict(render_dropdown=render_dropdown)
+        def render_remotes_dropdown(available_remotes):
+            return rts(REMOTES_DROPDOWN_TEMPLATE, remotes=available_remotes)
+
+        return dict(render_branches_dropdown=render_branches_dropdown,
+                    render_remotes_dropdown=render_remotes_dropdown)
 
 
 def render_template(template_name_or_list, **kwargs):
 
     quit = current_app.config['quit']
 
+    current_head = quit.repository.current_head
     available_branches = quit.repository.branches
     available_tags = quit.repository.tags
+    available_remotes = quit.repository.remotes
+    available_refs = quit.repository.references
 
     context = {
+        'current_ref': current_head,
+        'available_refs': available_refs,
         'available_branches': available_branches,
         'available_tags': available_tags,
+        'available_remotes': available_remotes,
         'git_timestamp': utils.git_timestamp
     }
     context.update(kwargs)
