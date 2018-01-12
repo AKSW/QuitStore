@@ -6,6 +6,8 @@ from os import remove
 from os.path import join, isdir
 from quit.web.modules import endpoint
 from quit.exceptions import UnSupportedQueryType
+from itertools import chain
+
 
 class QuitEndpointTestCase(unittest.TestCase):
 
@@ -38,12 +40,28 @@ class QuitEndpointTestCase(unittest.TestCase):
             "LOAD  <urn:graph1> INTO <urn:graph2>": 'LOAD'
         }
 
-        for query, expected in queries.items():
-            query_type = ep.parse_query_type(query)
-            self.assertEqual(query_type, expected)
+        prefix_queries = {
+            "PREFIX ask: <http://creator/load>\n"
+            "INSERT DATA { <1> <2> <3> }": 'INSERT',
+            "PREFIX ask: <http://creator/load>\n"
+            'ASK  { ?x foaf:name  "Alice" }': 'ASK',
+        }
+
+        all_queries = chain(
+            queries.items(),
+            prefix_queries.items()
+        )
+
+        for query, expected in all_queries:
+            try:
+                query_type = ep.parse_query_type(query)
+                self.assertEqual(query_type, expected, query)
+            except UnSupportedQueryType:
+                self.fail("parse_query_type() raised UnSupportedQueryType unexpectedly!")
 
         with self.assertRaises(UnSupportedQueryType) as context:
             ep.parse_query_type('foo bar')
+
 
 if __name__ == '__main__':
     unittest.main()

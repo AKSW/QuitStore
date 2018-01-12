@@ -15,11 +15,14 @@ __all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
 
-queryTypeRegex = r"""
-    (?P<queryType>(CONSTRUCT|SELECT|ASK|DESCRIBE|INSERT|DELETE|
-    CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD))
-"""
-queryTypePattern = re.compile(queryTypeRegex, re.VERBOSE | re.IGNORECASE)
+queryTypes = [
+    "CONSTRUCT", "SELECT", "ASK",
+    "DESCRIBE", "INSERT", "DELETE",
+    "CREATE", "CLEAR", "DROP",
+    "LOAD", "COPY", "MOVE", "ADD"]
+queryTypeRegex = r"^(?P<queryType>(" + "|".join(queryTypes) + "))"
+queryTypeModifier = re.VERBOSE | re.IGNORECASE | re.MULTILINE
+queryTypePattern = re.compile(queryTypeRegex, queryTypeModifier)
 
 # querytype: { accept type: [content type, serializer_format]}
 resultSetMimetypes = {
