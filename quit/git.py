@@ -391,6 +391,27 @@ class Repository(object):
             raise AssertionError('Unknown merge analysis result')
         raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')
 
+    def branch(self, oldbranch=None, newbranch=None):
+        """Create a new branch from an existing branch."""
+        logger.debug("Branching: {} from {}".format(newbranch, oldbranch))
+        if newbranch is None:
+            raise Exception("Nothing to create.")
+        if oldbranch is None:
+            if not self._repository.head_is_unborn:
+                oldbranch = self._repository.head
+            else:
+                raise Exception("No branch to branch from.")
+        if not oldbranch.startswith("refs/heads/"):
+            oldbranch = "refs/heads/" + oldbranch
+        if not newbranch.startswith("refs/heads/"):
+            newbranch = "refs/heads/" + newbranch
+        try:
+            logger.debug("Branching: create reference {} to {}".format(newbranch, oldbranch))
+            self._repository.create_reference(newbranch, oldbranch)
+        except Exception as e:
+            logger.error(e)
+            raise e
+
     def revert(self, reference='', target='', branch=''):
         """Revert a commit."""
         raise Exception('Not yet supported')

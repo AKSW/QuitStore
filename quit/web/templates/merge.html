@@ -1,0 +1,217 @@
+{% extends "default.html" %}
+
+{% block headline %}<div class="lead">Merge</div>{% endblock %}
+
+{% block quit_content %}
+<form class="form-inline" style="display: inline" id="merge" role="navigation">
+
+<div class="row">
+
+<div class="form-group">
+<label class="control-label" for="src">
+    <i class="fa fa-code-fork" aria-hidden="true"></i> Source:</span>
+</label>
+<select name="src" class="form-control branch-select">
+    {% for branch in available_branches %}
+        <option value="{{ branch }}">{{ branch }}</option>
+    {% endfor %}
+</select>
+</div>
+
+<div class="form-group">
+<label class="control-label" for="dst">
+    <i class="fa fa-code-fork" aria-hidden="true"></i> Destination:</span>
+</label>
+<select name="dst" class="form-control branch-select">
+    {% for branch in available_branches %}
+        <option value="{{ branch }}">{{ branch }}</option>
+    {% endfor %}
+</select>
+<input type="hidden" name="refspec" />
+</div>
+</div>
+
+<div class="row">
+    <div class="form-group">
+        <label class="control-label" for="method">
+            <i class="fa fa-magic" aria-hidden="true"></i> Method:</span>
+        </label>
+        <select name="method" class="form-control branch-select">
+          <option value="three-way">Three-Way</option>
+          <option value="union">Union</option>
+          <option value="ours">All Ours</option>
+          <option value="theirs">All Theirs</option>
+          <option value="touch">Touch</option>
+          <option value="context">Context</option>
+      </select>
+    </div>
+</div>
+<div class="row">
+
+<button type="submit" class="btn btn-default btn-lg">
+    <img class="octicon" src="{{ url_for('static', filename='octicons/svg/git-pull-request.svg') }}" />
+    Merge
+</button>
+</div>
+<div class="alert" role="alert" style="display: none"></div>
+</form>
+<script type="text/javascript">
+
+var available_refs = [
+{% for ref in available_refs %}
+    "{{ ref }}",
+{% endfor %}
+]
+
+function get_local_heads() {
+    refs = available_refs.filter(ref => ref.startsWith("refs/heads/"));
+    return_refs = []
+    for (ref in refs) {
+        return_refs.push(refs[ref].replace(/^refs\/heads\//,""));
+    }
+    return return_refs;
+}
+
+function get_remote_heads(remote) {
+    refs = available_refs.filter(ref => ref.startsWith("refs/remotes/" + remote + "/"));
+    return_refs = []
+    regexp = new RegExp("^refs/remotes/" + remote + "/");
+    for (ref in refs) {
+        return_refs.push(refs[ref].replace(regexp,""));
+    }
+    return return_refs;
+}
+
+function update_remote () {
+    update_transmission({"target": $("#transmission .nav-tabs li.active a").get(0)})
+}
+
+function update_transmission (e) {
+    $("#transmission").attr('action', e.target.getAttribute('action'));
+    $("#transmission button[type='submit']").html(e.target.innerHTML);
+    $("#transmission select[name='dst']").find('option').remove();
+    $("#transmission select[name='src']").find('option').remove();
+    var remote = $("#transmission select[name='remote']").val();
+    if (e.target.getAttribute('transmission_method') == 'fetch') {
+        $.each(get_remote_heads(remote), function (i, item) {
+            $("#transmission select[name='src']").append($("<option>", {
+                value: item,
+                text: item
+            }))
+        });
+        $("#transmission select[name='dst']").prop("disabled", true);
+    } else if (e.target.getAttribute('transmission_method') == 'pull') {
+        $("#transmission select[name='dst']").prop("disabled", false);
+        $.each(get_remote_heads(remote), function (i, item) {
+            $("#transmission select[name='src']").append($("<option>", {
+                value: item,
+                text: item
+            }))
+        });
+        $.each(get_local_heads(), function (i, item) {
+            $("#transmission select[name='dst']").append($("<option>", {
+                value: item,
+                text: item
+            }))
+        });
+
+    } else if (e.target.getAttribute('transmission_method') == 'push') {
+        $("#transmission select[name='dst']").prop("disabled", false);
+        $.each(get_local_heads(), function (i, item) {
+            $("#transmission select[name='src']").append($("<option>", {
+                value: item,
+                text: item
+            }))
+        });
+        $.each(get_remote_heads(remote), function (i, item) {
+            $("#transmission select[name='dst']").append($("<option>", {
+                value: item,
+                text: item
+            }))
+        });
+    }
+}
+
+inline_functions.push(function() {
+
+    update_transmission({"target": $("#transmission .nav-tabs a[transmission_method='fetch']").get(0)});
+    $("#transmission select[name='remote']").on( 'change', update_remote);
+    $("#transmission .nav-tabs a[data-toggle='tab']").on( 'shown.bs.tab', update_transmission);
+
+    //$("#transmission .nav-tabs li").each()
+
+    $("#transmission").submit(function(event){
+        // https://stackoverflow.com/questions/5004233/jquery-ajax-post-example-with-php
+
+        // Prevent default posting of form - put here to work in case of errors
+        event.preventDefault();
+
+        // Abort any pending request
+        if (request != undefined) {
+            request.abort();
+        } else {
+            var request;
+        }
+        // setup some local variables
+        var $form = $("#transmission");
+
+        // Let's select and cache all the fields
+        var $inputs = $form.find("input, select, button, textarea");
+
+        // Serialize the data in the form
+        var src = $form.find("select[name='src']").val();
+        var dst = $form.find("select[name='dst']").val();
+        var refspec = "";
+        if (src != null) {
+            refspec += src;
+        }
+        if (dst != null) {
+            refspec += ":" + dst;
+        }
+
+        $form.find("input[name='refspec']").attr('value', refspec);
+
+        var serializedData = $form.serialize();
+
+        // Let's disable the inputs for the duration of the Ajax request.
+        // Note: we disable elements AFTER the form data has been serialized.
+        // Disabled form elements will not be serialized.
+        $inputs.prop("disabled", true);
+
+        // Fire off the request to /form.php
+        request = $.ajax({
+            url: $form.attr('action'),
+            type: "post",
+            data: serializedData
+        });
+
+        // Callback handler that will be called on success
+        request.done(function (response, textStatus, jqXHR){
+            // Log a message to the console
+            console.log("Hooray, it worked!");
+            $("#transmission div.alert").removeClass("alert-warning").addClass("alert-success")
+            .text("Hooray, it worked!").show();
+        });
+
+        // Callback handler that will be called on failure
+        request.fail(function (jqXHR, textStatus, errorThrown){
+            // Log the error to the console
+            console.error(
+                "The following error occurred: "+
+                textStatus, errorThrown
+            );
+            $("#transmission div.alert").removeClass("alert-success").addClass("alert-warning")
+            .html("The following error occurred: <br/>"+ jqXHR.responseText).show();
+        });
+
+        // Callback handler that will be called regardless
+        // if the request failed or succeeded
+        request.always(function () {
+            // Reenable the inputs
+            $inputs.prop("disabled", false);
+        });
+    })
+});
+</script>
+
+{% endblock %}

@@ -189,13 +189,87 @@ def merge(branch_or_ref):
     HTTP Response 409: If merge produces a conflict*
     (* not yet implemented)
     """
-    try:
+    quit = current_app.config['quit']
+    default_branch = quit.config.getDefaultBranch()
 
-        branch = request.values.get('branch', None) or None
-        target = request.values.get('target', None) or branch_or_ref
-        current_app.config['quit'].repository.merge(branch_or_ref, target, branch)
-        current_app.config['quit'].syncAll()
-        return '', 200
+    try:
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
+
+        if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+            response = make_response(render_template('merge.html'))
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        elif mimetype in ['application/json', 'application/sparql-results+json']:
+            # Actual Merge
+
+            branch = request.values.get('branch', None) or None
+            target = request.values.get('target', None) or branch_or_ref
+            quit.repository.merge(branch_or_ref, target, branch)
+            quit.syncAll()
+            return '', 200
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
+
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
+
+
+@git.route("/branch", defaults={'refspec': None}, methods=['GET', 'POST'])
+@git.route("/branch/<path:refspec>", methods=['GET', 'POST'])
+def branch(refspec):
+    """Branch two commits and set the result to branch_or_ref.
+
+    merge branch into target and set branch_or_ref to the resulting commit
+    - if only branch_or_ref is given, do nothing
+    - if branch_or_ref and branch is given, merge branch into branch_or_ref and set branch_or_ref to
+        the resulting commit
+    - if branch_or_ref, branch and target are given, merge branch into target and set branch_or_ref
+        to the resulting commit
+
+    Returns:
+    HTTP Response 200: If merge was possible
+    HTTP Response 201: If merge was possible and a merge commit was created*
+    HTTP Response 400: If merge did not work
+    HTTP Response 409: If merge produces a conflict*
+    (* not yet implemented)
+    """
+    quit = current_app.config['quit']
+
+    try:
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
+
+        if refspec:
+            oldbranch, newbranch = refspec.split(":")
+            quit.repository.branch(oldbranch, newbranch)
+        else:
+            oldbranch = request.values.get('oldbranch')
+            newbranch = request.values.get('newbranch')
+            if newbranch:
+                quit.repository.branch(oldbranch, newbranch)
+
+        if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+            response = make_response(render_template('branch.html'))
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        elif mimetype in ['application/json', 'application/sparql-results+json']:
+            # Actual Merge
+
+            branch = request.values.get('branch', None) or None
+            target = request.values.get('target', None) or branch_or_ref
+            current_app.config['quit'].repository.merge(branch_or_ref, target, branch)
+            current_app.config['quit'].syncAll()
+            return '', 200
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
+
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())
