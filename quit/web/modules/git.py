@@ -33,6 +33,7 @@ def commits(branch_or_ref):
         branch_or_ref = default_branch
 
     try:
+        current_app.logger.debug(branch_or_ref)
         results = quit.repository.revisions(
             branch_or_ref, order=pygit2.GIT_SORT_TIME) if branch_or_ref else []
 

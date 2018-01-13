@@ -135,6 +135,8 @@ class Repository(object):
                     yield Revision(self, commit)
 
         def iter_commits(name, seen):
+            logger.debug(name)
+            logger.debug(seen)
             commits = []
 
             if not name:
@@ -143,6 +145,9 @@ class Repository(object):
                     commits += traverse(ref, seen)
             else:
                 oid = self.lookup(name)
+                logger.debug(oid)
+                # logger.debug(ref.name)
+                # logger.debug(ref.target)
                 commits += traverse(oid, seen)
             return commits
 
@@ -393,7 +398,8 @@ class Repository(object):
 
     def branch(self, oldbranch=None, newbranch=None):
         """Create a new branch from an existing branch."""
-        logger.debug("Branching: {} from {}".format(newbranch, oldbranch))
+        logger.debug("Branching: {} from {} -> {}".format(newbranch, oldbranch,
+                     self.lookup(oldbranch)))
         if newbranch is None:
             raise Exception("Nothing to create.")
         if oldbranch is None:
@@ -407,7 +413,7 @@ class Repository(object):
             newbranch = "refs/heads/" + newbranch
         try:
             logger.debug("Branching: create reference {} to {}".format(newbranch, oldbranch))
-            self._repository.create_reference(newbranch, oldbranch)
+            self._repository.create_reference(newbranch, self.lookup(oldbranch))
         except Exception as e:
             logger.error(e)
             raise e
