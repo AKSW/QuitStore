@@ -412,6 +412,62 @@ class QuitAppTestCase(unittest.TestCase):
 
             self.assertFalse(os.path.isfile(logFile))
 
+    def testThreeWayMerge(self):
+        """Test merging two commits."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            app.post('/sparql', data={"query": update})
+
+            app = create_app(config).test_client()
+            # start new app to syncAll()
+            # Otherwise the next update query would have created unassigend.nq
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            app.post('/sparql/develop?ref=develop', data={"query": update})
+
+            app.post("/merge", data={"target": "master", "branch": "develop", "method": "three-way"})
+
+    def testContextMerge(self):
+        """Test merging two commits."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            app.post('/sparql', data={"query": update})
+
+            app = create_app(config).test_client()
+            # start new app to syncAll()
+            # Otherwise the next update query would have created unassigend.nq
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            app.post('/sparql/develop?ref=develop', data={"query": update})
+
+            app.post("/merge", data={"target": "master", "branch": "develop", "method": "context"})
+
     def testPull(self):
         """Test /pull API request."""
         graphContent = """

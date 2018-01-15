@@ -36,4 +36,35 @@
 <div class="alert" role="alert" style="display: none"></div>
 </form>
 
+<h2>Available Branches</h2>
+
+{% if available_branches|length > 0 %}
+<div class="commit-group">
+    <div class="commit-item" style="width: 100%">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Branch Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for branch in available_branches %}
+                <tr class="commit-row">
+                    <td>{{ branch }}</td>
+                    <td>
+                        <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-code" aria-hidden="true"></i></a>
+                        <a href="{{ url_for('debug.blame', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a>
+                        <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+No Branches
+{% endif %}
+
 {% endblock %}

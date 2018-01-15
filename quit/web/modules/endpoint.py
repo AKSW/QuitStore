@@ -71,6 +71,7 @@ def sparql(branch_or_ref):
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
 
+    logger.debug('Query will be executed on {}'.format(branch_or_ref))
     q = request.values.get('query', None) or request.values.get('update', None)
     logger.info('Received query: {}'.format(q))
 

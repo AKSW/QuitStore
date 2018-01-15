@@ -5,8 +5,9 @@ import logging
 
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
-from quit.exceptions import QuitMergeConflict, QuitGitRefNotFound, QuitGitRepoError
+from quit.exceptions import QuitGitRefNotFound, QuitGitRepoError, QuitGitPushError
 from quit.namespace import QUIT
+from quit.merge import Merger
 
 import subprocess
 
@@ -161,22 +162,27 @@ class Repository(object):
 
     @property
     def branches(self):
+        """Get a list of all branch names."""
         return [x for x in self._repository.listall_references() if x.startswith('refs/heads/')]
 
     @property
     def tags(self):
+        """Get a list of all tag names."""
         return [x for x in self._repository.listall_references() if x.startswith('refs/tags/')]
 
     @property
     def references(self):
+        """Get a list of all references."""
         return self._repository.listall_references()
 
     @property
     def remotes(self):
+        """Get a list of all configured remotes."""
         return [{"name": x.name, "url": x.url} for x in self._repository.remotes]
 
     @property
     def tags_or_branches(self):
+        """Get a list of all tag and head references."""
         return [
             x for x in self._repository.listall_references()
             if x.startswith('refs/tags/') or x.startswith('refs/heads/')
@@ -285,7 +291,6 @@ class Repository(object):
         refspec -- The local and remote reference to push divided with a colon.
                    (refs/heads/master:refs/heads/master)
         """
-
         if refspec is None:
             (head_remote_name, head_remote_branch, head_remote_ref) = self.getUpstreamOfHead()
             if head_remote_ref is None:
@@ -324,77 +329,62 @@ class Repository(object):
                 return
         raise RemoteNotFound("There is no remote \"{}\".".format(remote_name))
 
-    def merge(self, reference=None, target=None, branch=None):
-        """Merge two commits and set the reference to the result.
+    def merge(self, target=None, branch=None, method=None):
+        """Merge a branch into another (target) branch.
 
-        merge 'branch' into 'target' and set 'reference' to the resulting commit
-        - if only 'reference' is given, do nothing
-        - if 'reference' and 'branch' are given, merge 'branch' into 'reference' and set 'reference'
-          to the resulting commit
-        - if 'reference', 'branch' and 'target' are given, merge 'branch' into 'target' and set
-          'reference' to the resulting commit
+        Merge 'branch' into 'target' and set 'target' to the resulting commit.
 
         Keyword arguments:
-        reference -- The reference which should point ot the result of the merge
-        target -- The target of the merge operation (if omitted, 'branch' will be merged into
-                  'reference')
-        branch -- The branche which should be merged into 'target' respective 'reference'
+        target -- The target of the merge operation (if omitted, 'branch' will be merged into HEAD)
+        branch -- The branche which should be merged into 'target' (defaults to FEATCH_HEAD)
         """
-
-        if reference is None:
-            reference = "master"
+        logger.debug("Start Merge")
         if target is None:
             target = "HEAD"
         if branch is None:
             branch = "FETCH_HEAD"
 
-        logger.debug("merge: {}, {}, {}".format(reference, target, branch))
+        if target not in ["HEAD", "FETCH_HEAD"] and not target.startswith("refs/heads/"):
+            target = "refs/heads/" + target
 
-        merge_result, _ = self._repository.merge_analysis(branch)
+        if branch not in ["HEAD", "FETCH_HEAD"] and not branch.startswith("refs/heads/"):
+            branch = "refs/heads/" + branch
 
-        if reference != "master":
-            raise Exception("We first have to implement switching branches")
+        logger.debug("merge: {} into {} with {}".format(branch, target, method))
 
-        if target != "HEAD":
-            raise Exception("We currently are only able to merge into the HEAD of a branch")
+        merger = Merger(self, self._repository)
+
+        merge_result = merger.merge_analysis(target, branch)
 
         # Up to date, do nothing
         if merge_result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
-            return
+            logger.debug("merge {} into {} everything up to date".format(branch, target))
+            return pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE
+
+        target_ref = self._repository.lookup_reference(target)
 
         # We can just fastforward
-        elif merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
-            self._repository.checkout_tree(self._repository.get(branch))
-            try:
-                master_ref = self._repository.lookup_reference(
-                    'refs/heads/{}'.format(reference))
-                master_ref.set_target(branch)
-            except KeyError:
-                self._repository.create_branch(
-                    reference, self._repository.get(branch))
-            self._repository.head.set_target(branch)
-            return
+        if merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
+            # TODO I think we have to do something for unborn
+            logger.debug("merge {} into {} we are doing a FFW".format(branch, target))
+            target_ref.set_target(self.lookup(branch))
+            return pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD
 
-        elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
-            self._repository.merge(branch)
+        if merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
 
-            if self._repository.index.conflicts is not None:
-                for conflict in self._repository.index.conflicts:
-                    logger.error('Conflicts found in: {}'.format(conflict[0].path))
-                raise QuitMergeConflict('Conflicts, ahhhhh!!')
+            if target == "HEAD" and method == "three-way-git":
+                logger.debug("merge {} into {} three-way-git with HEAD".format(branch, target))
+                merger.merge_three_way_head(branch)
+                return merge_result
+            elif method in ["three-way", "context"]:
+                logger.debug("merge {} into {} three-way oder context for RDF".format(branch, target))
+                merger.merge_quit_commits(target, branch, favour=method)
+                return merge_result
 
-            user = self._repository.default_signature
-            tree = self._repository.index.write_tree()
-            self._repository.create_commit(
-                'HEAD', user, user, 'Merge!', tree,
-                [self._repository.head.target, branch]
-            )
-            # We need to do this or git CLI will think we are still merging.
-            self._repository.state_cleanup()
-            return
-        else:
-            raise AssertionError('Unknown merge analysis result')
-        raise Exception('Please have a look at https://github.com/libgit2/pygit2/issues/725')
+            logger.debug("merge {} into {} with {} not yet supported".format(branch, target, method))
+            raise Exception("Not yet supported merge method")
+
+        raise AssertionError('Unknown merge analysis result')
 
     def branch(self, oldbranch=None, newbranch=None):
         """Create a new branch from an existing branch."""
