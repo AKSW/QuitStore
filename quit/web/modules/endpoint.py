@@ -5,6 +5,8 @@ import logging
 from werkzeug.http import parse_accept_header
 from flask import Blueprint, request, current_app, make_response, Markup
 from rdflib import ConjunctiveGraph
+from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
+from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQueryType
@@ -14,12 +16,6 @@ logger = logging.getLogger('quit.modules.endpoint')
 __all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
-
-queryTypeRegex = r"""
-    (?P<queryType>(CONSTRUCT|SELECT|ASK|DESCRIBE|INSERT|DELETE|
-    CREATE|CLEAR|DROP|LOAD|COPY|MOVE|ADD))
-"""
-queryTypePattern = re.compile(queryTypeRegex, re.VERBOSE | re.IGNORECASE)
 
 # querytype: { accept type: [content type, serializer_format]}
 resultSetMimetypes = {
@@ -46,8 +42,16 @@ rdfMimetypes = {
 
 def parse_query_type(query):
     try:
-        return queryTypePattern.search(query).group("queryType").upper()
-    except AttributeError:
+        translatedQuery = translateQuery(parseQuery(query), {}, None)
+        return translatedQuery.algebra.name, translatedQuery
+    except Exception:
+        pass
+
+    try:
+        parsetree = parseUpdate(query)
+        translatedUpdate = translateUpdate(parsetree, {}, None)
+        return parsetree.request[0].name, translatedUpdate
+    except Exception:
         raise UnSupportedQueryType
 
 
@@ -77,7 +81,7 @@ def sparql(branch_or_ref):
 
     if q:
         try:
-            query_type = parse_query_type(q)
+            queryType, parsedQuery = parse_query_type(q)
             graph = quit.instance(branch_or_ref)
         except UnSupportedQueryType as e:
             logger.exception(e)
@@ -86,13 +90,8 @@ def sparql(branch_or_ref):
             logger.exception(e)
             return make_response('No branch or reference given.', 400)
 
-        if query_type not in ['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']:
-            try:
-                res = graph.update(q)
-            except Exception as e:
-                # Update query wrong
-                logger.exception(e)
-                return make_response('Something wrong with your query.', 400)
+        if queryType in ['InsertData', 'DeleteData', 'Modify']:
+            res = graph.update(parsedQuery)
 
             try:
                 ref = request.values.get('ref', None) or default_branch
@@ -107,16 +106,13 @@ def sparql(branch_or_ref):
                 logger.exception(e)
                 return make_response('Error after executing the update query.', 400)
 
-        try:
-            res = graph.query(q)
-        except Exception as e:
-            logger.exception(e)
-            return make_response('Something wrong with your query.', 400)
+        if queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
+            res = graph.query(parsedQuery)
 
         try:
-            if query_type in ['SELECT', 'ASK']:
+            if queryType in ['SelectQuery', 'AskQuery']:
                 return create_result_response(res, resultSetMimetypes[mimetype])
-            elif query_type in ['CONSTRUCT', 'DESCRIBE']:
+            elif queryType in ['ConstructQuery', 'DescribeQuery']:
                 return create_result_response(res, rdfMimetypes[mimetype])
         except KeyError as e:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
@@ -148,28 +144,22 @@ def provenance():
 
     if q:
         try:
-            query_type = parse_query_type(q)
-            graph = quit.store.store
+            queryType, parsedQuery = parse_query_type(q)
         except UnSupportedQueryType as e:
             logger.exception(e)
             return make_response('Unsupported Query Type', 400)
-        except Exception as e:
-            logger.exception(e)
-            return make_response('Something wrong with query', 400)
 
-        if query_type not in ['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']:
+        graph = quit.store.store
+
+        if queryType not in ['SelectQuery', 'AskQuery', 'ConstructQuery', 'DescribeQuery']:
             return make_response('Unsupported Query Type', 400)
 
-        try:
-            res = graph.query(q)
-        except Exception as e:
-            logger.exception(e)
-            return make_response('Something wrong with your query.', 400)
+        res = graph.query(q)
 
         try:
-            if query_type in ['SELECT', 'ASK']:
+            if queryType in ['SelectQuery', 'AskQuery']:
                 return create_result_response(res, resultSetMimetypes[mimetype])
-            elif query_type in ['CONSTRUCT', 'DESCRIBE']:
+            elif queryType in ['ConstructQuery', 'DescribeQuery']:
                 return create_result_response(res, rdfMimetypes[mimetype])
         except KeyError as e:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)

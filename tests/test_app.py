@@ -235,6 +235,14 @@ class QuitAppTestCase(unittest.TestCase):
             response = app.post('/provenance', data=dict(query=query))
             self.assertEqual(response.status, '200 OK')
 
+            query = "foo bar"
+            response = app.post('/provenance', data=dict(query=query))
+            self.assertEqual(response.status, '400 BAD REQUEST')
+
+            query = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
+            response = app.post('/provenance', data=dict(query=query))
+            self.assertEqual(response.status, '400 BAD REQUEST')
+
     def testInitAndSelectFromEmptyGraph(self):
         """Test select from newly created app, starting with an empty graph.
 

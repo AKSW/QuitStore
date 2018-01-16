@@ -6,6 +6,8 @@ from os import remove
 from os.path import join, isdir
 from quit.web.modules import endpoint
 from quit.exceptions import UnSupportedQueryType
+from itertools import chain
+
 
 class QuitEndpointTestCase(unittest.TestCase):
 
@@ -18,32 +20,56 @@ class QuitEndpointTestCase(unittest.TestCase):
         execution.
         """
         ep = endpoint
-        id_pattern = """ {GRAPH <urn:graph1> { ?s ?p ?o }} WHERE {GRAPH <urn:graph2{ ?s ?p ?o}}"""
+        id_pattern = """ {GRAPH <urn:graph1> { ?s ?p ?o }} WHERE {GRAPH <urn:graph2> { ?s ?p ?o}}"""
 
         queries = {
-            "SELECT * WHERE {graph ?g {?s ?p ?o .}}": 'SELECT',
-            "CONSTRUCT {?s ?p ?o} WHERE {graph ?g {?s ?p ?o .}}": 'CONSTRUCT',
-            'ASK  { ?x foaf:name  "Alice" }': 'ASK',
-            "INSERT DATA { <1> <2> <3> }": 'INSERT',
-            "DELETE DATA { <1> <2> <3> }": 'DELETE',
-            "INSERT " + id_pattern: 'INSERT',
-            "DELETE " + id_pattern: 'DELETE',
-            "INSERT " + id_pattern + '; DELETE' + id_pattern: 'INSERT',
-            "CLEAR  GRAPH <urn:graph1>": 'CLEAR',
-            "CREATE  GRAPH <urn:graph1>": 'CREATE',
-            "DROP  GRAPH <urn:graph1>": 'DROP',
-            "COPY  <urn:graph1> TO <urn:graph2>": 'COPY',
-            "MOVE  <urn:graph1> TO <urn:graph2>": 'MOVE',
-            "ADD  <urn:graph1> TO <urn:graph2>": 'ADD',
-            "LOAD  <urn:graph1> INTO <urn:graph2>": 'LOAD'
+            "SELECT * WHERE {graph ?g {?s ?p ?o .}}": 'SelectQuery',
+            "DESCRIBE ?s WHERE {graph ?g {?s <urn:1> <urn:2> .}}": 'DescribeQuery',
+            "CONSTRUCT {?s ?p ?o} WHERE {graph ?g {?s ?p ?o .}}": 'ConstructQuery',
+            'ASK  { ?x <urn:name>  "Alice" }': 'AskQuery',
         }
 
-        for query, expected in queries.items():
-            query_type = ep.parse_query_type(query)
-            self.assertEqual(query_type, expected)
+        updates = {
+            "INSERT DATA { <1> <2> <3> }": 'InsertData',
+            "DELETE DATA { <1> <2> <3> }": 'DeleteData',
+            "INSERT " + id_pattern: 'Modify',
+            "DELETE " + id_pattern: 'Modify',
+            "INSERT " + id_pattern + '; DELETE' + id_pattern: 'Modify',
+            "CLEAR  GRAPH <urn:graph1>": 'Clear',
+            "CREATE  GRAPH <urn:graph1>": 'Create',
+            "DROP  GRAPH <urn:graph1>": 'Drop',
+            "COPY  <urn:graph1> TO <urn:graph2>": 'Copy',
+            "MOVE  <urn:graph1> TO <urn:graph2>": 'Move',
+            "ADD  <urn:graph1> TO <urn:graph2>": 'Add',
+        }
 
-        with self.assertRaises(UnSupportedQueryType) as context:
-            ep.parse_query_type('foo bar')
+        prefix_queries = {
+            "PREFIX ask: <http://creator/load> INSERT DATA { <1> <2> <3> }": 'InsertData',
+            "PREFIX ask: <http://creator/load>\n"
+            'ASK  { ?x <urn:name>  "Alice" }': 'AskQuery',
+            "PREFIX ask: <http://creator/load> DELETE DATA { <1> <2> <3> } ;"
+            "INSERT DATA { <1> <2> <3> } ": 'DeleteData'
+        }
+
+        unsupported_queries = {
+            "foo bar": "unsupported",
+            "LOAD  <urn:graph1> INTO <urn:graph2>": 'Load'
+        }
+
+        all_queries = chain(
+            queries.items(),
+            updates.items(),
+            prefix_queries.items(),
+        )
+
+        for query, expected in all_queries:
+            queryType, parsedQuery = ep.parse_query_type(query)
+            self.assertEqual(queryType, expected, query)
+
+        for query, expected in unsupported_queries.items():
+            with self.assertRaises(UnSupportedQueryType):
+                ep.parse_query_type(query)
+
 
 if __name__ == '__main__':
     unittest.main()
