@@ -164,45 +164,10 @@ class Quit(object):
         if commit_id:
             commit = self.repository.revision(commit_id)
 
-            try:
-                blobs = self._commits.get(commit.id)
-            except KeyError:
-                blobs = set()
-                map = self.config.getgraphurifilemap()
-
-                for entity in commit.node().entries(recursive=True):
-                    # todo check if file was changed
-                    if entity.is_file:
-                        if entity.name not in map.values():
-                            continue
-                        graphUris = self.config.getgraphuriforfile(entity.name)
-                        graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
-
-                        blob = (entity.name, entity.oid)
-                        blobs.add(blob)
-
-                        try:
-                            f, contexts = self._blobs.get(blob)
-                        except KeyError:
-                            tmp = ConjunctiveGraph()
-                            tmp.parse(data=entity.content, format='nquads')
-
-                            # Info: currently filter graphs from file that were not defined in
-                            #       config
-                            # Todo: is this the wanted behaviour?
-                            contexts = set((context for context in tmp.contexts(None)
-                                            if context.identifier in map)) | graphsFromConfig
-
-                            self._blobs.set(
-                                blob, (FileReference(entity.name, entity.content), contexts)
-                            )
-                self._commits.set(commit.id, blobs)
-
-            # now all blobs in commit are known
-            for blob in blobs:
+            for blob in self.getFilesForCommit(commit):
                 try:
                     (name, oid) = blob
-                    f, contexts = self._blobs.get(blob)
+                    f, contexts = self.getFileReferenceAndContext(blob, commit)
                     for context in contexts:
                         internal_identifier = context.identifier + '-' + str(oid)
 
@@ -341,7 +306,7 @@ class Quit(object):
                 blob = (entity.name, entity.oid)
 
                 try:
-                    f, contexts = self._blobs.get(blob)
+                    f, contexts = self.getFileReferenceAndContext(blob, commit)
                 except KeyError:
                     tmp = ConjunctiveGraph()
                     tmp.parse(data=entity.content, format='nquads')
@@ -388,6 +353,48 @@ class Quit(object):
                         g.addN((s, p, o, private_uri) for s, p, o
                                in context.triples((None, None, None)))
 
+    def getFilesForCommit(self, commit):
+        """Get all entry, oid tupples for a commit.
+
+        On Cache miss this method also updates teh commits cache.
+        """
+        uriFileMap = self.config.getgraphurifilemap()
+
+        if commit.id not in self._commits:
+            blobs = set()
+            for entity in commit.node().entries(recursive=True):
+                if entity.is_file:
+                    if entity.name not in uriFileMap.values():
+                        continue
+                    blob = (entity.name, entity.oid)
+                    blobs.add(blob)
+            self._commits.set(commit.id, blobs)
+            return blobs
+        return self._commits.get(commit.id)
+
+    def getFileReferenceAndContext(self, blob, commit):
+        """Get the FielReference and Context for a given blob (name, oid) of a commit.
+
+        On Cache miss this method also updates teh commits cache.
+        """
+        uriFileMap = self.config.getgraphurifilemap()
+
+        if blob not in self._blobs:
+            (name, oid) = blob
+            content = commit.node(path=name).content
+            # content = self.repository._repository[oid].data
+            graphUris = self.config.getgraphuriforfile(name)
+            graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
+            tmp = ConjunctiveGraph()
+            tmp.parse(data=content, format='nquads')
+            contexts = set((context for context in tmp.contexts(None)
+                            if context.identifier in uriFileMap)) | graphsFromConfig
+            quitWorkingData = (FileReference(name, content), contexts)
+            self._blobs.set(
+                blob, quitWorkingData)
+            return quitWorkingData
+        return self._blobs.get(blob)
+
     def commit(self, graph, delta, message, commit_id, ref, **kwargs):
 
         def build_message(message, kwargs):
@@ -424,14 +431,14 @@ class Quit(object):
 
         blobs_new = set()
         try:
-            blobs = self._commits.get(commit.id)
+            blobs = self.getFilesForCommit(commit)
         except KeyError:
             blobs = []
 
         for blob in blobs:
             (fileName, oid) = blob
             try:
-                file_reference, contexts = self._blobs.get(blob)
+                file_reference, contexts = self.getFileReferenceAndContext(blob, commit)
                 for context in contexts:
                     changeset = delta.get(context.identifier, [])
                     if changeset:
