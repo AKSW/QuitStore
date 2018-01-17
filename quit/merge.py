@@ -2,7 +2,7 @@ import os
 import pygit2
 import rdflib
 import logging
-from quit.exceptions import QuitMergeConflict
+from quit.exceptions import QuitMergeConflict, QuitBlobMergeConflict
 from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
 logger = logging.getLogger('quit.merge')
@@ -82,6 +82,7 @@ class Merger(object):
 
         logger.debug(diff.stats)
         logger.debug("Diff has following patches")
+        conflicts = {}
         for p in diff:
             logger.debug("A Patch")
             logger.debug(p)
@@ -109,12 +110,17 @@ class Merger(object):
                     baseOid = baseTree[p.delta.old_file.path].id
                 else:
                     baseOid = None
-                mergedBlob = self._merge_graph_blobs(p.delta.old_file.id, p.delta.new_file.id,
-                                                     baseOid, favour=favour)
-
-                mergedTreeBuilder.insert(p.delta.old_file.path, mergedBlob, p.delta.old_file.mode)
+                try:
+                    mergedBlob = self._merge_graph_blobs(p.delta.old_file.id, p.delta.new_file.id,
+                                                         baseOid, favour=favour)
+                    mergedTreeBuilder.insert(p.delta.old_file.path, mergedBlob, p.delta.old_file.mode)
+                except QuitBlobMergeConflict as mergeconflict:
+                    conflicts[p.delta.old_file.path] = mergeconflict.getObject()
             else:
                 raise Exception("There are operations which I don't know how to merge. yet.")
+
+        if conflicts:
+            raise QuitMergeConflict("Unfortunately, we've experienced a merge conflict!", conflicts)
 
         mergedTree = mergedTreeBuilder.write()
 
@@ -191,9 +197,12 @@ class Merger(object):
         else:
             base = set()
 
-        print(base)
-        print(a)
-        print(b)
+        logger.debug("base")
+        logger.debug(base)
+        logger.debug("a")
+        logger.debug(a)
+        logger.debug("b")
+        logger.debug(b)
 
         addA = a - base
         delA = base - a
@@ -202,12 +211,17 @@ class Merger(object):
 
         ok, conflicts = self._merge_context_conflict_detection(addA - addB, delA - delB,
                                                                addB - addA, delB - delA)
+
+        logger.debug("intersect and ok, then merged")
+        logger.debug(a.intersection(b))
+        logger.debug(ok)
         merged = sorted(a.intersection(b).union(ok))
+        logger.debug(merged)
         print(merged)
 
         if conflicts is not None:
             print("raised")
-            raise QuitMergeConflict('Conflicts, ahhhhh!! {}', merged, conflicts)
+            raise QuitBlobMergeConflict('Conflicts, ahhhhh!!', merged, conflicts)
 
         blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
         return blob
