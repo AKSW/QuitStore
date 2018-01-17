@@ -109,4 +109,15 @@ class QuitGitPushError(QuitGitRepoError):
 
 class QuitMergeConflict(QuitGitRepoError):
     """Raised for a merge conflict."""
-    pass
+
+    def __init__(self, message=None, ok=None, conflicts=None):
+        self.message = message
+        self.ok = ok
+        self.conflicts = conflicts
+
+    def getObject(self):
+        return {
+            "message": self.message,
+            "ok": "\n".join(self.ok),
+            "conflicts": self.conflicts
+        }

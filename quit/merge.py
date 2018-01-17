@@ -3,6 +3,7 @@ import pygit2
 import rdflib
 import logging
 from quit.exceptions import QuitMergeConflict
+from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
 logger = logging.getLogger('quit.merge')
 
@@ -108,13 +109,8 @@ class Merger(object):
                     baseOid = baseTree[p.delta.old_file.path].id
                 else:
                     baseOid = None
-                mergedBlob, conflicts = self._merge_graph_blobs(p.delta.old_file.id,
-                                                                p.delta.new_file.id,
-                                                                baseOid, favour=favour)
-
-                # TODO postpone conflict handling
-                if conflicts is not None:
-                    raise QuitMergeConflict('Conflicts, ahhhhh!! {}'.format(conflicts))
+                mergedBlob = self._merge_graph_blobs(p.delta.old_file.id, p.delta.new_file.id,
+                                                     baseOid, favour=favour)
 
                 mergedTreeBuilder.insert(p.delta.old_file.path, mergedBlob, p.delta.old_file.mode)
             else:
@@ -174,7 +170,7 @@ class Merger(object):
         print("\n".join(merged))
 
         blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
-        return blob, None
+        return blob
 
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
         if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
@@ -207,13 +203,26 @@ class Merger(object):
         ok, conflicts = self._merge_context_conflict_detection(addA - addB, delA - delB,
                                                                addB - addA, delB - delA)
         merged = sorted(a.intersection(b).union(ok))
+        print(merged)
+
+        if conflicts is not None:
+            print("raised")
+            raise QuitMergeConflict('Conflicts, ahhhhh!! {}', merged, conflicts)
+
         blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
-        return blob, conflicts
+        return blob
 
     def _merge_context_conflict_detection(self, addA, delA, addB, delB):
 
-        changedA = addA.union(delA)
-        changedB = addB.union(delB)
+        def conflictSet(graph, conflictingNodes):
+            ok = set()
+            conflicts = set()
+            for triple in graph.quads((None, None, None, None)):
+                if triple[0] in conflictingNodes or triple[2] in conflictingNodes:
+                    conflicts.add(_nq(triple[:3], triple[3].identifier).rstrip())
+                else:
+                    ok.add(_nq(triple[:3], triple[3].identifier).rstrip())
+            return ok, conflicts
 
         graphAddA = rdflib.ConjunctiveGraph()
         graphAddA.parse(data="\n".join(addA), format="nquads")
@@ -227,5 +236,21 @@ class Merger(object):
         conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection((graphAddB + graphDelB).all_nodes())
         print(conflictingNodes)
 
+        conflicts = {}
+        ok = set()
 
-        return set(), conflictingNodes
+        for key, graph in [("addA", graphAddA), ("delA", graphDelA),
+                           ("addB", graphAddB), ("delB", graphDelB)]:
+            newOK, conflict = conflictSet(graph, conflictingNodes)
+            if len(conflict) > 0:
+                conflicts[key] = "\n".join(sorted(conflict))
+            ok.update(newOK)
+
+        print("list done")
+
+        print(conflicts)
+
+        print("OK")
+        print(ok)
+
+        return sorted(ok), conflicts or None

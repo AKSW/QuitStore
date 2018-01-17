@@ -5,6 +5,7 @@ from flask import Blueprint, request, current_app, make_response
 from werkzeug.http import parse_accept_header
 from quit.web.app import render_template
 from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
+from quit.exceptions import QuitMergeConflict
 from quit.utils import git_timestamp
 import json
 import logging
@@ -178,14 +179,12 @@ def merge(refspec):
 
     Merge 'branch' into 'target' and set 'target' to the resulting commit.
 
-
     Returns:
     HTTP Response 200: If merge was possible
     HTTP Response 201: If merge was possible and a merge commit was created
     HTTP Response 202: If merge was possible and a fast-forward happened
     HTTP Response 400: If merge did not work
-    HTTP Response 409: If merge produces a conflict*
-    (* not yet implemented)
+    HTTP Response 409: If merge produces a conflict
     """
     quit = current_app.config['quit']
 
@@ -214,7 +213,12 @@ def merge(refspec):
                 branch = request.values.get('branch', None)
                 target = request.values.get('target', None)
             method = request.values.get('method', None)
-            result = quit.repository.merge(target=target, branch=branch, method=method)
+            try:
+                result = quit.repository.merge(target=target, branch=branch, method=method)
+            except QuitMergeConflict as mergeconflict:
+                response = make_response(json.dumps(mergeconflict.getObject()), 409)
+                response.headers['Content-Type'] = 'application/json'
+                return response
 
             resultMessage = ""
             resultCode = 200
