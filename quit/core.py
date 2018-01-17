@@ -164,42 +164,10 @@ class Quit(object):
         if commit_id:
             commit = self.repository.revision(commit_id)
 
-            try:
-                blobs = self._commits.get(commit.id)
-            except KeyError:
-                blobs = set()
-                map = self.config.getgraphurifilemap()
+            # Check caches
+            self._validateCache(commit)
 
-                for entity in commit.node().entries(recursive=True):
-                    # todo check if file was changed
-                    if entity.is_file:
-                        if entity.name not in map.values():
-                            continue
-                        graphUris = self.config.getgraphuriforfile(entity.name)
-                        graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
-
-                        blob = (entity.name, entity.oid)
-                        blobs.add(blob)
-
-                        try:
-                            f, contexts = self._blobs.get(blob)
-                        except KeyError:
-                            tmp = ConjunctiveGraph()
-                            tmp.parse(data=entity.content, format='nquads')
-
-                            # Info: currently filter graphs from file that were not defined in
-                            #       config
-                            # Todo: is this the wanted behaviour?
-                            contexts = set((context for context in tmp.contexts(None)
-                                            if context.identifier in map)) | graphsFromConfig
-
-                            self._blobs.set(
-                                blob, (FileReference(entity.name, entity.content), contexts)
-                            )
-                self._commits.set(commit.id, blobs)
-
-            # now all blobs in commit are known
-            for blob in blobs:
+            for blob in self._commits.get(commit.id):
                 try:
                     (name, oid) = blob
                     f, contexts = self._blobs.get(blob)
@@ -387,6 +355,35 @@ class Quit(object):
                     if self.config.hasFeature(Feature.Persistence):
                         g.addN((s, p, o, private_uri) for s, p, o
                                in context.triples((None, None, None)))
+
+    def _validateCache(self, commit):
+        map = self.config.getgraphurifilemap()
+
+        if commit.id not in self._commits:
+            blobs = set()
+            for entity in commit.node().entries(recursive=True):
+                if entity.is_file:
+                    if entity.name not in map.values():
+                        continue
+                    blob = (entity.name, entity.oid)
+                    blobs.add(blob)
+            self._commits.set(commit.id, blobs)
+
+        blobs = self._commits.get(commit.id)
+
+        for blob in blobs:
+            if blob not in self._blobs:
+                (name, oid) = blob
+                content = commit.node(path=name).content
+                # content = self.repository._repository[oid].data
+                graphUris = self.config.getgraphuriforfile(name)
+                graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
+                tmp = ConjunctiveGraph()
+                tmp.parse(data=content, format='nquads')
+                contexts = set((context for context in tmp.contexts(None)
+                                if context.identifier in map)) | graphsFromConfig
+                self._blobs.set(
+                    blob, (FileReference(name, content), contexts))
 
     def commit(self, graph, delta, message, commit_id, ref, **kwargs):
 
