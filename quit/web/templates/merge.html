@@ -57,8 +57,21 @@ After the merge procedure the branch <em>Destination</em> will have the result o
     </div>
     <div class="alert" role="alert" style="display: none"></div>
 </form>
-<script type="text/javascript">
 
+<div id="conflict-view" style="display: none">
+<div>
+    <h2>Context Merge Conflict</h2>
+    <h3>Legend</h3>
+    <span style="background-color: #00cc33">added in Destination</span>
+    <span style="background-color: #33ffcc">added in Source</span>
+    <span style="background-color: #ff6699">deleted in Destination</span>
+    <span style="background-color: #ff66ff">deleted in Source</span><br/>
+    <span><strong>conflicting Node</strong></span>
+</div>
+<div id="conflicts">
+</div>
+</div>
+<script type="text/javascript">
 inline_functions.push(function() {
     $("#merge").submit(function(event){
         // https://stackoverflow.com/questions/5004233/jquery-ajax-post-example-with-php
@@ -121,8 +134,12 @@ inline_functions.push(function() {
                 "The following error occurred: "+
                 textStatus, errorThrown
             );
-            $("#merge div.alert").removeClass("alert-success").addClass("alert-warning")
-            .html("The following error occurred: <br/>"+ jqXHR.responseText).show();
+            if (jqXHR.status == 409) {
+                showConflicts($.parseJSON(jqXHR.responseText));
+            } else {
+                $("#merge div.alert").removeClass("alert-success").addClass("alert-warning")
+                .html("The following error occurred: <br/>"+ jqXHR.responseText).show();
+            }
         });
 
         // Callback handler that will be called regardless
@@ -133,6 +150,96 @@ inline_functions.push(function() {
         });
     })
 });
+
+conflicts = {
+    "aksw.nq": {
+        "message": "Conflicts, ahhhhh!! {}",
+        "ok": "<http://aksw.org/NatanaelArndt> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <http://aksw.org/> .",
+        "conflicts": {
+            "addA": "<http://aksw.org/NatanaelArndt> <http://xmlns.com/foaf/0.1/name> \"Natanael\" <http://aksw.org/> .",
+            "addB": "<http://aksw.org/NatanaelArndt> <http://example.org/worksAt> <http://aksw.org/Group> <http://aksw.org/> .\n<http://aksw.org/NatanaelArndt> <http://xmlns.com/foaf/0.1/name> \"Peter Arndt\" <http://aksw.org/> ."
+        }
+    },
+    "graph.nq": {
+        "message": "Conflicts, ahhhhh!! {}",
+        "ok": "<http://example.org/Patrick> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <http://example.org/> .",
+        "conflicts": {
+            "addA": "<http://example.org/Patrick> <http://example.org/worksAt> <http://example.org/AppsFactory> <http://example.org/> .\n<http://example.org/Patrick> <http://xmlns.com/foaf/0.1/name> \"Patrick\" <http://example.org/> .",
+            "addB": "<http://example.org/Patrick> <http://xmlns.com/foaf/0.1/name> \"Patrick Naumann\" <http://example.org/> ."
+        }
+    }
+}
+
+function showConflicts (conflicts) {
+    $("#conflict-view").show();
+
+    console.log(conflicts);
+
+    for (file in conflicts) {
+        $("#conflict-view #conflicts").html();
+        var div = $("<div></div>");
+        div.appendTo("#conflict-view #conflicts");
+        console.log(file);
+        var conflictNodes = conflicts[file]["conflicts"]["nodes"];
+        div.append("<h3>" + file + "</h3>");
+        table = $("<table />").appendTo(div);
+        lines = conflicts[file]["ok"].split("\n");
+        for (line in lines) {
+            var cell = $("<td>");
+            var row = $("<tr>");
+            table.append(row.append(cell));
+            cell.html(highlightConflictNode(lines[line], conflictNodes));
+        }
+        addConflictLine(conflicts[file]["conflicts"]["addA"], table, "#00cc33", conflictNodes);
+        addConflictLine(conflicts[file]["conflicts"]["addB"], table, "#33ffcc", conflictNodes);
+        addConflictLine(conflicts[file]["conflicts"]["delA"], table, "#ff6699", conflictNodes);
+        addConflictLine(conflicts[file]["conflicts"]["delB"], table, "#ff66ff", conflictNodes);
+        console.log(conflicts[file]["ok"]);
+    }
+}
+
+function addConflictLine(conflicts, table, color, conflictNodes) {
+    if (conflicts != undefined) {
+        lines = conflicts.split("\n");
+        for (line in lines) {
+            var cell = $("<td>");
+            var row = $("<tr>");
+            row.attr("style", "background-color: " + color)
+            row.append(cell);
+            table.append(row);
+            cell.html(highlightConflictNode(lines[line], conflictNodes));
+        }
+    }
+}
+
+function highlightConflictNode(line, conflictNodes) {
+    console.log(line);
+    for (node in conflictNodes) {
+        console.log(conflictNodes[node]);
+        var regex = RegExp(conflictNodes[node], "g"), result, indices = [];
+        var i = 0;
+        var len = conflictNodes[node].length;
+        var newStr = ""
+        while ( (result = regex.exec(line)) ) {
+            newStr += htmlEntities(line.substring(i, result.index));
+            newStr += "<strong>" + htmlEntities(line.substring(result.index, result.index+len)) + "</strong>";
+            i = result.index+len;
+            console.log(newStr);
+            console.log(i);
+        }
+        newStr += htmlEntities(line.substring(i))
+    }
+    if (newStr != "") {
+        console.log("return: " + newStr);
+        return newStr;
+    }
+    console.log("return default: " + line);
+    return line;
+}
+
+function htmlEntities(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 </script>
 
 {% endblock %}

@@ -249,6 +249,7 @@ class Merger(object):
 
         conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection((graphAddB + graphDelB).all_nodes())
         print(conflictingNodes)
+        logger.debug(conflictingNodes)
 
         conflicts = {}
         ok = set()
@@ -262,6 +263,12 @@ class Merger(object):
 
         print("list done")
 
+        if conflicts:
+            nodes = []
+            for node in conflictingNodes:
+                logger.debug(node.n3())
+                nodes.append(node.n3())
+            conflicts["nodes"] = nodes
         print(conflicts)
 
         print("OK")
