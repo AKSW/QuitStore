@@ -113,7 +113,8 @@ class Merger(object):
                 try:
                     mergedBlob = self._merge_graph_blobs(p.delta.old_file.id, p.delta.new_file.id,
                                                          baseOid, favour=favour)
-                    mergedTreeBuilder.insert(p.delta.old_file.path, mergedBlob, p.delta.old_file.mode)
+                    mergedTreeBuilder.insert(p.delta.old_file.path, mergedBlob,
+                                             p.delta.old_file.mode)
                 except QuitBlobMergeConflict as mergeconflict:
                     conflicts[p.delta.old_file.path] = mergeconflict.getObject()
             else:
@@ -247,7 +248,8 @@ class Merger(object):
         graphDelB = rdflib.ConjunctiveGraph()
         graphDelB.parse(data="\n".join(delB), format="nquads")
 
-        conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection((graphAddB + graphDelB).all_nodes())
+        conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection(
+            (graphAddB + graphDelB).all_nodes())
         print(conflictingNodes)
         logger.debug(conflictingNodes)
 

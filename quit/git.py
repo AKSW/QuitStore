@@ -377,11 +377,12 @@ class Repository(object):
                 merger.merge_three_way_head(branch)
                 return merge_result
             elif method in ["three-way", "context"]:
-                logger.debug("merge {} into {} three-way oder context for RDF".format(branch, target))
+                logger.debug("merge {} into {} three-way or context for RDF".format(branch, target))
                 merger.merge_quit_commits(target, branch, favour=method)
                 return merge_result
 
-            logger.debug("merge {} into {} with {} not yet supported".format(branch, target, method))
+            logger.debug("merge {} into {} with {} is not yet supported".format(branch, target,
+                                                                                method))
             raise Exception("Not yet supported merge method")
 
         raise AssertionError('Unknown merge analysis result')
