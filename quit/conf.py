@@ -50,11 +50,11 @@ class QuitConfiguration:
         self.graphs = {}
         self.files = {}
 
-        self.quit = Namespace('http://quit.aksw.org/')
+        self.quit = Namespace('http://quit.aksw.org/vocab/')
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
-        self.nsMngrSysconf.bind('', 'http://quit.aksw.org/', override=False)
+        self.nsMngrSysconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
         self.nsMngrGraphconf = NamespaceManager(self.sysconf)
-        self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/', override=False)
+        self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
 
         try:
             self.__initstoreconfig(
@@ -225,7 +225,7 @@ class QuitConfiguration:
 
     def __setgraphsfromconf(self):
         """Set all URIs and file paths of graphs that are configured in config.ttl."""
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         query = 'SELECT DISTINCT ?graphuri ?filename WHERE { '
         query += '  ?graph a <' + nsQuit + 'Graph> . '
         query += '  ?graph <' + nsQuit + 'graphUri> ?graphuri . '
@@ -310,7 +310,7 @@ class QuitConfiguration:
         Returns:
             A string containig the mode.
         """
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         property = URIRef(nsQuit + 'configMode')
 
         for s, p, o in self.sysconf.triples((None, property, None)):
@@ -324,7 +324,7 @@ class QuitConfiguration:
         Returns:
             A string containig the path of the git repo.
         """
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'pathOfGitRepo')
 
@@ -337,7 +337,7 @@ class QuitConfiguration:
         Returns:
             A string containing the branch name.
         """
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'defaultBranch')
 
@@ -352,7 +352,7 @@ class QuitConfiguration:
         Returns:
             The filename of the graph file where unassigned graphs should be stored.
         """
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'globalFile')
 
@@ -361,7 +361,7 @@ class QuitConfiguration:
 
     def getOrigin(self):
         """Get the URI of Git remote from configuration."""
-        nsQuit = 'http://quit.aksw.org/'
+        nsQuit = 'http://quit.aksw.org/vocab/'
         storeuri = URIRef('http://my.quit.conf/store')
         property = URIRef(nsQuit + 'origin')
 
@@ -490,7 +490,7 @@ class QuitConfiguration:
         return
 
     def getBindings(self):
-        ns = Namespace('http://quit.aksw.org/')
+        ns = Namespace('http://quit.aksw.org/vocab/')
         q = """SELECT DISTINCT ?prefix ?namespace WHERE {{
             {{
                 ?ns a <{binding}> ;
