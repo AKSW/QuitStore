@@ -213,27 +213,21 @@ function addConflictLine(conflicts, table, color, conflictNodes) {
 }
 
 function highlightConflictNode(line, conflictNodes) {
-    console.log(line);
+    line = htmlEntities(line);
     for (node in conflictNodes) {
-        console.log(conflictNodes[node]);
-        var regex = RegExp(conflictNodes[node], "g"), result, indices = [];
+        nodeUri = htmlEntities(conflictNodes[node]);
+        var regex = RegExp(nodeUri, "g"), result, indices = [];
         var i = 0;
-        var len = conflictNodes[node].length;
         var newStr = ""
+        var len = nodeUri.length;
         while ( (result = regex.exec(line)) ) {
-            newStr += htmlEntities(line.substring(i, result.index));
-            newStr += "<strong>" + htmlEntities(line.substring(result.index, result.index+len)) + "</strong>";
+            newStr += line.substring(i, result.index);
+            newStr += "<strong>" + line.substring(result.index, result.index+len) + "</strong>";
             i = result.index+len;
-            console.log(newStr);
-            console.log(i);
         }
-        newStr += htmlEntities(line.substring(i))
+        newStr += line.substring(i)
+        line = newStr;
     }
-    if (newStr != "") {
-        console.log("return: " + newStr);
-        return newStr;
-    }
-    console.log("return default: " + line);
     return line;
 }
 
