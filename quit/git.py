@@ -98,6 +98,24 @@ class Repository(object):
     def close(self):
         self._repository = None
 
+    def lookup(self, name):
+        """Lookup the oid for a reference.
+
+        The name is looked for in "refs/heads/<name>", "refs/tags/<name>" and directly.
+        It does not matter weather the found reference is a symbolic or a direct, it will be
+        resolved to an oid.
+
+        Return:
+        Oid
+        """
+        for template in ['refs/heads/%s', 'refs/tags/%s', '%s']:
+            try:
+                reference = self._repository.lookup_reference(template % name)
+                return reference.resolve().target
+            except KeyError:
+                pass
+        raise RevisionNotFound(name)
+
     def revision(self, id='HEAD'):
         try:
             commit = self._repository.revparse_single(id)
@@ -109,16 +127,8 @@ class Repository(object):
     def revisions(self, name=None, order=pygit2.GIT_SORT_REVERSE):
         seen = set()
 
-        def lookup(name):
-            for template in ['refs/heads/%s', 'refs/tags/%s']:
-                try:
-                    return self._repository.lookup_reference(template % name)
-                except KeyError:
-                    pass
-            raise RevisionNotFound(name)
-
         def traverse(ref, seen):
-            for commit in self._repository.walk(ref.target, order):
+            for commit in self._repository.walk(ref, order):
                 oid = commit.oid
                 if oid not in seen:
                     seen.add(oid)
@@ -129,11 +139,11 @@ class Repository(object):
 
             if not name:
                 for name in self.branches:
-                    ref = self._repository.lookup_reference(name)
+                    ref = self.lookup(name)
                     commits += traverse(ref, seen)
             else:
-                ref = lookup(name)
-                commits += traverse(ref, seen)
+                oid = self.lookup(name)
+                commits += traverse(oid, seen)
             return commits
 
         return iter_commits(name, seen)
