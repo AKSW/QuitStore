@@ -4,9 +4,9 @@ __all__ = ('RDF', 'RDFS', 'FOAF', 'DC', 'VOID', 'XSD', 'PROV', 'QUIT', 'is_a')
 
 # missing namespaces
 PROV = Namespace('http://www.w3.org/ns/prov#')
-QUITD = Namespace('http://quit.aksw.org/vocab/')
+QUITD = Namespace('http://quit.aksw.org/')
 
-QUIT = Namespace('http://quit.aksw.org/vocab/')
+QUIT = Namespace('http://quit.aksw.org/')
 
 # simplified properties
 is_a = RDF.type
