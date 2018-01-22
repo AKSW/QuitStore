@@ -1,4 +1,4 @@
-@base <http://quit.aksw.org/> .
+@base <http://quit.aksw.org/vocab/> .
 @prefix conf: <http://my.quit.conf/> .
 
 conf:store a <QuitStore> ;

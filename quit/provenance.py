@@ -58,7 +58,7 @@ class Blame(object):
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX aksw: <http://aksw.org/>
-            PREFIX quit: <http://quit.aksw.org/>
+            PREFIX quit: <http://quit.aksw.org/vocab/>
             PREFIX prov: <http://www.w3.org/ns/prov#>
             PREFIX foaf: <http://xmlns.com/foaf/0.1/>
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {
