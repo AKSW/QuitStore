@@ -109,12 +109,15 @@ class Repository(object):
         Return:
         Oid
         """
-        for template in ['refs/heads/%s', 'refs/tags/%s', '%s']:
-            try:
-                reference = self._repository.lookup_reference(template % name)
-                return reference.resolve().target
-            except KeyError:
-                pass
+        try:
+            for template in ['refs/heads/%s', 'refs/tags/%s', '%s']:
+                try:
+                    reference = self._repository.lookup_reference(template % name)
+                    return reference.resolve().target
+                except KeyError:
+                    pass
+        except ValueError:
+            return self._repository.get(name).id
         raise RevisionNotFound(name)
 
     def revision(self, id='HEAD'):
@@ -280,7 +283,7 @@ class Repository(object):
                                                                       local_branch))
         remote_master_id = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
         if remote_master_id is not None:
-            self.merge(reference=local_branch, branch=remote_master_id)
+            self.merge(target=local_branch, branch=remote_master_id)
 
     def push(self, remote_name=None, refspec=None):
         """Push changes on a local repository to a remote repository.
@@ -336,18 +339,23 @@ class Repository(object):
 
         Keyword arguments:
         target -- The target of the merge operation (if omitted, 'branch' will be merged into HEAD)
-        branch -- The branche which should be merged into 'target' (defaults to FEATCH_HEAD)
+        branch -- A string with the branche name which should be merged into 'target' or an Oid of a
+                  commit to be merged (the type has to be pygit2.Oid). (defaults to FEATCH_HEAD)
         """
         logger.debug("Start Merge")
         if target is None:
             target = "HEAD"
         if branch is None:
             branch = "FETCH_HEAD"
+        if method is None:
+            method = "three-way"
 
         if target not in ["HEAD", "FETCH_HEAD"] and not target.startswith("refs/heads/"):
             target = "refs/heads/" + target
 
-        if branch not in ["HEAD", "FETCH_HEAD"] and not branch.startswith("refs/heads/"):
+        if isinstance(branch, pygit2.Oid):
+            branch = str(branch)
+        elif branch not in ["HEAD", "FETCH_HEAD"] and not branch.startswith("refs/heads/"):
             branch = "refs/heads/" + branch
 
         logger.debug("merge: {} into {} with {}".format(branch, target, method))

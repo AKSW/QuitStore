@@ -139,13 +139,13 @@ class Merger(object):
         """Merge two commited graphs, with a base, into one merged blob.
 
         Returns:
-        blob, conflicts
+        blob
         """
         logger.debug("{} {} {}".format(graphAOid, graphBOid, graphBaseOid))
         if graphAOid == graphBaseOid:
-            return graphBOid, None
+            return graphBOid
         if graphBOid == graphBaseOid:
-            return graphAOid, None
+            return graphAOid
 
         if favour == "three-way":
             return self._merge_threeway_graph_blobs(graphAOid, graphBOid, graphBaseOid)
