@@ -136,6 +136,7 @@ inline_functions.push(function() {
             );
             if (jqXHR.status == 409) {
                 showConflicts($.parseJSON(jqXHR.responseText));
+                $("#conflicts").find("table").find("tr").find("td:last").after('<td><i class="fa fa-plus" aria-hidden="true"></i><i class="fa fa-times" aria-hidden="true"></i><i class="fa fa-pencil" aria-hidden="true"></i></td>');
             } else {
                 $("#merge div.alert").removeClass("alert-success").addClass("alert-warning")
                 .html("The following error occurred: <br/>"+ jqXHR.responseText).show();
