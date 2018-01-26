@@ -261,7 +261,8 @@ class Merger(object):
             newOK, conflict = conflictSet(graph, conflictingNodes)
             if len(conflict) > 0:
                 conflicts[key] = "\n".join(sorted(conflict))
-            ok.update(newOK)
+            if key.startswith("add"):
+                ok.update(newOK)
 
         print("list done")
 
