@@ -4,7 +4,7 @@ from os import path
 
 from datetime import datetime
 from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
-import quit.quit as quitApp
+import quit.application as quitApp
 from quit.web.app import create_app
 import unittest
 from helpers import TemporaryRepository, TemporaryRepositoryFactory

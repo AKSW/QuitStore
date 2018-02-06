@@ -71,7 +71,7 @@ class QuitConfiguration:
 
     def __initstoreconfig(self, repository=None, targetdir=None, configfile=None, configmode=None):
         """Initialize store settings."""
-        if isfile(configfile):
+        if configfile and isfile(configfile):
             try:
                 self.sysconf.parse(configfile, format='turtle')
             except notation3.BadSyntax:
