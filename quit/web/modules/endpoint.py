@@ -72,11 +72,13 @@ def sparql(branch_or_ref):
         branch_or_ref = default_branch
 
     q = request.values.get('query', None) or request.values.get('update', None)
-    logger.info('Received query: {}'.format(q))
 
     if 'Accept' in request.headers:
+        logger.info('Received query: {} with accept header: {}'.format(q,
+                                                                       request.headers['Accept']))
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
+        logger.info('Received query: {} with no accept header.'.format(q))
         mimetype = '*/*'
 
     if q:

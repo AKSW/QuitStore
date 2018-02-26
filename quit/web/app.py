@@ -1,5 +1,4 @@
 import sys
-import os
 import urllib
 import hashlib
 import rdflib
@@ -8,7 +7,7 @@ import logging
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import request, url_for, redirect, make_response
+from flask import url_for, redirect
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
@@ -171,19 +170,6 @@ def register_errorhandlers(app):
     @app.errorhandler(404)
     def page_not_found(error):
         return render_template("404.html"), 404
-
-    from flask import request
-
-    def shutdown_server():
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
-        func()
-
-    @app.route('/shutdown', methods=['GET'])
-    def shutdown():
-        shutdown_server()
-        return 'Server shutting down...'
 
 
 def register_template_helpers(app):

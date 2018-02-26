@@ -47,7 +47,7 @@ mkvirtualenv -p /usr/bin/python3.5 quit
 Install the required dependencies and run the store:
 ```
 pip install -r requirements.txt
-./quit.py
+quit/run.py
 ```
 
 ### Command line options
@@ -59,6 +59,10 @@ These modes differ in how the store choses the named graphs and the correspondin
 1. `localconfig` - Use the graphs specified in a local config file (e.g. `config.ttl`).
 2. `repoconfig` - Search for a `config.ttl` file in the specified repository.
 3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)), furthermore found N-Quads files are analyzed to get the URI of named graphs from the used context.
+
+`-b`, `--basepath`
+
+Specifiy a basepath/application root. This will work with WSGI and docker only.
 
 `-t`, `--targetdir`
 
@@ -124,6 +128,15 @@ The Image will expose port 80 by default.
 An existing repository can be linked to the volume `/data`.
 The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
 
+Further options which can be set are:
+
+* QUIT_TARGETDIR - the target repository directory on which quit should run
+* QUIT_CONFIGFILE - the path to the config.ttl (\* /etc/quit/config.ttl)
+* QUIT_LOGFILE - the path where quit should create its logfile
+* QUIT_BASEPATH - the HTTP basepath where quit will be served
+
+\* defaults to
+
 To run the image execute the following command:
 
 ```
@@ -135,8 +148,6 @@ The following example will map the quit store port to the host port 8080.
 ```
 docker run --name containername -p 8080:80 -v /existing/store.repo:/data aksw/quitstore
 ```
-
-There is also the `QUIT_PORT` environment variable, which changes the port, to which the Quit Store binds inside the docker container.
 
 ## TODO:
 
