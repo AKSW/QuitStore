@@ -1,5 +1,6 @@
 import quit.tools.plugin
 
+import rdflib.plugins.sparql
 from rdflib.plugins.sparql.algebra import SequencePath
 
 # from Github: https://github.com/RDFLib/rdflib/issues/617
@@ -18,3 +19,9 @@ def sequencePathCompareGt(self, other):
 setattr(SequencePath, '__lt__', sequencePathCompareLt)
 setattr(SequencePath, '__gt__', sequencePathCompareGt)
 # End egregious hack
+
+# To get the best behavior, but still we have https://github.com/RDFLib/rdflib/issues/810
+rdflib.plugins.sparql.SPARQL_DEFAULT_GRAPH_UNION = False
+
+# To disable web access: https://github.com/RDFLib/rdflib/issues/810
+rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS = False
