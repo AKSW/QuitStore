@@ -164,6 +164,8 @@ Further options which can be set are:
 * QUIT_CONFIGFILE - the path to the config.ttl (\* /etc/quit/config.ttl)
 * QUIT_LOGFILE - the path where quit should create its logfile
 * QUIT_BASEPATH - the HTTP basepath where quit will be served
+* QUIT_OAUTH_CLIENT_ID - the GitHub OAuth client id (for oauth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
+* QUIT_OAUTH_SECRET - the GitHub OAuth secret
 
 \* defaults to
 
