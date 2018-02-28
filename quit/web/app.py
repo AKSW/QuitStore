@@ -1,20 +1,23 @@
 import sys
+import os
 import urllib
 import hashlib
 import rdflib
 import logging
+import uuid
+import json
 
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import url_for, redirect
+from flask import url_for, redirect, session, request
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
-from quit.git import Repository
+from quit.git import Repository, QuitRemoteCallbacks
 import quit.utils as utils
 
 from quit.namespace import QUIT
@@ -84,9 +87,10 @@ def create_app(config, enable_profiler=False, profiler_quiet=False):
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
+    app.secret_key = os.urandom(24)
     register_app(app, config)
     register_hook(app)
-    register_blueprints(app)
+    register_blueprints(app, config)
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
@@ -113,7 +117,8 @@ def register_app(app, config):
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
 
-    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection)
+    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection,
+                            callback=QuitRemoteCallbacks(session=session))
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))
@@ -137,7 +142,7 @@ def register_extensions(app):
     cors.init_app(app)
 
 
-def register_blueprints(app):
+def register_blueprints(app, config):
     """Register blueprints in views."""
 
     from quit.web.modules.debug import debug
@@ -150,6 +155,42 @@ def register_blueprints(app):
     @app.route("/")
     def index():
         return redirect(url_for('git.commits'))
+
+    @app.route("/login")
+    def login():
+        if "state" not in session:
+            state = str(uuid.uuid4())
+            session["state"] = state
+        else:
+            state = session["state"]
+        logger.debug("request url: {}".format(request.url))
+        redirect_uri = request.url
+        authorizeEndpoint = "https://github.com/login/oauth/authorize"
+        tokenEndpoint = "https://github.com/login/oauth/access_token"
+        error = request.values.get('error', None)
+        code = request.values.get('code', None)
+        if error or code is None:
+            params = {'client_id': config.oauthclientid,
+                      'redirect_uri': redirect_uri,
+                      'scope': 'repo',
+                      'state': state}
+            loginURL = authorizeEndpoint + "?" + urllib.parse.urlencode(params)
+            return "<a href='{}'>Login with GitHub</a>".format(loginURL)
+        else:
+            request_state = request.values.get('state', None)
+            if not state == request_state:
+                return "Error"
+            post_data = {'client_id': config.oauthclientid,
+                         'client_secret': config.oauthclientsecret,
+                         'code': code,
+                         'state': state}
+            tokenrequest = urllib.request.Request(tokenEndpoint,
+                                                  urllib.parse.urlencode(post_data).encode())
+            tokenrequest.add_header('Accept', 'application/json')
+            tokenresponse = urllib.request.urlopen(tokenrequest).read().decode("utf-8")
+            token = json.loads(tokenresponse)["access_token"]
+            session["OAUTH_TOKEN"] = token
+            return "success"
 
 
 def register_hook(app):

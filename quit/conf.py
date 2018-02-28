@@ -32,6 +32,8 @@ class QuitConfiguration:
         features=None,
         repository=None,
         targetdir=None,
+        oauthclientid=None,
+        oauthclientsecret=None,
     ):
         """The init method.
 
@@ -49,6 +51,8 @@ class QuitConfiguration:
         self.origin = None
         self.graphs = {}
         self.files = {}
+        self.oauthclientid = oauthclientid
+        self.oauthclientsecret = oauthclientsecret
 
         self.quit = Namespace('http://quit.aksw.org/vocab/')
         self.nsMngrSysconf = NamespaceManager(self.sysconf)

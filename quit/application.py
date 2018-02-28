@@ -68,6 +68,8 @@ def initialize(args):
             repository=args.repourl,
             configmode=args.configmode,
             features=args.features,
+            oauthclientid=args.oauth_clientid,
+            oauthclientsecret=args.oauth_clientsecret,
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -126,6 +128,8 @@ def parseArgs(args):
     basepath_default = None
     targetdir_default = None
     configfile_default = "config.ttl"
+    oauthclientid_default = None
+    oauthclientsecret_default = None
 
     if 'QUIT_PORT' in os.environ:
         port_default = os.environ['QUIT_PORT']
@@ -141,6 +145,12 @@ def parseArgs(args):
 
     if 'QUIT_CONFIGFILE' in os.environ:
         configfile_default = os.environ['QUIT_CONFIGFILE']
+
+    if 'QUIT_OAUTH_CLIENT_ID' in os.environ:
+        oauthclientid_default = os.environ['QUIT_OAUTH_CLIENT_ID']
+
+    if 'QUIT_OAUTH_SECRET' in os.environ:
+        oauthclientsecret_default = os.environ['QUIT_OAUTH_SECRET']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
@@ -161,6 +171,8 @@ def parseArgs(args):
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
     parser.add_argument('--host', default='0.0.0.0', type=str)
+    parser.add_argument('--oauth-clientid', default=oauthclientid_default, type=str)
+    parser.add_argument('--oauth-clientsecret', default=oauthclientsecret_default, type=str)
 
     logger.debug("Parsing args: {}".format(args))
 

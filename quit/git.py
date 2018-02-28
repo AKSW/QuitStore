@@ -29,7 +29,7 @@ class Repository(object):
     - There is no possibility to set remotes on a Quit Repository object.
     """
 
-    def __init__(self, path, origin=None, create=False, garbageCollection=False):
+    def __init__(self, path, origin=None, create=False, garbageCollection=False, callback=None):
         """Initialize a quit repo at a given location of the filesystem.
 
         Keyword arguments:
@@ -41,7 +41,7 @@ class Repository(object):
         garbageCollection -- boolean whether to activate the garbage collection on the git
                   repository (default: False)
         """
-        self.callback = QuitRemoteCallbacks()
+        self.callback = callback
 
         try:
             self._repository = pygit2.Repository(path)
@@ -238,7 +238,7 @@ class Repository(object):
             if remote.name == remote_name:
                 if remote_branch is not None:
                     remote_branch = [remote_branch]
-                remote.fetch(remote_branch)
+                remote.fetch(remote_branch, callbacks=self.callback)
 
                 if remote_branch is None:
                     return None
@@ -702,6 +702,9 @@ class IndexTree(object):
 class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
     """Set a pygit callback for user authentication when acting with remotes."""
 
+    def __init__(self, session):
+        self.session = session
+
     def credentials(self, url, username_from_url, allowed_types):
         """
         The callback to return a suitable authentication method.
@@ -733,7 +736,9 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
                         "your ~/.ssh/"
                     )
         elif pygit2.credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
-            if "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
+            if "OAUTH_TOKEN" in self.session:
+                return pygit2.UserPass(self.session["OAUTH_TOKEN"], 'x-oauth-basic')
+            elif "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
                 return pygit2.UserPass(os.environ["GIT_USERNAME"], os.environ["GIT_PASSWORD"])
             else:
                 raise Exception(
