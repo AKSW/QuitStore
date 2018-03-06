@@ -99,7 +99,7 @@ def sparql(branch_or_ref):
                 ref = request.values.get('ref', None) or default_branch
                 ref = 'refs/heads/{}'.format(ref)
                 quit.commit(
-                    graph, res.get('delta', None), 'New Commit from QuitStore',
+                    graph, res, 'New Commit from QuitStore',
                     branch_or_ref, ref, query=q
                 )
                 return '', 200

@@ -337,6 +337,9 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     """
 
+    changes = defaultdict(set)
+    res = []
+
     for u in update:
 
         ctx = QueryContext(graph)
@@ -349,32 +352,32 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 ctx[k] = v
             # ctx.push()  # nescessary?
 
-        changes = defaultdict(set)
         try:
             if u.name == 'Load':
-                return evalLoad(ctx, u)
+                res.append(evalLoad(ctx, u))
             elif u.name == 'Clear':
-                return evalClear(ctx, u)
+                evalClear(ctx, u)
             elif u.name == 'Drop':
-                return evalDrop(ctx, u)
+                evalDrop(ctx, u)
             elif u.name == 'Create':
-                return evalCreate(ctx, u)
+                evalCreate(ctx, u)
             elif u.name == 'Add':
-                return evalAdd(ctx, u)
+                evalAdd(ctx, u)
             elif u.name == 'Move':
-                return evalMove(ctx, u)
+                evalMove(ctx, u)
             elif u.name == 'Copy':
-                return evalCopy(ctx, u)
+                evalCopy(ctx, u)
             elif u.name == 'InsertData':
-                return evalInsertData(ctx, u)
+                res.append(evalInsertData(ctx, u))
             elif u.name == 'DeleteData':
-                return evalDeleteData(ctx, u)
+                res.append(evalDeleteData(ctx, u))
             elif u.name == 'DeleteWhere':
-                return evalDeleteWhere(ctx, u)
+                res.append(evalDeleteWhere(ctx, u))
             elif u.name == 'Modify':
-                return evalModify(ctx, u)
+                res.append(evalModify(ctx, u))
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
         except:
             if not u.silent:
                 raise
+    return res
