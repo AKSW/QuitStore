@@ -271,7 +271,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             self.assertEqual(len(obj["results"]["bindings"]), 0)
 
-    def testInitAndSelectFromNonEmptyGraph(self):
+    def testInitAndSelectFromNonEmptyGraphPost(self):
         """Test select from newly created app, starting with a non empty graph.
 
         1. Prepare a git repository with a non empty graph
@@ -306,6 +306,80 @@ class QuitAppTestCase(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'http://ex.org/y'},
                 "o": {'type': 'uri', 'value': 'http://ex.org/z'}})
 
+    def testInitAndSelectFromNonEmptyGraphPostDataInBody(self):
+        """Test select from newly created app, starting with a non empty graph.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        """
+
+        # Prepate a git Repository
+        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post(
+                '/sparql',
+                data=select,
+                content_type="application/sparql-query",
+                headers={"accept": "application/sparql-results+json"}
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            # obj = json.load(select_resp.data)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/x'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/y'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/z'}})
+
+    def testInitAndSelectFromNonEmptyGraphGet(self):
+        """Test select from newly created app, starting with a non empty graph.
+
+        1. Prepare a git repository with a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        """
+
+        # Prepate a git Repository
+        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+
+            select_resp = app.get(
+                '/sparql',
+                query_string=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            # obj = json.load(select_resp.data)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/x'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/y'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/z'}})
+
     def testInsertDataAndSelectFromEmptyGraph(self):
         """Test inserting data and selecting it, starting with an empty graph.
 
@@ -325,7 +399,43 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/a'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
+    def testInsertDataAndSelectFromEmptyGraphPostDataInBody(self):
+        """Test inserting data and selecting it, starting with an empty graph.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -764,8 +874,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}\n\nNew Commit from QuitStore'
+            expectedCommitMsg = 'query: "INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}"\n\nNew Commit from QuitStore'
 
             commits = []
 
@@ -804,8 +914,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'query: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}\n\nNew Commit from QuitStore'
+            expectedCommitMsg = 'query: "INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}"\n\nNew Commit from QuitStore'
 
             commits = []
 
