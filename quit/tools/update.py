@@ -15,6 +15,7 @@ from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 from collections import defaultdict
 from itertools import tee
 
+
 def _append(dct, identifier, action, items):
     if items:
         if not isinstance(identifier, Node):
@@ -337,7 +338,6 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     """
 
-    changes = defaultdict(set)
     res = []
 
     for u in update:
@@ -350,7 +350,6 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 if not isinstance(k, Variable):
                     k = Variable(k)
                 ctx[k] = v
-            # ctx.push()  # nescessary?
 
         try:
             if u.name == 'Load':
@@ -377,7 +376,7 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 res.append(evalModify(ctx, u))
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
-        except:
+        except Exception:
             if not u.silent:
                 raise
     return res
