@@ -434,20 +434,17 @@ class Quit(object):
         except KeyError:
             blobs = []
 
-        removed = set()
         for blob in blobs:
             (fileName, oid) = blob
             try:
                 file_reference, contexts = self.getFileReferenceAndContext(blob, commit)
                 for context in contexts:
                     for entry in delta:
-                        delta_dict = entry['delta']
-                        changeset = delta_dict.get(context.identifier, None)
+                        changeset = entry.get(context.identifier, None)
 
                         if changeset:
                             _apply(file_reference, changeset, context.identifier)
-                            removed.add(context.identifier)
-                            del(entry['delta'][context.identifier])
+                            del(entry[context.identifier])
 
                 index.add(file_reference.path, file_reference.content)
 
@@ -462,22 +459,15 @@ class Quit(object):
         f_name = self.config.getGlobalFile() or 'unassigned.nq'
         f_new = FileReference(f_name, "")
         for entry in delta:
-            delta_dict = entry['delta']
-            keys = delta_dict.keys()
-            for key in keys:
-                if key in removed:
-                    continue
-                else:
-                    for identifier, changeset in delta_dict.items():
-                        unassigned.add(identifier)
-                        if changeset and identifier not in removed:
-                            _apply(f_new, changeset['delta'], graph.store.identifier)
+            for identifier, changeset in entry.items():
+                unassigned.add(graph.store.get_context(identifier))
+                _apply(f_new, changeset, graph.store.identifier)
 
-                        index.add(f_new.path, f_new.content)
+                index.add(f_new.path, f_new.content)
 
-                        blob = f_name, index.stash[f_new.path][0]
-                        self._blobs.set(blob, (f_new, unassigned))
-                        blobs_new.add(blob)
+                blob = f_name, index.stash[f_new.path][0]
+                self._blobs.set(blob, (f_new, unassigned))
+                blobs_new.add(blob)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature

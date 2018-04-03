@@ -353,7 +353,9 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
         try:
             if u.name == 'Load':
-                res.append(evalLoad(ctx, u))
+                result = evalLoad(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'Clear':
                 evalClear(ctx, u)
             elif u.name == 'Drop':
@@ -367,13 +369,21 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
             elif u.name == 'Copy':
                 evalCopy(ctx, u)
             elif u.name == 'InsertData':
-                res.append(evalInsertData(ctx, u))
+                result = evalInsertData(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'DeleteData':
-                res.append(evalDeleteData(ctx, u))
+                result = evalDeleteData(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'DeleteWhere':
-                res.append(evalDeleteWhere(ctx, u))
+                result = evalDeleteWhere(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'Modify':
-                res.append(evalModify(ctx, u))
+                result = evalModify(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
         except Exception:
