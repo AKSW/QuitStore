@@ -15,6 +15,7 @@ from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 from collections import defaultdict
 from itertools import tee
 
+
 def _append(dct, identifier, action, items):
     if items:
         if not isinstance(identifier, Node):
@@ -337,6 +338,8 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     """
 
+    res = []
+
     for u in update:
 
         ctx = QueryContext(graph)
@@ -347,34 +350,43 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 if not isinstance(k, Variable):
                     k = Variable(k)
                 ctx[k] = v
-            # ctx.push()  # nescessary?
 
-        changes = defaultdict(set)
         try:
             if u.name == 'Load':
-                return evalLoad(ctx, u)
+                result = evalLoad(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'Clear':
-                return evalClear(ctx, u)
+                evalClear(ctx, u)
             elif u.name == 'Drop':
-                return evalDrop(ctx, u)
+                evalDrop(ctx, u)
             elif u.name == 'Create':
-                return evalCreate(ctx, u)
+                evalCreate(ctx, u)
             elif u.name == 'Add':
-                return evalAdd(ctx, u)
+                evalAdd(ctx, u)
             elif u.name == 'Move':
-                return evalMove(ctx, u)
+                evalMove(ctx, u)
             elif u.name == 'Copy':
-                return evalCopy(ctx, u)
+                evalCopy(ctx, u)
             elif u.name == 'InsertData':
-                return evalInsertData(ctx, u)
+                result = evalInsertData(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'DeleteData':
-                return evalDeleteData(ctx, u)
+                result = evalDeleteData(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'DeleteWhere':
-                return evalDeleteWhere(ctx, u)
+                result = evalDeleteWhere(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             elif u.name == 'Modify':
-                return evalModify(ctx, u)
+                result = evalModify(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
-        except:
+        except Exception:
             if not u.silent:
                 raise
+    return res
