@@ -103,13 +103,41 @@ The loglevel for the logfile is always extra verbose (DEBUG).
 
 ## API
 
-Execute a query with curl
+The Quit-Store comes with three kinds of interfaces, a SPARQL update and query interface, a provenance interface, and a Git management interface.
+
+### SPARQL Update and Query Interface
+The SPARQL interface support update and select queries and is meant to adhere to the [SPARQL 1.1 Protocol](https://www.w3.org/TR/sparql11-protocol/).
+You can find the interface under `http://your-quit-host/sparql`.
+Since the software is still under development there might be some missing features or strange behavior.
+If you are sure that the store does not follow the W3C recommandation please [file an issue](https://github.com/AKSW/QuitStore/issues/new).
+
+#### Examples
+
+Execute a select query with curl
+```
+curl -d "select ?s ?p ?o ?g where { graph ?g { ?s ?p ?o} }" -H "Content-Type: application/sparql-query" http://your-quit-host/sparql
+```
+If you are interested in a specific result mime type you can use the content negotiation feature of the interface:
+```
+curl -d "select ?s ?p ?o ?g where { graph ?g { ?s ?p ?o} }" -H "Content-Type: application/sparql-query" -H "Accept: application/sparql-results+json" http://your-quit-host/sparql
+```
+
+Execute an update query with curl
 
 ```
-curl -X POST -L -T path/to/query/file  http://your.host/sparql
+curl -d "insert data { graph <http://example.org/> { <urn:a> <urn:b> <urn:c> } }" -H "Content-Type: application/sparql-update"  http://your-quit-host/sparql
 ```
 
-Get commits, messages, committer and date of commits
+### Provenance Interface
+The provenance interface is available under the following two URIs:
+
+- `http://your-quit-host/provenance` which is a SPARQL query interface (see above) to query the provenance graph
+- `http://your-quit-host/blame` to get a `git blame` like output per statement in the store
+
+### Git Management Interface
+
+- `/commits`: Get commits, messages, committer and date of commits
+- `/pull`, `/fetch`, `/push`, `/merge`, `/revert` which are parallel to the respective Git commands
 
 ```
 http://your.host/git/log
