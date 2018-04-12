@@ -71,56 +71,85 @@ def sparql(branch_or_ref):
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch
 
-    q = request.values.get('query', None) or request.values.get('update', None)
+    logger.debug("Request method: {}".format(request.method))
+
+    query = None
+    if request.method == "GET":
+        default_graph = request.args.get('default-graph-uri', None)
+        named_graph = request.args.get('named-graph-uri', None)
+        query = request.args.get('query', None)
+    elif request.method == "POST":
+        if 'Content-Type' in request.headers:
+            if request.headers["Content-Type"] == "application/x-www-form-urlencoded":
+                if 'query' in request.form:
+                    default_graph = request.form.get('default-graph-uri', None)
+                    named_graph = request.form.get('named-graph-uri', None)
+                    query = request.form.get('query', None)
+                elif 'update' in request.form:
+                    default_graph = request.form.get('using-graph-uri', None)
+                    named_graph = request.form.get('using-named-graph-uri', None)
+                    query = request.form.get('update', None)
+            elif request.headers["Content-Type"] == "application/sparql-query":
+                default_graph = request.args.get('default-graph-uri', None)
+                named_graph = request.args.get('named-graph-uri', None)
+                query = request.data.decode("utf-8")
+            elif request.headers["Content-Type"] == "application/sparql-update":
+                default_graph = request.args.get('using-graph-uri', None)
+                named_graph = request.args.get('using-named-graph-uri', None)
+                query = request.data.decode("utf-8")
 
     if 'Accept' in request.headers:
-        logger.info('Received query: {} with accept header: {}'.format(q,
-                                                                       request.headers['Accept']))
+        logger.info('Received query via {}: {} with accept header: {}'.format(
+            request.method, query, request.headers['Accept']))
         mimetype = parse_accept_header(request.headers['Accept']).best
     else:
-        logger.info('Received query: {} with no accept header.'.format(q))
+        logger.info('Received query via {}: {} with no accept header.'.format(request.method,
+                                                                              query))
         mimetype = '*/*'
 
-    if q:
-        try:
-            queryType, parsedQuery = parse_query_type(q)
-            graph = quit.instance(branch_or_ref)
-        except UnSupportedQueryType as e:
-            logger.exception(e)
-            return make_response('Unsupported Query Type', 400)
-        except Exception as e:
-            logger.exception(e)
-            return make_response('No branch or reference given.', 400)
-
-        if queryType in ['InsertData', 'DeleteData', 'Modify']:
-            res = graph.update(parsedQuery)
-
-            try:
-                ref = request.values.get('ref', None) or default_branch
-                ref = 'refs/heads/{}'.format(ref)
-                quit.commit(
-                    graph, res, 'New Commit from QuitStore',
-                    branch_or_ref, ref, query=q
-                )
-                return '', 200
-            except Exception as e:
-                # query ok, but unsupported query type or other problem during commit
-                logger.exception(e)
-                return make_response('Error after executing the update query.', 400)
-
-        if queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
-            res = graph.query(parsedQuery)
-
-        try:
-            if queryType in ['SelectQuery', 'AskQuery']:
-                return create_result_response(res, resultSetMimetypes[mimetype])
-            elif queryType in ['ConstructQuery', 'DescribeQuery']:
-                return create_result_response(res, rdfMimetypes[mimetype])
-        except KeyError as e:
-            return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
-    else:
+    if query is None:
         if mimetype == 'text/html':
             return render_template('sparql.html', current_ref=branch_or_ref)
+        else:
+            return make_response('No Query was specified or the Content-Type is not set according' +
+                                 'to the SPARQL 1.1 standard', 400)
+
+    try:
+        queryType, parsedQuery = parse_query_type(query)
+        graph = quit.instance(branch_or_ref)
+    except UnSupportedQueryType as e:
+        logger.exception(e)
+        return make_response('Unsupported Query Type', 400)
+    except Exception as e:
+        logger.exception(e)
+        return make_response('No branch or reference given.', 400)
+
+    if queryType in ['InsertData', 'DeleteData', 'Modify']:
+        res = graph.update(parsedQuery)
+
+        try:
+            ref = request.values.get('ref', None) or default_branch
+            ref = 'refs/heads/{}'.format(ref)
+            quit.commit(
+                graph, res, 'New Commit from QuitStore',
+                branch_or_ref, ref, query=query
+            )
+            return '', 200
+        except Exception as e:
+            # query ok, but unsupported query type or other problem during commit
+            logger.exception(e)
+            return make_response('Error after executing the update query.', 400)
+
+    if queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
+        res = graph.query(parsedQuery)
+
+    try:
+        if queryType in ['SelectQuery', 'AskQuery']:
+            return create_result_response(res, resultSetMimetypes[mimetype])
+        elif queryType in ['ConstructQuery', 'DescribeQuery']:
+            return create_result_response(res, rdfMimetypes[mimetype])
+    except KeyError as e:
+        return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])

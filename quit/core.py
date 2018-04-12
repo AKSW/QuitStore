@@ -399,10 +399,7 @@ class Quit(object):
         def build_message(message, kwargs):
             out = list()
             for k, v in kwargs.items():
-                if '\n' not in v:
-                    out.append('%s: %s' % (k, v))
-                else:
-                    out.append('%s: "%s"' % (k, v))
+                out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
             if message:
                 out.append('')
                 out.append(message)
