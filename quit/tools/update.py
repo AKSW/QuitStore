@@ -147,36 +147,6 @@ def evalDeleteData(ctx, u):
     return res
 
 
-def evalDeleteWhere(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#deleteWhere
-    """
-
-    res = {}
-    res["type_"] = "DELETEWHERE"
-    res["delta"] = {}
-
-    _res = evalBGP(ctx, u.triples)
-    for g in u.quads:
-        cg = ctx.dataset.get_context(g)
-        c = ctx.pushGraph(cg)
-        _res = _join(_res, list(evalBGP(c, u.quads[g])))
-
-    for c in _res:
-        g = ctx.graph
-        filled, filled_delta = tee(_fillTemplate(u.triples, c))
-        _append(res["delta"], 'default', 'removals', list(filled_delta))
-        g -= filled
-
-        for g in u.quads:
-            cg = ctx.dataset.get_context(c.get(g))
-            filledq, filledq_delta = tee(_fillTemplate(u.quads[g], c))
-            _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
-            cg -= filledq
-
-    return res
-
-
 def evalModify(ctx, u):
     originalctx = ctx
 
@@ -227,27 +197,25 @@ def evalModify(ctx, u):
     for c in _res:
         dg = ctx.graph
         if u.delete:
-            filled = _fillTemplate(u.delete.triples, c)
-            for item in filled:
-                triple = (item[0], item[1], item[2])
-                _append(res["delta"], 'default', 'removals', list(filled))
+            filled, filled_delta = tee(_fillTemplate(u.delete.triples, c))
+            _append(res["delta"], 'default', 'removals', list(filled_delta))
             dg -= filled
 
             for g, q in u.delete.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
-                filledq = _fillTemplate(q, c)
-                _append(res["delta"], cg.identifier, 'removals', list(filledq))
+                filledq, filledq_delta = tee(_fillTemplate(q, c))
+                _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
                 cg -= filledq
 
         if u.insert:
-            filled = _fillTemplate(u.insert.triples, c)
-            _append(res["delta"], 'default', 'additions', list(filled))
+            filled, filled_delta = tee(_fillTemplate(u.insert.triples, c))
+            _append(res["delta"], 'default', 'additions', list(filled_delta))
             dg += filled
 
             for g, q in u.insert.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
-                filledq = _fillTemplate(q, c)
-                _append(res["delta"], cg.identifier, 'additions', list(filledq))
+                filledq, filledq_delta = tee(_fillTemplate(q, c))
+                _append(res["delta"], cg.identifier, 'additions', list(filledq_delta))
                 cg += filledq
 
     return res
