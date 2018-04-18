@@ -2,7 +2,7 @@ import traceback
 import re
 
 import logging
-from werkzeug.http import parse_accept_header
+from werkzeug.http import parse_accept_header, parse_options_header
 from flask import Blueprint, request, current_app, make_response, Markup
 from rdflib import ConjunctiveGraph
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
@@ -80,7 +80,8 @@ def sparql(branch_or_ref):
         query = request.args.get('query', None)
     elif request.method == "POST":
         if 'Content-Type' in request.headers:
-            if request.headers["Content-Type"] == "application/x-www-form-urlencoded":
+            contentMimeType, options = parse_options_header(request.headers['Content-Type'])
+            if contentMimeType == "application/x-www-form-urlencoded":
                 if 'query' in request.form:
                     default_graph = request.form.get('default-graph-uri', None)
                     named_graph = request.form.get('named-graph-uri', None)
@@ -89,11 +90,11 @@ def sparql(branch_or_ref):
                     default_graph = request.form.get('using-graph-uri', None)
                     named_graph = request.form.get('using-named-graph-uri', None)
                     query = request.form.get('update', None)
-            elif request.headers["Content-Type"] == "application/sparql-query":
+            elif contentMimeType == "application/sparql-query":
                 default_graph = request.args.get('default-graph-uri', None)
                 named_graph = request.args.get('named-graph-uri', None)
                 query = request.data.decode("utf-8")
-            elif request.headers["Content-Type"] == "application/sparql-update":
+            elif contentMimeType == "application/sparql-update":
                 default_graph = request.args.get('using-graph-uri', None)
                 named_graph = request.args.get('using-named-graph-uri', None)
                 query = request.data.decode("utf-8")
