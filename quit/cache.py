@@ -87,4 +87,7 @@ class FileReference:
 
     def remove(self, data):
         """Remove quad from the file content."""
-        self._content.remove(data)
+        try:
+            self._content.remove(data)
+        except ValueError:
+            pass

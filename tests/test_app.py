@@ -294,7 +294,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -365,7 +365,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1389,6 +1389,658 @@ class QuitAppTestCase(unittest.TestCase):
 
             response = app.post('/provenance', data=dict(query=query))
             self.assertEqual(response.status, '404 NOT FOUND')
+
+    def testWithOnDeleteAndInsert(self):
+        """Test WITH on DELETE and INSERT plus USING.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://example.org/> '
+            update += 'DELETE {?s1 <urn:y> <urn:z> . GRAPH <http://aksw.org/> {?s1 <urn:2> <urn:3> .}} '
+            update += 'INSERT {?s1 <urn:2> <urn:3> . GRAPH <http://aksw.org/> {?s1 <urn:y> <urn:z> .}} '
+            update += 'WHERE {?s1 <urn:y> <urn:z> .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .', f.read())
+
+    def testWithOnDeleteAndInsertUsing(self):
+        """Test WITH on DELETE and INSERT plus USING.
+
+        1. Prepare a git repository
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://aksw.org/> '
+            update += 'DELETE {GRAPH <http://example.org/> {?s ?p ?o .} GRAPH <http://aksw.org/> {?s ?p ?o .}} '
+            update += 'INSERT {GRAPH <http://aksw.org/> {?s ?p ?o .}} '
+            update += 'USING <http://example.org/> '
+            update += 'WHERE {?s ?p ?o .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual(
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    f.read())
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testWithOnDeleteAndInsertUsingNamed(self):
+        """Test WITH on DELETE and INSERT plus USING NAMED.
+
+        It is expected that USING NAMED will win over WITH and the graph graph IRI can be derived
+        from WHERE clause.
+
+        1. Prepare a git repository
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://aksw.org/> '
+            update += 'DELETE {GRAPH ?g {?s ?p ?o .}} '
+            update += 'INSERT {?s ?p ?o .} '
+            update += 'USING NAMED <http://example.org/> '
+            update += 'WHERE {GRAPH ?g {?s ?p ?o .}}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual(
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    f.read())
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testWithOnDeleteAndInsert(self):
+        """Test WITH on DELETE and INSERT.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://example.org/> '
+            update += 'DELETE {?s1 <urn:y> <urn:z> . GRAPH <http://aksw.org/> {?s1 <urn:2> <urn:3> .}} '
+            update += 'INSERT {?s1 <urn:2> <urn:3> . GRAPH <http://aksw.org/> {?s1 <urn:y> <urn:z> .}} '
+            update += 'WHERE {?s1 <urn:y> <urn:z> .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .', f.read())
+
+    def testWithOnDelete(self):
+        """Test WITH on DELETE and not on INSERT.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = ''
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://example.org/> '
+            update += 'DELETE {?s1 <urn:y> <urn:z> .} '
+            update += 'INSERT {?s1 <urn:Y> <urn:Z> . GRAPH <http://aksw.org/> {?s1 <urn:2> <urn:3> .}} '
+            update += 'WHERE {?s1 <urn:y> <urn:z> .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:Y'},
+                "o": {'type': 'uri', 'value': 'urn:Z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://aksw.org/> .', f.read())
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:Y> <urn:Z> <http://example.org/> .', f.read())
+
+    def testWithOnDeleteUsing(self):
+        """Test WITH on DELETE and not on INSERT plus USING.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://aksw.org/> '
+            update += 'DELETE {?s ?p ?o . GRAPH <http://example.org/> {?s ?p ?o .}} '
+            update += 'INSERT {?s ?p ?o .} '
+            update += 'USING <http://example.org/> '
+            update += 'WHERE {?s ?p ?o .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual(
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    f.read())
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testWithOnDeleteUsingNamed(self):
+        """Test WITH Delete and not on Insert plus USING NAMED.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://aksw.org/> '
+            update += 'DELETE {GRAPH ?g {?s ?p ?o .}} '
+            update += 'INSERT {?s ?p ?o .} '
+            update += 'USING NAMED <http://example.org/> '
+            update += 'WHERE {GRAPH ?g {?s ?p ?o .}}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual(
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    f.read())
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testWithOnInsert(self):
+        """Test WITH on INSERT and not on DELETE.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = '<urn:1> <urn:x> <urn:3> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://example.org/> '
+            update += 'DELETE {GRAPH <http://aksw.org/> {<urn:1> ?s1 <urn:3> .}} '
+            update += 'INSERT {?s1 <urn:2> <urn:3> . GRAPH <http://aksw.org/> {?s1 <urn:y> <urn:z> .}} '
+            update += 'WHERE {?s1 <urn:y> <urn:z> .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:1'},
+                "p": {'type': 'uri', 'value': 'urn:x'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 3)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+            self.assertDictEqual(obj["results"]["bindings"][2], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual(
+                    '<urn:x> <urn:2> <urn:3> <http://example.org/> .\n<urn:x> <urn:y> <urn:z> <http://example.org/> .',
+                    f.read())
+
+    def testWithOnInsertUsing(self):
+        """Test WITH on INSERT and not on DELETE plus USING.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT query
+        4. execute update
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_aksw = ''
+        repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute UPDATE
+            update = 'WITH <http://aksw.org/> '
+            update += 'DELETE {GRAPH <http://example.org/> {?s ?p ?o .}} '
+            update += 'INSERT {?s ?p ?o .} '
+            update += 'USING <http://example.org/> '
+            update += 'WHERE {?s ?p ?o .}'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after UPDATE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
 
 
 if __name__ == '__main__':

@@ -181,8 +181,10 @@ def evalModify(ctx, u):
     # graphs referred to in USING clauses and/or USING NAMED clauses,
     # the WITH clause will be ignored while evaluating the WHERE
     # clause."
+    graphName = 'default'
     if not u.using and u.withClause:
         g = ctx.dataset.get_context(u.withClause)
+        graphName = str(g.identifier)
         ctx = ctx.pushGraph(g)
 
     _res = evalPart(ctx, u.where)
@@ -192,13 +194,14 @@ def evalModify(ctx, u):
             ctx = originalctx  # restore original default graph
         if u.withClause:
             g = ctx.dataset.get_context(u.withClause)
+            graphName = str(g.identifier)
             ctx = ctx.pushGraph(g)
 
     for c in _res:
         dg = ctx.graph
         if u.delete:
             filled, filled_delta = tee(_fillTemplate(u.delete.triples, c))
-            _append(res["delta"], 'default', 'removals', list(filled_delta))
+            _append(res["delta"], graphName, 'removals', list(filled_delta))
             dg -= filled
 
             for g, q in u.delete.quads.items():
@@ -209,7 +212,7 @@ def evalModify(ctx, u):
 
         if u.insert:
             filled, filled_delta = tee(_fillTemplate(u.insert.triples, c))
-            _append(res["delta"], 'default', 'additions', list(filled_delta))
+            _append(res["delta"], graphName, 'additions', list(filled_delta))
             dg += filled
 
             for g, q in u.insert.quads.items():
