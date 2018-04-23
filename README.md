@@ -107,7 +107,8 @@ The Quit-Store comes with three kinds of interfaces, a SPARQL update and query i
 
 ### SPARQL Update and Query Interface
 The SPARQL interface support update and select queries and is meant to adhere to the [SPARQL 1.1 Protocol](https://www.w3.org/TR/sparql11-protocol/).
-You can find the interface under `http://your-quit-host/sparql`.
+You can find the interface to query the current `HEAD` of your repository under `http://your-quit-host/sparql`.
+To access any branch or commit on the repository you can query the endpoints under `http://your-quit-host/sparql/<branchname>` resp. `http://your-quit-host/sparql/<commitid>`.
 Since the software is still under development there might be some missing features or strange behavior.
 If you are sure that the store does not follow the W3C recommandation please [file an issue](https://github.com/AKSW/QuitStore/issues/new).
 
@@ -116,6 +117,7 @@ If you are sure that the store does not follow the W3C recommandation please [fi
 Execute a select query with curl
 ```
 curl -d "select ?s ?p ?o ?g where { graph ?g { ?s ?p ?o} }" -H "Content-Type: application/sparql-query" http://your-quit-host/sparql
+curl -d "select ?s ?p ?o ?g where { graph ?g { ?s ?p ?o} }" -H "Content-Type: application/sparql-query" http://your-quit-host/sparql/develop
 ```
 If you are interested in a specific result mime type you can use the content negotiation feature of the interface:
 ```
