@@ -15,8 +15,8 @@
 <script src="{{ url_for('static', filename='js/yasr.min.js') }}"></script>
 <script>
     var yasqe = YASQE(document.getElementById("yasqe"), {
-    	createShareLink: null,
-      value: 'SELECT * WHERE {\n GRAPH ?g {\n   ?sub ?pred ?obj .\n }\n} \nLIMIT 10',
+        createShareLink: null,
+        value: 'SELECT * WHERE {\n GRAPH ?g {\n   ?sub ?pred ?obj .\n }\n} \nLIMIT 10',
 		sparql: {
 			showQueryButton: true,
 			endpoint: '{{ request.url }}'
