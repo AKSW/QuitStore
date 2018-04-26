@@ -6,6 +6,7 @@ from os import remove
 from os.path import join, isdir
 from quit.web.modules import endpoint
 from quit.exceptions import UnSupportedQueryType
+from rdflib.term import URIRef
 from itertools import chain
 
 
@@ -69,6 +70,36 @@ class QuitEndpointTestCase(unittest.TestCase):
         for query, expected in unsupported_queries.items():
             with self.assertRaises(UnSupportedQueryType):
                 ep.parse_query_type(query)
+
+    def testBaseNamespace(self):
+        ep = endpoint
+        update = "INSERT DATA { <1> <2> <3> }"
+
+        queryType, parsedQuery = ep.parse_query_type(update, 'http://good.example/')
+        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://good.example/1'))
+        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://good.example/2'))
+        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://good.example/3'))
+        self.assertEqual(queryType, 'InsertData')
+
+    def testNoneBaseNamespace(self):
+        ep = endpoint
+        update = "INSERT DATA { <1> <2> <3> }"
+
+        queryType, parsedQuery = ep.parse_query_type(update)
+        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('1'))
+        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('2'))
+        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('3'))
+        self.assertEqual(queryType, 'InsertData')
+
+    def testOverwrittenBaseNamespace(self):
+        ep = endpoint
+        update = "BASE <http://better.example/> INSERT DATA { <1> <2> <3> }"
+
+        queryType, parsedQuery = ep.parse_query_type(update, 'http://good.example/')
+        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://better.example/1'))
+        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://better.example/2'))
+        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://better.example/3'))
+        self.assertEqual(queryType, 'InsertData')
 
 
 if __name__ == '__main__':

@@ -56,6 +56,23 @@ class TestConfiguration(unittest.TestCase):
 
         return
 
+    def testNamespace(self):
+        init_repository(self.local, False)
+
+        with self.assertRaises(InvalidConfigurationError):
+            QuitConfiguration(configfile=self.localConfigFile, namespace='../')
+
+        good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
+        bad = ['file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
+
+        for uri in good:
+            conf = QuitConfiguration(configfile=self.localConfigFile, namespace=uri)
+            self.assertEqual(conf.namespace, uri)
+
+        for uri in bad:
+            with self.assertRaises(InvalidConfigurationError):
+                QuitConfiguration(configfile=self.localConfigFile, namespace=uri)
+
     def testInitExistingFolder(self):
         conf = QuitConfiguration(configfile=self.localConfigFile)
         self.assertEqual(conf.getRepoPath(), self.local)

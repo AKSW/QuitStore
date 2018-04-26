@@ -10,6 +10,7 @@ from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse, urlencode
+from uritools import urisplit, uriunsplit
 
 logger = logging.getLogger('quit.conf')
 
@@ -32,6 +33,7 @@ class QuitConfiguration:
         features=None,
         repository=None,
         targetdir=None,
+        namespace='http://quit.instance/'
     ):
         """The init method.
 
@@ -49,6 +51,7 @@ class QuitConfiguration:
         self.origin = None
         self.graphs = {}
         self.files = {}
+        self.namespace = None
 
         self.quit = Namespace('http://quit.aksw.org/vocab/')
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
@@ -58,6 +61,7 @@ class QuitConfiguration:
 
         try:
             self.__initstoreconfig(
+                namespace=namespace,
                 repository=repository,
                 targetdir=targetdir,
                 configfile=configfile,
@@ -69,8 +73,19 @@ class QuitConfiguration:
 
         return
 
-    def __initstoreconfig(self, repository=None, targetdir=None, configfile=None, configmode=None):
+    def __initstoreconfig(self, namespace, repository, targetdir, configfile, configmode):
         """Initialize store settings."""
+        parsed = urisplit(namespace)
+        # We accept Absolute URI as specified in https://tools.ietf.org/html/rfc3986#section-4.3
+        # with http(s) scheme
+        if parsed[0] and parsed[0] in ['http', 'https'] and parsed[1] and not parsed[4] and (
+                parsed[2] == '' or parsed[2] == '/' or os.path.isabs(parsed[2])):
+            self.namespace = namespace
+        else:
+            raise InvalidConfigurationError(
+                "Quit expects an absolute http(s) base namespace, {} is not absolute.".format(
+                    namespace))
+
         if configfile and isfile(configfile):
             try:
                 self.sysconf.parse(configfile, format='turtle')

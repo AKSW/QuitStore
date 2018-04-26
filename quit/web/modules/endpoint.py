@@ -40,16 +40,16 @@ rdfMimetypes = {
 }
 
 
-def parse_query_type(query):
+def parse_query_type(query, base=None):
     try:
-        translatedQuery = translateQuery(parseQuery(query), {}, None)
+        translatedQuery = translateQuery(parseQuery(query), base=base)
         return translatedQuery.algebra.name, translatedQuery
     except Exception:
         pass
 
     try:
         parsetree = parseUpdate(query)
-        translatedUpdate = translateUpdate(parsetree, {}, None)
+        translatedUpdate = translateUpdate(parsetree, base=base)
         return parsetree.request[0].name, translatedUpdate
     except Exception:
         raise UnSupportedQueryType
@@ -116,7 +116,7 @@ def sparql(branch_or_ref):
                                  'to the SPARQL 1.1 standard', 400)
 
     try:
-        queryType, parsedQuery = parse_query_type(query)
+        queryType, parsedQuery = parse_query_type(query, quit.config.namespace)
         graph = quit.instance(branch_or_ref)
     except UnSupportedQueryType as e:
         logger.exception(e)

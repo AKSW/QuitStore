@@ -6,3 +6,4 @@ flask-cors
 pygit2==0.25.0
 sortedcontainers
 uwsgi
+uritools
