@@ -347,10 +347,6 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 result = evalDeleteData(ctx, u).get('delta', None)
                 if result:
                     res.append(result)
-            elif u.name == 'DeleteWhere':
-                result = evalDeleteWhere(ctx, u).get('delta', None)
-                if result:
-                    res.append(result)
             elif u.name == 'Modify':
                 result = evalModify(ctx, u).get('delta', None)
                 if result:
