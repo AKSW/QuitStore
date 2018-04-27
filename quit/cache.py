@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from sortedcontainers import SortedList
+from sortedcontainers import SortedSet
 
 
 class Cache:
@@ -66,7 +66,7 @@ class FileReference:
             content = content.splitlines() or []
 
         self._path = path
-        self._content = SortedList(content)
+        self._content = SortedSet(content)
         self._modified = False
 
     @property
@@ -89,5 +89,5 @@ class FileReference:
         """Remove quad from the file content."""
         try:
             self._content.remove(data)
-        except ValueError:
+        except KeyError:
             pass
