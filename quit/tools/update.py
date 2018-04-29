@@ -15,7 +15,6 @@ from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 from collections import defaultdict
 from itertools import tee
 
-
 def _append(dct, identifier, action, items):
     if items:
         if not isinstance(identifier, Node):
@@ -142,6 +141,36 @@ def evalDeleteData(ctx, u):
         filledq = list(filter(lambda triple: triple in cg, u.quads[g]))
         if filledq:
             _append(res["delta"], cg.identifier, 'removals', filledq)
+            cg -= filledq
+
+    return res
+
+
+def evalDeleteWhere(ctx, u):
+    """
+    http://www.w3.org/TR/sparql11-update/#deleteWhere
+    """
+
+    res = {}
+    res["type_"] = "DELETEWHERE"
+    res["delta"] = {}
+
+    _res = evalBGP(ctx, u.triples)
+    for g in u.quads:
+        cg = ctx.dataset.get_context(g)
+        c = ctx.pushGraph(cg)
+        _res = _join(_res, list(evalBGP(c, u.quads[g])))
+
+    for c in _res:
+        g = ctx.graph
+        filled, filled_delta = tee(_fillTemplate(u.triples, c))
+        _append(res["delta"], 'default', 'removals', list(filled_delta))
+        g -= filled
+
+        for g in u.quads:
+            cg = ctx.dataset.get_context(c.get(g))
+            filledq, filledq_delta = tee(_fillTemplate(u.quads[g], c))
+            _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
             cg -= filledq
 
     return res
@@ -345,6 +374,10 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                     res.append(result)
             elif u.name == 'DeleteData':
                 result = evalDeleteData(ctx, u).get('delta', None)
+                if result:
+                    res.append(result)
+            elif u.name == 'DeleteWhere':
+                result = evalDeleteWhere(ctx, u).get('delta', None)
                 if result:
                     res.append(result)
             elif u.name == 'Modify':
