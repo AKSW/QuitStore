@@ -222,7 +222,7 @@ class QuitAppTestCase(unittest.TestCase):
                     self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
     def testDeleteInsertWhere(self):
-        """Test DELTE INSERT WHERE with an empty and a non empty graph.
+        """Test DELETE INSERT WHERE with an empty and a non empty graph.
 
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
@@ -279,7 +279,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual('', f.read())
 
     def testDeleteInsertUsingNamedWhere(self):
-        """Test DELTE INSERT WHERE with one graph
+        """Test DELETE INSERT WHERE with one graph
 
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
@@ -350,7 +350,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual('<urn:1> <urn:2> <http://aksw.org/> <http://example.org/> .', f.read())
 
     def testDeleteInsertUsingWhere(self):
-        """Test DELTE INSERT WHERE with one graph
+        """Test DELETE INSERT WHERE with one graph
 
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
@@ -420,13 +420,13 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('<urn:1> <urn:2> <urn:3> <http://example.org/> .', f.read())
 
-    def testDeleteWhere(self):
+    def testDeleteMatchWhere(self):
         """Test DELETE WHERE with two non empty graphs.
 
         1. Prepare a git repository two non empty graphs
         2. Start Quit
         3. execute SELECT query
-        4. execute DELETE WHERE query
+        4. execute DELETE match WHERE query
         5. execute SELECT query
         """
         # Prepate a git Repository
@@ -482,6 +482,62 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual('', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .', f.read())
+
+    def testDeleteWhere(self):
+        """Test DELETE WHERE with two non empty graphs.
+
+        1. Prepare a git repository two non empty graphs
+        2. Start Quit
+        3. execute SELECT query
+        4. execute DELETE match WHERE query
+        5. execute SELECT query
+        """
+        # Prepate a git Repository
+        content_example = "<urn:x> <urn:2> <urn:3> <http://example.org/> .\n"
+        content_example+= "<urn:y> <urn:2> <urn:3> <http://example.org/> .\n"
+        repoContent = {'http://example.org/': content_example}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute DELETE WHERE query
+            update = 'DELETE WHERE {GRAPH <http://example.org/> {?a <urn:2> <urn:3> .}} '
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:y'},
+                "p": {'type': 'uri', 'value': 'urn:2'},
+                "o": {'type': 'uri', 'value': 'urn:3'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 0)
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('', f.read())
 
     def testDeleteUsingWhere(self):
         """Test DELETE USING WHERE with two non empty graphs.

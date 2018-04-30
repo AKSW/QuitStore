@@ -125,7 +125,7 @@ def sparql(branch_or_ref):
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
 
-    if queryType in ['InsertData', 'DeleteData', 'Modify']:
+    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
         res = graph.update(parsedQuery)
 
         try:
@@ -140,9 +140,11 @@ def sparql(branch_or_ref):
             # query ok, but unsupported query type or other problem during commit
             logger.exception(e)
             return make_response('Error after executing the update query.', 400)
-
-    if queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
+    elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
         res = graph.query(parsedQuery)
+    else:
+        logger.debug("Unsupported Type: {}".format(queryType))
+        return make_response("Unsupported Query Type: {}".format(queryType), 400)
 
     try:
         if queryType in ['SelectQuery', 'AskQuery']:
