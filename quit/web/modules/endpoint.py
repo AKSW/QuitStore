@@ -8,6 +8,7 @@ from rdflib import ConjunctiveGraph
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
+from quit.helpers import isAbsoluteUri
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQueryType
 
@@ -42,15 +43,24 @@ rdfMimetypes = {
 
 def parse_query_type(query, base=None):
     try:
-        translatedQuery = translateQuery(parseQuery(query), base=base)
+        parsedQuery = parseQuery(query)
+        translatedQuery = translateQuery(parsedQuery, base=base)
+        # Check if BASE is absolute http(s) URI
+        for value in parsedQuery[0]:
+            if value.name == 'Base' and not isAbsoluteUri(value.iri):
+                raise UnSupportedQueryType()
         return translatedQuery.algebra.name, translatedQuery
     except Exception:
         pass
 
     try:
-        parsetree = parseUpdate(query)
-        translatedUpdate = translateUpdate(parsetree, base=base)
-        return parsetree.request[0].name, translatedUpdate
+        parsedUpdate = parseUpdate(query)
+        translatedUpdate = translateUpdate(parsedUpdate, base=base)
+        # Check if BASE is absolute http(s) URI
+        for value in parsedUpdate.prologue[0]:
+            if value.name == 'Base' and not isAbsoluteUri(value.iri):
+                raise UnSupportedQueryType()
+        return parsedUpdate.request[0].name, translatedUpdate
     except Exception:
         raise UnSupportedQueryType
 

@@ -73,34 +73,54 @@ class QuitEndpointTestCase(unittest.TestCase):
 
     def testBaseNamespace(self):
         ep = endpoint
-        update = "INSERT DATA { <1> <2> <3> }"
+        select = "PREFIX ex: <http://ex.org/> BASE <http://good.example/> SELECT * WHERE { ?s ?p ?o }"
+        update = "PREFIX ex: <http://ex.org/> BASE <http://good.example/> INSERT DATA { <1> <2> <3> }"
+        construct = "PREFIX ex: <http://ex.org/> BASE <http://good.example/> CONSTRUCT { ?s <2> <3> } WHERE { ?s ?p ?o }"
 
-        queryType, parsedQuery = ep.parse_query_type(update, 'http://good.example/')
+        queryType, parsedQuery = ep.parse_query_type(select)
+        self.assertEqual(queryType, 'SelectQuery')
+
+        queryType, parsedQuery = ep.parse_query_type(update)
         self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://good.example/1'))
         self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://good.example/2'))
         self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://good.example/3'))
         self.assertEqual(queryType, 'InsertData')
 
-    def testNoneBaseNamespace(self):
-        ep = endpoint
-        update = "INSERT DATA { <1> <2> <3> }"
+        queryType, parsedQuery = ep.parse_query_type(construct)
+        self.assertEqual(queryType, 'ConstructQuery')
 
-        queryType, parsedQuery = ep.parse_query_type(update)
-        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('1'))
-        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('2'))
-        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('3'))
-        self.assertEqual(queryType, 'InsertData')
+    def testBadBaseNamespace(self):
+        ep = endpoint
+        select = "PREFIX ex: <http://ex.org/> BASE <bad.example/> SELECT * WHERE { ?s ?p ?o }"
+        update = "PREFIX ex: <http://ex.org/> BASE <bad.example/> INSERT DATA { <1> <2> <3> }"
+        construct = "PREFIX ex: <http://ex.org/> BASE <bad.example/> CONSTRUCT { ?s <2> <3> } WHERE { ?s ?p ?o }"
+
+        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, select)
+        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, update)
+        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, construct)
 
     def testOverwrittenBaseNamespace(self):
         ep = endpoint
-        update = "BASE <http://better.example/> INSERT DATA { <1> <2> <3> }"
+        update1 = "PREFIX ex: <http://ex.org/> INSERT DATA { <1> <2> <3> }"
+        update2 = "PREFIX ex: <http://ex.org/> BASE <http://in-query//> INSERT DATA { <1> <2> <3> }"
 
-        queryType, parsedQuery = ep.parse_query_type(update, 'http://good.example/')
-        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://better.example/1'))
-        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://better.example/2'))
-        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://better.example/3'))
+        queryType, parsedQuery = ep.parse_query_type(update1, 'http://argument/')
+        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://argument/1'))
+        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://argument/2'))
+        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://argument/3'))
         self.assertEqual(queryType, 'InsertData')
 
+        queryType, parsedQuery = ep.parse_query_type(update2, 'http://argument/')
+        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://in-query/1'))
+        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://in-query/2'))
+        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://in-query/3'))
+        self.assertEqual(queryType, 'InsertData')
+
+    def testOverwrittenBadBaseNamespace(self):
+        ep = endpoint
+        update = "PREFIX ex: <http://ex.org/> BASE <bad.base> INSERT DATA { <1> <2> <3> }"
+
+        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, update, 'http://argument/')
 
 if __name__ == '__main__':
     unittest.main()

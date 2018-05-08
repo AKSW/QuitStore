@@ -2,8 +2,10 @@
 
 import logging
 
+import os
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
+from uritools import urisplit
 
 logger = logging.getLogger('quit.helpers')
 
@@ -97,3 +99,23 @@ class QueryAnalyzer:
         self.parsedQuery = self.prepareUpdate(querystring)
         self.queryType = 'UPDATE'
         return
+
+
+def isAbsoluteUri(uri):
+    """Check if a URI is a absolute URI and uses 'http(s)' at protocol part.
+
+    Returns:
+        True, if absolute http(s) URIs
+        False, if not
+    """
+    try:
+        parsed = urisplit(uri)
+    except Exception:
+        return False
+    # We accept Absolute URI as specified in https://tools.ietf.org/html/rfc3986#section-4.3
+    # with http(s) scheme
+    if parsed[0] and parsed[0] in ['http', 'https'] and parsed[1] and not parsed[4] and (
+            parsed[2] == '/' or os.path.isabs(parsed[2])):
+        return True
+    else:
+        return False
