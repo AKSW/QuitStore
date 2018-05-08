@@ -102,7 +102,7 @@ class QuitEndpointTestCase(unittest.TestCase):
     def testOverwrittenBaseNamespace(self):
         ep = endpoint
         update1 = "PREFIX ex: <http://ex.org/> INSERT DATA { <1> <2> <3> }"
-        update2 = "PREFIX ex: <http://ex.org/> BASE <http://in-query//> INSERT DATA { <1> <2> <3> }"
+        update2 = "PREFIX ex: <http://ex.org/> BASE <http://in-query/> INSERT DATA { <1> <2> <3> }"
 
         queryType, parsedQuery = ep.parse_query_type(update1, 'http://argument/')
         self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://argument/1'))
