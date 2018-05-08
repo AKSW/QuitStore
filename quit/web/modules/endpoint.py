@@ -4,6 +4,7 @@ import re
 import logging
 from werkzeug.http import parse_accept_header, parse_options_header
 from flask import Blueprint, request, current_app, make_response, Markup
+from pyparsing import ParseException
 from rdflib import ConjunctiveGraph
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
@@ -50,7 +51,7 @@ def parse_query_type(query, base=None):
             if value.name == 'Base' and not isAbsoluteUri(value.iri):
                 raise UnSupportedQueryType()
         return translatedQuery.algebra.name, translatedQuery
-    except Exception:
+    except ParseException:
         pass
 
     try:
@@ -61,7 +62,7 @@ def parse_query_type(query, base=None):
             if value.name == 'Base' and not isAbsoluteUri(value.iri):
                 raise UnSupportedQueryType()
         return parsedUpdate.request[0].name, translatedUpdate
-    except Exception:
+    except ParseException:
         raise UnSupportedQueryType
 
 
