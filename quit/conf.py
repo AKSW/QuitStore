@@ -5,11 +5,13 @@ from os import walk
 from os.path import join, isfile
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import UnknownConfigurationError
+from quit.helpers import isAbsoluteUri
 from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
 from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
 from urllib.parse import quote, urlparse, urlencode
+from uritools import urisplit
 
 logger = logging.getLogger('quit.conf')
 
@@ -32,6 +34,7 @@ class QuitConfiguration:
         features=None,
         repository=None,
         targetdir=None,
+        namespace=None
     ):
         """The init method.
 
@@ -49,6 +52,7 @@ class QuitConfiguration:
         self.origin = None
         self.graphs = {}
         self.files = {}
+        self.namespace = None
 
         self.quit = Namespace('http://quit.aksw.org/vocab/')
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
@@ -58,6 +62,7 @@ class QuitConfiguration:
 
         try:
             self.__initstoreconfig(
+                namespace=namespace,
                 repository=repository,
                 targetdir=targetdir,
                 configfile=configfile,
@@ -69,8 +74,15 @@ class QuitConfiguration:
 
         return
 
-    def __initstoreconfig(self, repository=None, targetdir=None, configfile=None, configmode=None):
+    def __initstoreconfig(self, namespace, repository, targetdir, configfile, configmode):
         """Initialize store settings."""
+        if isAbsoluteUri(namespace):
+            self.namespace = namespace
+        else:
+            raise InvalidConfigurationError(
+                "Quit expects an absolute http(s) base namespace, {} is not absolute.".format(
+                    namespace))
+
         if configfile and isfile(configfile):
             try:
                 self.sysconf.parse(configfile, format='turtle')

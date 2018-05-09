@@ -23,6 +23,110 @@ class QuitAppTestCase(unittest.TestCase):
     def tearDown(self):
         return
 
+    def testBaseNamespaceArgument(self):
+        """Test if the base namespace is working when changed with by argument.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
+
+            # Start Quit
+            ns = 'http://example.org/newNS/'
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-n', ns])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<relativeURI> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(update=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://example.org/newNS/relativeURI'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
+    def testBaseNamespaceDefault(self):
+        """Test if the base namespace is working.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<relativeURI> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(update=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://quit.instance/relativeURI'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
+    def testBaseNamespaceOverwriteInQuery(self):
+        """Test if the base namespace is working.
+
+        1. Prepare a git repository with an empty graph
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. execute SELECT query
+        """
+        # Prepate a git Repository
+        with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute INSERT DATA query
+            update = "BASE <http://example.org/newNS/>\nINSERT DATA {graph <http://example.org/> "
+            update += "{<relativeURI> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(update=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://example.org/newNS/relativeURI'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
     def testBlame(self):
         """Test if feature responds with correct values.
 
