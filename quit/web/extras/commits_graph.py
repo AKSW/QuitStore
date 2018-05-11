@@ -70,9 +70,10 @@ def generate_graph_data(commits):
                 routes += [[i, i, b]
                            for i, b in enumerate(reserve[:offset])]
                 reserve.remove(branch)
-                routes.append([offset,
-                               reserve.index(branches[commit.parents[0]]),
-                               branch])
+                parent_branch = branches[commit.parents[0]]
+                if parent_branch in reserve:
+                    reserve_branch = reserve.index(parent_branch)
+                    routes.append([offset, reserve_branch, branch])
             # straight
             else:
                 routes += [[i, i, b] for i, b in enumerate(reserve)]
