@@ -83,8 +83,9 @@ def generate_graph_data(commits):
             branches[commit.parents[0]] = branch
             routes += [[i, i, b] for i, b in enumerate(reserve)]
             other_branch = get_branch(commit.parents[1])
-            routes.append([offset, reserve.index(other_branch),
-                           other_branch])
+            if other_branch in reserve:
+                routes.append([offset, reserve.index(other_branch),
+                               other_branch])
 
         node = _make_node(commit.sha,
                           offset,
