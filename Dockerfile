@@ -50,4 +50,4 @@ EXPOSE 8080
 # Set default git user
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
-CMD uwsgi --http 0.0.0.0:8080 -w quit.run --pyargv "-vv"
+CMD uwsgi --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
