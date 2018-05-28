@@ -531,7 +531,7 @@ class GitRepo:
 
         try:
             print("Staging file(s)")
-            self.git.add([''], '-u')
+            self.git.add(['.'], '-u')
             if push:
                 self.git.push()
         except:
