@@ -174,9 +174,3 @@ def parseArgs(args):
     logger.debug("Parsing args: {}".format(args))
 
     return parser.parse_args(args)
-
-
-def main(config, args):
-    """Start the app."""
-    app = create_app(config)
-    app.run(debug=True, use_reloader=False, host=args.host, port=args.port)

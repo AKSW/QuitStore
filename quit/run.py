@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
 
 import logging
-from quit.application import parseArgs, initialize, main
+from quit.application import parseArgs, initialize
 from quit.web.app import create_app
 from werkzeug.wsgi import DispatcherMiddleware
 
@@ -32,4 +32,7 @@ if parsedArgs.basepath:
 
 
 if __name__ == "__main__":
-    main(config=config, args=parsedArgs)
+    application.run(debug=True,
+                    use_reloader=False,
+                    host=parsedArgs.host,
+                    port=parsedArgs.port)
