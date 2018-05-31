@@ -1,4 +1,3 @@
-import sys
 import urllib
 import hashlib
 import rdflib
@@ -78,7 +77,7 @@ def feature_required(feature):
     return wrapper
 
 
-def create_app(config, enable_profiler=False, profiler_quiet=False):
+def create_app(config):
     """Create a Flask app."""
 
     app = Flask(
@@ -90,19 +89,6 @@ def create_app(config, enable_profiler=False, profiler_quiet=False):
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
-
-    if enable_profiler:
-        from werkzeug.contrib.profiler import ProfilerMiddleware, MergeStream
-
-        f = open('profiler.log', 'w')
-
-        if profiler_quiet:
-            app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, f, profile_dir="c:/tmp")
-        else:
-            stream = MergeStream(sys.stdout, f)
-            app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, stream, profile_dir="c:/tmp")
 
     return app
 
