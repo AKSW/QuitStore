@@ -32,7 +32,7 @@ if parsedArgs.basepath:
 
 
 if __name__ == "__main__":
-    application.run(debug=True,
+    application.run(debug=parsedArgs.flask_debug,
                     use_reloader=False,
                     host=parsedArgs.host,
                     port=parsedArgs.port)

@@ -3,7 +3,11 @@ import sys
 import os
 from quit.conf import Feature, QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
-from quit.web.app import create_app
+import rdflib.plugins.sparql
+from rdflib.plugins.sparql.algebra import SequencePath
+from rdflib.plugin import register
+from rdflib.serializer import Serializer
+from rdflib.query import Processor, UpdateProcessor, ResultSerializer
 import logging
 
 werkzeugLogger = logging.getLogger('werkzeug')
@@ -60,6 +64,43 @@ def initialize(args):
             + "\"-gc\" or \"--garbagecollection\"."
         )
         args.features |= Feature.GarbageCollection
+
+    # from Github: https://github.com/RDFLib/rdflib/issues/617
+    # Egregious hack, the SequencePath object doesn't support compare, this implements the __lt__ method
+    # so that algebra.py works on sorting in SPARQL queries on e.g. rdf:List paths
+
+    def sequencePathCompareLt(self, other):
+        return str(self) < str(other)
+
+    def sequencePathCompareGt(self, other):
+        return str(self) < str(other)
+
+    setattr(SequencePath, '__lt__', sequencePathCompareLt)
+    setattr(SequencePath, '__gt__', sequencePathCompareGt)
+    # End egregious hack
+
+    # To get the best behavior, but still we have https://github.com/RDFLib/rdflib/issues/810
+    rdflib.plugins.sparql.SPARQL_DEFAULT_GRAPH_UNION = args.defaultgraph_union
+
+    # To disable web access: https://github.com/RDFLib/rdflib/issues/810
+    rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS = False
+
+    register(
+        'nquad-ordered', Serializer,
+        'quit.plugins.serializers.nquadsordered', 'OrderedNQuadsSerializer')
+
+    register(
+        'sparql', Processor,
+        'quit.tools.processor', 'SPARQLProcessor')
+
+    register(
+        'sparql', UpdateProcessor,
+        'quit.tools.processor', 'SPARQLUpdateProcessor')
+
+    register(
+        'html', ResultSerializer,
+        'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
+
 
     try:
         config = QuitConfiguration(
@@ -165,6 +206,8 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('--flask-debug', action='store_false')
+    parser.add_argument('--defaultgraph-union', action='store_false')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         default=Feature.Unknown,
                         help=featurehelp)
