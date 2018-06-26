@@ -174,3 +174,23 @@ def rewrite_graphs(parsed_query, default_graphs, named_graphs, sparql):
             parsed_query.request[0]['using'].append(CompValue('UsingClause', named=URIRef(uri)))
 
         return parsed_query
+
+
+def is_valid_base(parsed_query, type):
+    """Check if a query/update contains a absolute base if base is given.
+
+    Args: parsed_query: the parsed query or update
+          type: a string to distinguish between 'query' and 'update'
+    Returns: True - if Base URI is given and abolute or if no Base is given
+             False - if Base URI is given an not absolute
+    """
+    if type == 'query':
+        for value in parsed_query[0]:
+            if value.name == 'Base' and not isAbsoluteUri(value.iri):
+                return False
+    elif type == 'update':
+        for value in parsed_query.prologue[0]:
+            if value.name == 'Base' and not isAbsoluteUri(value.iri):
+                return False
+
+    return True
