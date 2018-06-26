@@ -11,7 +11,7 @@ from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
 from quit.helpers import isAbsoluteUri, rewrite_graphs
 from quit.web.app import render_template, feature_required
-from quit.exceptions import UnSupportedQueryType
+from quit.exceptions import UnSupportedQueryType, SparqlProtocolError
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -51,6 +51,8 @@ def parse_query_type(query, type, base=None, default_graph=[], named_graph=[]):
             # Check if BASE is absolute http(s) URI
         except ParseException:
             raise UnSupportedQueryType()
+        except SparqlProtocolError as e:
+            raise e
 
         for value in parsed_query[0]:
             if value.name == 'Base' and not isAbsoluteUri(value.iri):
@@ -64,6 +66,8 @@ def parse_query_type(query, type, base=None, default_graph=[], named_graph=[]):
             # Check if BASE is absolute http(s) URI
         except ParseException:
             raise UnSupportedQueryType()
+        except SparqlProtocolError as e:
+            raise e
 
         for value in parsed_update.prologue[0]:
             if value.name == 'Base' and not isAbsoluteUri(value.iri):
