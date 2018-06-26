@@ -9,7 +9,7 @@ from rdflib import ConjunctiveGraph
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
-from quit.helpers import isAbsoluteUri
+from quit.helpers import isAbsoluteUri, rewrite_graphs
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQueryType
 
@@ -42,28 +42,33 @@ rdfMimetypes = {
 }
 
 
-def parse_query_type(query, base=None):
-    try:
-        parsedQuery = parseQuery(query)
-        translatedQuery = translateQuery(parsedQuery, base=base)
-        # Check if BASE is absolute http(s) URI
-        for value in parsedQuery[0]:
-            if value.name == 'Base' and not isAbsoluteUri(value.iri):
-                raise UnSupportedQueryType()
-        return translatedQuery.algebra.name, translatedQuery
-    except ParseException:
-        pass
+def parse_query_type(query, type, base=None, default_graph=[], named_graph=[]):
+    if type == 'query':
+        try:
+            parsed_query = parseQuery(query)
+            parsed_query = rewrite_graphs(parsed_query, default_graph, named_graph, 'query')
+            translated_query = translateQuery(parsed_query, base=base)
+            # Check if BASE is absolute http(s) URI
+        except ParseException:
+            raise UnSupportedQueryType()
 
-    try:
-        parsedUpdate = parseUpdate(query)
-        translatedUpdate = translateUpdate(parsedUpdate, base=base)
-        # Check if BASE is absolute http(s) URI
-        for value in parsedUpdate.prologue[0]:
+        for value in parsed_query[0]:
             if value.name == 'Base' and not isAbsoluteUri(value.iri):
                 raise UnSupportedQueryType()
-        return parsedUpdate.request[0].name, translatedUpdate
-    except ParseException:
-        raise UnSupportedQueryType
+        return translated_query.algebra.name, translated_query
+    elif type == 'update':
+        try:
+            parsed_update = parseUpdate(query)
+            parsed_update = rewrite_graphs(parsed_update, default_graph, named_graph, 'update')
+            translated_update = translateUpdate(parsed_update, base=base)
+            # Check if BASE is absolute http(s) URI
+        except ParseException:
+            raise UnSupportedQueryType()
+
+        for value in parsed_update.prologue[0]:
+            if value.name == 'Base' and not isAbsoluteUri(value.iri):
+                raise UnSupportedQueryType()
+        return parsed_update.request[0].name, translated_update
 
 
 @endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
@@ -85,30 +90,32 @@ def sparql(branch_or_ref):
     logger.debug("Request method: {}".format(request.method))
 
     query = None
+    update = None
+
     if request.method == "GET":
-        default_graph = request.args.get('default-graph-uri', None)
-        named_graph = request.args.get('named-graph-uri', None)
+        default_graph = request.args.getlist('default-graph-uri')
+        named_graph = request.args.getlist('named-graph-uri')
         query = request.args.get('query', None)
     elif request.method == "POST":
         if 'Content-Type' in request.headers:
             contentMimeType, options = parse_options_header(request.headers['Content-Type'])
             if contentMimeType == "application/x-www-form-urlencoded":
                 if 'query' in request.form:
-                    default_graph = request.form.get('default-graph-uri', None)
-                    named_graph = request.form.get('named-graph-uri', None)
+                    default_graph = request.form.getlist('default-graph-uri')
+                    named_graph = request.form.getlist('named-graph-uri')
                     query = request.form.get('query', None)
                 elif 'update' in request.form:
-                    default_graph = request.form.get('using-graph-uri', None)
-                    named_graph = request.form.get('using-named-graph-uri', None)
-                    query = request.form.get('update', None)
+                    default_graph = request.form.getlist('using-graph-uri')
+                    named_graph = request.form.getlist('using-named-graph-uri')
+                    update = request.form.get('update', None)
             elif contentMimeType == "application/sparql-query":
-                default_graph = request.args.get('default-graph-uri', None)
-                named_graph = request.args.get('named-graph-uri', None)
+                default_graph = request.args.getlist('default-graph-uri')
+                named_graph = request.args.getlist('named-graph-uri')
                 query = request.data.decode("utf-8")
-            elif contentMimeType == "application/sparql-update":
-                default_graph = request.args.get('using-graph-uri', None)
-                named_graph = request.args.get('using-named-graph-uri', None)
-                query = request.data.decode("utf-8")
+            elif contentMimeType == "application/sparql-update":  # POST directly
+                default_graph = request.args.getlist('using-graph-uri')
+                named_graph = request.args.getlist('using-named-graph-uri')
+                update = request.data.decode("utf-8")
 
     if 'Accept' in request.headers:
         logger.info('Received query via {}: {} with accept header: {}'.format(
@@ -119,19 +126,29 @@ def sparql(branch_or_ref):
                                                                               query))
         mimetype = '*/*'
 
-    if query is None:
+    if query is None and update is None:
         if mimetype == 'text/html':
             return render_template('sparql.html', current_ref=branch_or_ref)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
+    elif query is not None and update is None:
+        try:
+            queryType, parsedQuery = parse_query_type(
+                query, 'query', quit.config.namespace, default_graph, named_graph)
+        except UnSupportedQueryType as e:
+            logger.exception(e)
+            return make_response('Unsupported Query Type', 400)
+    elif query is None and update is not None:
+        try:
+            queryType, parsedQuery = parse_query_type(
+                update, 'update', quit.config.namespace, default_graph, named_graph)
+        except UnSupportedQueryType as e:
+            logger.exception(e)
+            return make_response('Unsupported Query Type', 400)
 
     try:
-        queryType, parsedQuery = parse_query_type(query, quit.config.namespace)
         graph = quit.instance(branch_or_ref)
-    except UnSupportedQueryType as e:
-        logger.exception(e)
-        return make_response('Unsupported Query Type', 400)
     except Exception as e:
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
@@ -144,7 +161,7 @@ def sparql(branch_or_ref):
             ref = 'refs/heads/{}'.format(ref)
             quit.commit(
                 graph, res, 'New Commit from QuitStore',
-                branch_or_ref, ref, query=query
+                branch_or_ref, ref, query=update
             )
             return '', 200
         except Exception as e:
@@ -189,7 +206,7 @@ def provenance():
 
     if q:
         try:
-            queryType, parsedQuery = parse_query_type(q)
+            queryType, parsedQuery = parse_query_type(q, 'query')
         except UnSupportedQueryType as e:
             logger.exception(e)
             return make_response('Unsupported Query Type', 400)

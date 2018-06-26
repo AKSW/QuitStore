@@ -84,6 +84,10 @@ class UnSupportedQueryType(UnSupportedQuery):
     pass
 
 
+class SparqlProtocolError(Error):
+    pass
+
+
 class UnknownConfigurationError(Error):
     pass
 

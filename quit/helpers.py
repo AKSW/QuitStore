@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+from quit.exceptions import SparqlProtocolError
+from rdflib.term import URIRef
+from rdflib.plugins.sparql.parserutils import CompValue, plist
 
 import logging
 
@@ -119,3 +122,55 @@ def isAbsoluteUri(uri):
         return True
     else:
         return False
+
+
+def rewrite_graphs(parsed_query, default_graphs, named_graphs, sparql):
+    """Add or substitute default and named graph URI.
+
+    According to https://www.w3.org/TR/sparql11-protocol/ we will remove the named and default graph
+    URIs given in the query string (if given) and will add default-graph-uri and named-graph-uri
+    from protocol request.
+    For update query string we will add using-named-graph-uri and using-graph-uri if the update
+    requst does not contain a USING, USING NAMED, or WITH clause.
+
+    Args: parsed_query: the parsed query or update
+          default_graphs: a list of uri strings for default graphs
+          named_graphs: a list of uri strings for named graphs
+          sparql: a string to distinguish between 'query' and 'update'
+    """
+    if not isinstance(default_graphs, list) and not isinstance(named_graphs, list):
+        return parsed_query
+
+    if len(default_graphs) == 0 and len(named_graphs) == 0:
+        return parsed_query
+
+    if sparql == 'query':
+        # clean existing named (FROM NAMED) and default (FROM) DatasetClauses
+        parsed_query[1]['datasetClause'] = plist()
+
+        # add new named (default-graph-uri) and default (named-graph-uri)
+        # DatasetClauses from Protocol
+        for uri in default_graphs:
+            parsed_query[1]['datasetClause'].append(CompValue('DatasetClause', default=URIRef(uri)))
+        for uri in named_graphs:
+            parsed_query[1]['datasetClause'].append(CompValue('DatasetClause', named=URIRef(uri)))
+
+        return parsed_query
+
+    elif sparql == 'update':
+        if parsed_query.request[0].withClause is not None:
+            raise SparqlProtocolError
+
+        if parsed_query.request[0].using is not None:
+            raise SparqlProtocolError
+
+        parsed_query.request[0]['using'] = plist()
+
+        # add new named (using-named-graph-uri) and default (using-graph-uri)
+        # UsingClauses from Protocol
+        for uri in default_graphs:
+            parsed_query.request[0]['using'].append(CompValue('UsingClause', default=URIRef(uri)))
+        for uri in named_graphs:
+            parsed_query.request[0]['using'].append(CompValue('UsingClause', named=URIRef(uri)))
+
+        return parsed_query
