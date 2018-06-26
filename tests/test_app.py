@@ -10,6 +10,7 @@ import unittest
 from helpers import TemporaryRepository, TemporaryRepositoryFactory
 import json
 from helpers import createCommit, assertResultBindingsEqual
+from urllib.parse import urlencode
 
 
 class QuitAppTestCase(unittest.TestCase):
@@ -959,7 +960,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -1003,7 +1004,7 @@ class QuitAppTestCase(unittest.TestCase):
             # execute INSERT and DELETE query
             update = "DELETE DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}};"
             update += "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # test file content
             expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .'
@@ -1050,7 +1051,7 @@ class QuitAppTestCase(unittest.TestCase):
             # execute INSERT and DELETE query
             update = "DELETE DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}};"
             update += "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # test file content
             expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .'
@@ -1531,7 +1532,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # reload the store
             args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
@@ -1604,7 +1605,7 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
-    def testRepoDataAfterInsertStaringWithEmptyGraph(self):
+    def testRepoDataAfterInsertStartingWithEmptyGraph(self):
         """Test inserting data and check the file content, starting with an empty graph.
 
         1. Prepare a git repository with an empty graph
@@ -1623,7 +1624,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # test file content
             expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .'
@@ -1642,7 +1643,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             self.assertEqual(commits, [expectedCommitMsg, 'init'])
 
-    def testRepoDataAfterInsertStaringWithNonEmptyGraph(self):
+    def testRepoDataAfterInsertStartingWithNonEmptyGraph(self):
         """Test inserting data and check the file content, starting with a non empty graph.
 
         1. Prepare a git repository with an empty graph
@@ -1662,7 +1663,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> <urn:z2> .}}"
-            app.post('/sparql', data=dict(query=update))
+            app.post('/sparql', data=dict(update=update))
 
             # test file content
             expectedFileContent = '<urn:x2> <urn:y2> <urn:z2> <urn:graph> .\n'
