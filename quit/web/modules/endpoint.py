@@ -2,14 +2,13 @@ import traceback
 import re
 
 import logging
-from werkzeug.http import parse_accept_header, parse_options_header
-from flask import Blueprint, request, current_app, make_response, Markup
+from flask import Blueprint, request, current_app, make_response
 from pyparsing import ParseException
 from rdflib import ConjunctiveGraph
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
-from quit.helpers import rewrite_graphs, is_valid_base
+from quit.helpers import rewrite_graphs, is_valid_base, parse_sparql_request
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQueryType, SparqlProtocolError, NonAbsoluteBaseError
 
@@ -93,63 +92,24 @@ def sparql(branch_or_ref):
 
     logger.debug("Request method: {}".format(request.method))
 
-    query = None
-    update = None
+    query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
 
-    if request.method == "GET":
-        default_graph = request.args.getlist('default-graph-uri')
-        named_graph = request.args.getlist('named-graph-uri')
-        query = request.args.get('query', None)
-    elif request.method == "POST":
-        if 'Content-Type' in request.headers:
-            contentMimeType, options = parse_options_header(request.headers['Content-Type'])
-            if contentMimeType == "application/x-www-form-urlencoded":
-                if 'query' in request.form:
-                    default_graph = request.form.getlist('default-graph-uri')
-                    named_graph = request.form.getlist('named-graph-uri')
-                    query = request.form.get('query', None)
-                elif 'update' in request.form:
-                    default_graph = request.form.getlist('using-graph-uri')
-                    named_graph = request.form.getlist('using-named-graph-uri')
-                    update = request.form.get('update', None)
-            elif contentMimeType == "application/sparql-query":
-                default_graph = request.args.getlist('default-graph-uri')
-                named_graph = request.args.getlist('named-graph-uri')
-                query = request.data.decode("utf-8")
-            elif contentMimeType == "application/sparql-update":  # POST directly
-                default_graph = request.args.getlist('using-graph-uri')
-                named_graph = request.args.getlist('using-named-graph-uri')
-                update = request.data.decode("utf-8")
-
-    if 'Accept' in request.headers:
-        logger.info('Received query via {}: {} with accept header: {}'.format(
-            request.method, query, request.headers['Accept']))
-        mimetype = parse_accept_header(request.headers['Accept']).best
-    else:
-        logger.info('Received query via {}: {} with no accept header.'.format(request.method,
-                                                                              query))
-        mimetype = '*/*'
-
-    if query is None and update is None:
+    if query is None:
         if mimetype == 'text/html':
             return render_template('sparql.html', current_ref=branch_or_ref)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
-    elif query is not None and update is None:
+    else:
         try:
             queryType, parsedQuery = parse_query_type(
-                query, 'query', quit.config.namespace, default_graph, named_graph)
+                query, type, quit.config.namespace, default_graph, named_graph)
         except UnSupportedQueryType as e:
-            logger.exception(e)
             return make_response('Unsupported Query Type', 400)
-    elif query is None and update is not None:
-        try:
-            queryType, parsedQuery = parse_query_type(
-                update, 'update', quit.config.namespace, default_graph, named_graph)
-        except UnSupportedQueryType as e:
-            logger.exception(e)
-            return make_response('Unsupported Query Type', 400)
+        except NonAbsoluteBaseError as e:
+            return make_response('Non absolute Base URI given', 400)
+        except SparqlProtocolError as e:
+            return make_response('Sparql Protocol Error', 400)
 
     try:
         graph = quit.instance(branch_or_ref)
@@ -165,7 +125,7 @@ def sparql(branch_or_ref):
             ref = 'refs/heads/{}'.format(ref)
             quit.commit(
                 graph, res, 'New Commit from QuitStore',
-                branch_or_ref, ref, query=update
+                branch_or_ref, ref, query=query
             )
             return '', 200
         except Exception as e:
@@ -203,17 +163,17 @@ def provenance():
     q = request.values.get('query', None)
     logger.info('Received provenance query: {}'.format(q))
 
-    if 'Accept' in request.headers:
-        mimetype = parse_accept_header(request.headers['Accept']).best
-    else:
-        mimetype = '*/*'
+    query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
 
-    if q:
+    if query is not None and type == 'query':
         try:
-            queryType, parsedQuery = parse_query_type(q, 'query')
+            queryType, parsedQuery = parse_query_type(query, type)
         except UnSupportedQueryType as e:
-            logger.exception(e)
             return make_response('Unsupported Query Type', 400)
+        except NonAbsoluteBaseError as e:
+            return make_response('Non absolute Base URI given', 400)
+        except SparqlProtocolError as e:
+            return make_response('Sparql Protocol Error', 400)
 
         graph = quit.store.store
 

@@ -5,7 +5,7 @@ from glob import glob
 from os import remove
 from os.path import join, isdir
 from quit.web.modules import endpoint
-from quit.exceptions import UnSupportedQueryType
+from quit.exceptions import UnSupportedQueryType, NonAbsoluteBaseError
 from rdflib.term import URIRef
 from itertools import chain
 
@@ -160,9 +160,9 @@ class QuitEndpointTestCase(unittest.TestCase):
         update = "PREFIX ex: <http://ex.org/> BASE <bad.example/> INSERT DATA { <1> <2> <3> }"
         construct = "PREFIX ex: <http://ex.org/> BASE <bad.example/> CONSTRUCT { ?s <2> <3> } WHERE { ?s ?p ?o }"
 
-        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, select, 'query')
-        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, update, 'update')
-        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, construct, 'query')
+        self.assertRaises(NonAbsoluteBaseError, ep.parse_query_type, select, 'query')
+        self.assertRaises(NonAbsoluteBaseError, ep.parse_query_type, update, 'update')
+        self.assertRaises(NonAbsoluteBaseError, ep.parse_query_type, construct, 'query')
 
     def testOverwrittenBaseNamespace(self):
         ep = endpoint
@@ -185,7 +185,7 @@ class QuitEndpointTestCase(unittest.TestCase):
         ep = endpoint
         update = "PREFIX ex: <http://ex.org/> BASE <bad.base> INSERT DATA { <1> <2> <3> }"
 
-        self.assertRaises(UnSupportedQueryType, ep.parse_query_type, update, 'update', 'http://argument/')
+        self.assertRaises(NonAbsoluteBaseError, ep.parse_query_type, update, 'update', 'http://argument/')
 
 if __name__ == '__main__':
     unittest.main()

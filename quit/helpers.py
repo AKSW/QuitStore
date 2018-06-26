@@ -2,10 +2,9 @@
 from quit.exceptions import SparqlProtocolError
 from rdflib.term import URIRef
 from rdflib.plugins.sparql.parserutils import CompValue, plist
-
 import logging
-
 import os
+from werkzeug.http import parse_accept_header, parse_options_header
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 from uritools import urisplit
@@ -194,3 +193,58 @@ def is_valid_base(parsed_query, type):
                 return False
 
     return True
+
+
+def parse_sparql_request(request):
+    """Parse a request according to SPARQL 1.1. protocol and return needed information.
+
+    Args:
+        request: A flask HTTP request
+    Returns:
+        quintuple - query, type, mimetype, default_graph, named_graph
+    """
+    query = None
+    type = None
+    default_graph = []
+    named_graph = []
+
+    if request.method == "GET":
+        default_graph = request.args.getlist('default-graph-uri')
+        named_graph = request.args.getlist('named-graph-uri')
+        query = request.args.get('query', None)
+        type = 'query'
+    elif request.method == "POST":
+        if 'Content-Type' in request.headers:
+            content_mimetype, options = parse_options_header(request.headers['Content-Type'])
+            if content_mimetype == "application/x-www-form-urlencoded":
+                if 'query' in request.form:
+                    default_graph = request.form.getlist('default-graph-uri')
+                    named_graph = request.form.getlist('named-graph-uri')
+                    query = request.form.get('query', None)
+                    type = 'query'
+                elif 'update' in request.form:
+                    default_graph = request.form.getlist('using-graph-uri')
+                    named_graph = request.form.getlist('using-named-graph-uri')
+                    query = request.form.get('update', None)
+                    type = 'update'
+            elif content_mimetype == "application/sparql-query":
+                default_graph = request.args.getlist('default-graph-uri')
+                named_graph = request.args.getlist('named-graph-uri')
+                query = request.data.decode("utf-8")
+                type = 'query'
+            elif content_mimetype == "application/sparql-update":
+                default_graph = request.args.getlist('using-graph-uri')
+                named_graph = request.args.getlist('using-named-graph-uri')
+                query = request.data.decode("utf-8")
+                type = 'update'
+
+    if 'Accept' in request.headers:
+        logger.info('Received query via {}: {} with accept header: {}'.format(
+            request.method, query, request.headers['Accept']))
+        mimetype = parse_accept_header(request.headers['Accept']).best
+    else:
+        logger.info('Received query via {}: {} with no accept header.'.format(request.method,
+                                                                              query))
+        mimetype = '*/*'
+
+    return query, type, mimetype, default_graph, named_graph
