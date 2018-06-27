@@ -191,6 +191,7 @@ def configure_update_dataset(parsed_update, default_graphs, named_graphs):
 
 
 def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
+    """Parse a query and add default and named graph uri if possible."""
     try:
         parsed_query = parseQuery(query)
         parsed_query = configure_query_dataset(parsed_query, default_graph, named_graph)
@@ -201,6 +202,9 @@ def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
     except SparqlProtocolError as e:
         raise e
 
+    if base is not None and not isAbsoluteUri(base):
+        raise NonAbsoluteBaseError()
+
     if not is_valid_query_base(parsed_query):
         raise NonAbsoluteBaseError()
 
@@ -208,6 +212,7 @@ def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
 
 
 def parse_update_type(query, base=None, default_graph=[], named_graph=[]):
+    """Parse an update and add default and named graph uri if possible."""
     try:
         parsed_update = parseUpdate(query)
         parsed_update = configure_update_dataset(parsed_update, default_graph, named_graph)
@@ -217,6 +222,9 @@ def parse_update_type(query, base=None, default_graph=[], named_graph=[]):
         raise UnSupportedQuery()
     except SparqlProtocolError as e:
         raise e
+
+    if base is not None and not isAbsoluteUri(base):
+        raise NonAbsoluteBaseError()
 
     if not is_valid_update_base(parsed_update):
         raise NonAbsoluteBaseError()
