@@ -18,6 +18,7 @@ class SparqlProtocolTests(unittest.TestCase):
     query = 'SELECT * WHERE {?s ?p ?o}'
     query_base = 'BASE <example> SELECT * WHERE {?s ?p <O>}'
     update = 'INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
+    update_base = 'BASE <example> INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
 
     def setUp(self):
         return
@@ -126,6 +127,85 @@ class SparqlProtocolTests(unittest.TestCase):
             payload = {'default-graph-uri': 'http://example.org/1/',
                        'named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.query_base, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+    def testUpdateViaUrlEncodedPost(self):
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+            payload = {'update': self.update}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'update': self.update, 'default-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'update': self.update, 'named-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'update': self.update,
+                       'named-graph-uri': 'http://example.org/1/',
+                       'default-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'update': self.update_base}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            payload = {'query': self.update}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+    def testUpdateViaPostDirectly(self):
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            headers = {'Content-Type': 'application/sparql-update'}
+
+            payload = {}
+            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'named-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/1/',
+                       'named-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/1/',
+                       'named-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', query_string=payload, data=self.update_base, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            payload = {'default-graph-uri': 'http://example.org/1/',
+                       'named-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
             self.assertEqual(response.status_code, 400)
 
 
