@@ -12,6 +12,123 @@ import json
 from helpers import createCommit, assertResultBindingsEqual
 
 
+class SparqlProtocolTests(unittest.TestCase):
+    """Test if requests are handled as specified in SPARQL 1.1. Protocol."""
+
+    query = 'SELECT * WHERE {?s ?p ?o}'
+    query_base = 'BASE <example> SELECT * WHERE {?s ?p <O>}'
+    update = 'INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
+
+    def setUp(self):
+        return
+
+    def tearDown(self):
+        return
+
+    def testQueryViaGet(self):
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            payload = {'query': self.query}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query, 'default-graph-uri': 'http://example.org/'}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query, 'named-graph-uri': 'http://example.org/'}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query,
+                       'named-graph-uri': 'http://example.org/1/',
+                       'default-graph-uri': 'http://example.org/2/'}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query_base, 'named-graph-uri': 'example'}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 400)
+
+    def testQueryViaUrlEncodedPost(self):
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+            payload = {'query': self.query}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query, 'default-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query, 'named-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query,
+                       'named-graph-uri': 'http://example.org/1/',
+                       'default-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'query': self.query_base, 'named-graph-uri': 'example'}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+    def testQueryViaPostDirectly(self):
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            headers = {'Content-Type': 'application/sparql-query'}
+
+            payload = {}
+            response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'named-graph-uri': 'http://example.org/'}
+            response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/1/',
+                       'named-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            payload = {'default-graph-uri': 'http://example.org/1/',
+                       'named-graph-uri': 'http://example.org/2/'}
+            response = app.post('/sparql', query_string=payload, data=self.query_base, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+
 class QuitAppTestCase(unittest.TestCase):
     """Tests for the whole quit environment using requests, repositories and the store."""
 
