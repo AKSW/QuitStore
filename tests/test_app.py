@@ -55,7 +55,11 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.get('/sparql', query_string=payload)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'query': self.query_base, 'named-graph-uri': 'example'}
+            payload = {'query': self.query_base}
+            response = app.get('/sparql', query_string=payload)
+            self.assertEqual(response.status_code, 400)
+
+            payload = {'query': self.update}
             response = app.get('/sparql', query_string=payload)
             self.assertEqual(response.status_code, 400)
 
@@ -90,7 +94,11 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.post('/sparql', data=payload, headers=headers)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'query': self.query_base, 'named-graph-uri': 'example'}
+            payload = {'query': self.query_base}
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            payload = {'query': self.update}
             response = app.post('/sparql', data=payload, headers=headers)
             self.assertEqual(response.status_code, 400)
 
@@ -127,6 +135,9 @@ class SparqlProtocolTests(unittest.TestCase):
             payload = {'default-graph-uri': 'http://example.org/1/',
                        'named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.query_base, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
             self.assertEqual(response.status_code, 400)
 
     def testUpdateViaUrlEncodedPost(self):
