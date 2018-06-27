@@ -10,10 +10,10 @@ import unittest
 from helpers import TemporaryRepository, TemporaryRepositoryFactory
 import json
 from helpers import createCommit, assertResultBindingsEqual
-from urllib.parse import urlencode
 
 
 class QuitAppTestCase(unittest.TestCase):
+    """Tests for the whole quit environment using requests, repositories and the store."""
 
     author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
     comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')

@@ -3,14 +3,12 @@ import re
 
 import logging
 from flask import Blueprint, request, current_app, make_response
-from pyparsing import ParseException
 from rdflib import ConjunctiveGraph
-from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
-from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from quit.conf import Feature
-from quit.helpers import rewrite_graphs, is_valid_base, parse_sparql_request
+from quit import helpers as helpers
+from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
-from quit.exceptions import UnSupportedQueryType, SparqlProtocolError, NonAbsoluteBaseError
+from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -41,39 +39,6 @@ rdfMimetypes = {
 }
 
 
-def parse_query_type(query, type, base=None, default_graph=[], named_graph=[]):
-    if type == 'query':
-        try:
-            parsed_query = parseQuery(query)
-            parsed_query = rewrite_graphs(parsed_query, default_graph, named_graph, 'query')
-            translated_query = translateQuery(parsed_query, base=base)
-            # Check if BASE is absolute http(s) URI
-        except ParseException:
-            raise UnSupportedQueryType()
-        except SparqlProtocolError as e:
-            raise e
-
-        if not is_valid_base(parsed_query, 'query'):
-            raise NonAbsoluteBaseError()
-
-        return translated_query.algebra.name, translated_query
-    elif type == 'update':
-        try:
-            parsed_update = parseUpdate(query)
-            parsed_update = rewrite_graphs(parsed_update, default_graph, named_graph, 'update')
-            translated_update = translateUpdate(parsed_update, base=base)
-            # Check if BASE is absolute http(s) URI
-        except ParseException:
-            raise UnSupportedQueryType()
-        except SparqlProtocolError as e:
-            raise e
-
-        if not is_valid_base(parsed_update, 'update'):
-            raise NonAbsoluteBaseError()
-
-        return parsed_update.request[0].name, translated_update
-
-
 @endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
 @endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET'])
 def sparql(branch_or_ref):
@@ -101,11 +66,12 @@ def sparql(branch_or_ref):
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
     else:
+        parse_type = getattr(helpers, 'parse_' + type + '_type')
         try:
-            queryType, parsedQuery = parse_query_type(
-                query, type, quit.config.namespace, default_graph, named_graph)
-        except UnSupportedQueryType as e:
-            return make_response('Unsupported Query Type', 400)
+            queryType, parsedQuery = parse_type(
+                query, quit.config.namespace, default_graph, named_graph)
+        except UnSupportedQuery as e:
+            return make_response('Unsupported Query', 400)
         except NonAbsoluteBaseError as e:
             return make_response('Non absolute Base URI given', 400)
         except SparqlProtocolError as e:
@@ -168,11 +134,11 @@ def provenance():
     if query is not None and type == 'query':
         try:
             queryType, parsedQuery = parse_query_type(query, type)
-        except UnSupportedQueryType as e:
-            return make_response('Unsupported Query Type', 400)
-        except NonAbsoluteBaseError as e:
+        except UnSupportedQuery:
+            return make_response('Unsupported Query', 400)
+        except NonAbsoluteBaseError:
             return make_response('Non absolute Base URI given', 400)
-        except SparqlProtocolError as e:
+        except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
         graph = quit.store.store
@@ -187,7 +153,7 @@ def provenance():
                 return create_result_response(res, resultSetMimetypes[mimetype])
             elif queryType in ['ConstructQuery', 'DescribeQuery']:
                 return create_result_response(res, rdfMimetypes[mimetype])
-        except KeyError as e:
+        except KeyError:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
     else:
         if mimetype == 'text/html':
