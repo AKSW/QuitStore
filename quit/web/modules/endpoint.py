@@ -133,7 +133,7 @@ def provenance():
 
     if query is not None and type == 'query':
         try:
-            queryType, parsedQuery = parse_query_type(query, type)
+            queryType, parsedQuery = parse_query_type(query)
         except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
         except NonAbsoluteBaseError:
