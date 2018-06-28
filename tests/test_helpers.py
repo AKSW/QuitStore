@@ -200,8 +200,20 @@ class QueryRewritingTests(unittest.TestCase):
     update_both = 'INSERT {?s ?p ?o} USING NAMED <http://example.org/named/> '
     update_both += 'USING <http://example.org/default/> WHERE {?s ?p ?o}'
 
-    def testSimpleSelectQuery(self):
+    def testSelect(self):
         parsed_query = configure_query_dataset(parseQuery(self.query), [], [])
+        self.assertEqual(len(parsed_query[1]), 1)
+        self.assertTrue('where' in parsed_query[1])
+
+        parsed_query = configure_query_dataset(parseQuery(self.query), None, None)
+        self.assertEqual(len(parsed_query[1]), 1)
+        self.assertTrue('where' in parsed_query[1])
+
+        parsed_query = configure_query_dataset(parseQuery(self.query), [], None)
+        self.assertEqual(len(parsed_query[1]), 1)
+        self.assertTrue('where' in parsed_query[1])
+
+        parsed_query = configure_query_dataset(parseQuery(self.query), None, [])
         self.assertEqual(len(parsed_query[1]), 1)
         self.assertTrue('where' in parsed_query[1])
 
@@ -324,6 +336,24 @@ class QueryRewritingTests(unittest.TestCase):
 
     def testUpdate(self):
         parsed_query = configure_update_dataset(parseUpdate(self.update), [], [])
+        self.assertEqual(len(parsed_query.request), 1)
+        self.assertEqual(len(parsed_query.request[0]), 2)
+        self.assertTrue('insert' in parsed_query.request[0])
+        self.assertTrue('where' in parsed_query.request[0])
+
+        parsed_query = configure_update_dataset(parseUpdate(self.update), None, None)
+        self.assertEqual(len(parsed_query.request), 1)
+        self.assertEqual(len(parsed_query.request[0]), 2)
+        self.assertTrue('insert' in parsed_query.request[0])
+        self.assertTrue('where' in parsed_query.request[0])
+
+        parsed_query = configure_update_dataset(parseUpdate(self.update), [], None)
+        self.assertEqual(len(parsed_query.request), 1)
+        self.assertEqual(len(parsed_query.request[0]), 2)
+        self.assertTrue('insert' in parsed_query.request[0])
+        self.assertTrue('where' in parsed_query.request[0])
+
+        parsed_query = configure_update_dataset(parseUpdate(self.update), None, [])
         self.assertEqual(len(parsed_query.request), 1)
         self.assertEqual(len(parsed_query.request[0]), 2)
         self.assertTrue('insert' in parsed_query.request[0])
