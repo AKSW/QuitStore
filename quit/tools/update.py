@@ -14,6 +14,7 @@ from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
 from collections import defaultdict
 from itertools import tee
+from quit.exceptions import UnSupportedQuery
 
 def _append(dct, identifier, action, items):
     if items:
@@ -186,6 +187,7 @@ def evalModify(ctx, u):
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
         otherDefault = False
+
         for d in u.using:
             if d.default:
 
@@ -197,9 +199,13 @@ def evalModify(ctx, u):
 
                 ctx.load(d.default, default=True)
 
+            # TODO re-enable original behaviour if fixed
             elif d.named:
-                g = d.named
-                ctx.load(g, default=False)
+                if otherDefault:
+                    ctx = originalctx  # restore original default graph
+                raise UnSupportedQuery
+            #     g = d.named
+            #     ctx.load(g, default=False)
 
     # "The WITH clause provides a convenience for when an operation
     # primarily refers to a single graph. If a graph name is specified
@@ -386,7 +392,9 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                     res.append(result)
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
+        except UnSupportedQuery as e:
+            return res, e
         except Exception:
             if not u.silent:
                 raise
-    return res
+    return res, None

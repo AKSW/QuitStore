@@ -16,9 +16,9 @@ class SparqlProtocolTests(unittest.TestCase):
     """Test if requests are handled as specified in SPARQL 1.1. Protocol."""
 
     query = 'SELECT * WHERE {?s ?p ?o}'
-    query_base = 'BASE <example> SELECT * WHERE {?s ?p <O>}'
+    query_base = 'BASE <http://example.org/> SELECT * WHERE {?s ?p <O>}'
     update = 'INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
-    update_base = 'BASE <example> INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
+    update_base = 'BASE <http://example.org/> INSERT {?s ?p ?o} WHERE {?s ?p ?o}'
 
     def setUp(self):
         return
@@ -47,17 +47,17 @@ class SparqlProtocolTests(unittest.TestCase):
 
             payload = {'query': self.query, 'named-graph-uri': 'http://example.org/'}
             response = app.get('/sparql', query_string=payload)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'query': self.query,
                        'named-graph-uri': 'http://example.org/1/',
                        'default-graph-uri': 'http://example.org/2/'}
             response = app.get('/sparql', query_string=payload)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'query': self.query_base}
             response = app.get('/sparql', query_string=payload)
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 200)
 
             payload = {'query': self.update}
             response = app.get('/sparql', query_string=payload)
@@ -86,17 +86,17 @@ class SparqlProtocolTests(unittest.TestCase):
 
             payload = {'query': self.query, 'named-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'query': self.query,
                        'named-graph-uri': 'http://example.org/1/',
                        'default-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'query': self.query_base}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 200)
 
             payload = {'query': self.update}
             response = app.post('/sparql', data=payload, headers=headers)
@@ -125,19 +125,19 @@ class SparqlProtocolTests(unittest.TestCase):
 
             payload = {'named-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'default-graph-uri': 'http://example.org/1/',
                        'named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'default-graph-uri': 'http://example.org/1/',
                        'named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.query_base, headers=headers)
             self.assertEqual(response.status_code, 400)
 
-            response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
+            response = app.post('/sparql', data=self.update, headers=headers)
             self.assertEqual(response.status_code, 400)
 
     def testUpdateViaUrlEncodedPost(self):
@@ -157,23 +157,23 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.post('/sparql', data=payload, headers=headers)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'update': self.update, 'default-graph-uri': 'http://example.org/'}
+            payload = {'update': self.update, 'using-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', data=payload, headers=headers)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'update': self.update, 'named-graph-uri': 'http://example.org/'}
+            payload = {'update': self.update, 'using-named-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'update': self.update,
-                       'named-graph-uri': 'http://example.org/1/',
-                       'default-graph-uri': 'http://example.org/2/'}
+                       'using-named-graph-uri': 'http://example.org/1/',
+                       'using-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
             payload = {'update': self.update_base}
             response = app.post('/sparql', data=payload, headers=headers)
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 200)
 
             payload = {'query': self.update}
             response = app.post('/sparql', data=payload, headers=headers)
@@ -196,21 +196,21 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'default-graph-uri': 'http://example.org/'}
+            payload = {'using-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
             self.assertEqual(response.status_code, 200)
 
-            payload = {'named-graph-uri': 'http://example.org/'}
+            payload = {'using-named-graph-uri': 'http://example.org/'}
             response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
-            payload = {'default-graph-uri': 'http://example.org/1/',
-                       'named-graph-uri': 'http://example.org/2/'}
+            payload = {'using-graph-uri': 'http://example.org/1/',
+                       'using-named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.update, headers=headers)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 400)
 
-            payload = {'default-graph-uri': 'http://example.org/1/',
-                       'named-graph-uri': 'http://example.org/2/'}
+            payload = {'named-graph-uri': 'http://example.org/1/',
+                       'using-named-graph-uri': 'http://example.org/2/'}
             response = app.post('/sparql', query_string=payload, data=self.update_base, headers=headers)
             self.assertEqual(response.status_code, 400)
 
@@ -219,9 +219,110 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.post('/sparql', query_string=payload, data=self.query, headers=headers)
             self.assertEqual(response.status_code, 400)
 
+    def testUpdateUsingGraphUri(self):
+        select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+
+        # Prepate a git Repository
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/1/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/2/> .'
+        repoContent = {'http://example.org/1/': content1,
+                       'http://example.org/2/': content2,
+                       'urn:graph': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 0)
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'update': 'INSERT {GRAPH <urn:graph> {?s ?p ?o}} WHERE {?s ?p ?o}', 'using-graph-uri': 'http://example.org/1/'}
+
+            # execute UPDATE
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            # execute SELECT query after UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+    @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
+    def testUpdateUsingNamedGraphUri(self):
+        select = "SELECT * WHERE {graph <http://example.org/test/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+
+        # Prepate a git Repository
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2, 'http://example.org/test/': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 0)
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'update': 'INSERT {GRAPH <http://example.org/test/> {?s ?p ?o}} WHERE {graph ?g {?s ?p ?o}}',
+                       'using-named-graph-uri': 'http://example.org/graph1/'}
+
+            # execute UPDATE
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            # execute SELECT query after UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
 
 class QuitAppTestCase(unittest.TestCase):
-    """Tests for the whole quit environment using requests, repositories and the store."""
 
     author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
     comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
@@ -591,6 +692,7 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
+    @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testDeleteInsertUsingNamedWhere(self):
         """Test DELETE INSERT WHERE with one graph
 
@@ -1813,7 +1915,7 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
-    def testRepoDataAfterInsertStartingWithEmptyGraph(self):
+    def testRepoDataAfterInsertStaringWithEmptyGraph(self):
         """Test inserting data and check the file content, starting with an empty graph.
 
         1. Prepare a git repository with an empty graph
@@ -1851,7 +1953,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             self.assertEqual(commits, [expectedCommitMsg, 'init'])
 
-    def testRepoDataAfterInsertStartingWithNonEmptyGraph(self):
+    def testRepoDataAfterInsertStaringWithNonEmptyGraph(self):
         """Test inserting data and check the file content, starting with a non empty graph.
 
         1. Prepare a git repository with an empty graph
@@ -1869,7 +1971,6 @@ class QuitAppTestCase(unittest.TestCase):
             config = objects['config']
             app = create_app(config).test_client()
 
-            # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> <urn:z2> .}}"
             app.post('/sparql', data=dict(update=update))
 
@@ -2053,6 +2154,7 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
+    @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testWithOnDeleteAndInsertUsingNamed(self):
         """Test WITH on DELETE and INSERT plus USING NAMED.
 
@@ -2343,6 +2445,7 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
+    @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testWithOnDeleteUsingNamed(self):
         """Test WITH Delete and not on Insert plus USING NAMED.
 

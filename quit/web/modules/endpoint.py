@@ -66,6 +66,8 @@ def sparql(branch_or_ref):
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
     else:
+        if len(named_graph) > 0:
+            return make_response('FROM NAMED and USING NAMED not supportd, yet', 400)
         parse_type = getattr(helpers, 'parse_' + type + '_type')
         try:
             queryType, parsedQuery = parse_type(
@@ -84,7 +86,7 @@ def sparql(branch_or_ref):
         return make_response('No branch or reference given.', 400)
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
-        res = graph.update(parsedQuery)
+        res, exception = graph.update(parsedQuery)
 
         try:
             ref = request.values.get('ref', None) or default_branch
@@ -93,6 +95,9 @@ def sparql(branch_or_ref):
                 graph, res, 'New Commit from QuitStore',
                 branch_or_ref, ref, query=query
             )
+            if exception is not None:
+                logger.exception(exception)
+                return 'Update query not executed (completely), (detected USING NAMED)', 400
             return '', 200
         except Exception as e:
             # query ok, but unsupported query type or other problem during commit
@@ -132,6 +137,8 @@ def provenance():
     query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
 
     if query is not None and type == 'query':
+        if len(named_graph) > 0:
+            return make_response('Unsupported Query, "FROM NAMED not supported, yet"', 400)
         try:
             queryType, parsedQuery = parse_query_type(query)
         except UnSupportedQuery:
