@@ -321,6 +321,69 @@ class SparqlProtocolTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'urn:y'},
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
+    def testSelectFrom(self):
+        select = "SELECT ?s ?p ?o FROM <http://example.org/graph1/> "
+        select += "WHERE {?s ?p ?o . } ORDER BY ?s ?p ?o"
+
+        # Prepate a git Repository
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+    @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
+    def testSelectFromNamed(self):
+        select = "SELECT ?s ?p ?o FROM NAMED <http://example.org/graph1/> "
+        select += "WHERE {GRAPH ?g {?s ?p ?o . }} ORDER BY ?s ?p ?o"
+
+        # Prepate a git Repository
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
 
 class QuitAppTestCase(unittest.TestCase):
 
