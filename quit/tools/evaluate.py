@@ -480,8 +480,10 @@ def evalQuery(graph, query, initBindings, base=None):
 
                 ctx.load(d.default, default=True)
 
+            # TODO re-enable original behaviour if fixed
             elif d.named:
-                g = d.named
-                ctx.load(g, default=False)
+                raise UnSupportedQuery
+            #     g = d.named
+            #     ctx.load(g, default=False)
 
     return evalPart(ctx, main)

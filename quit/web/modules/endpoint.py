@@ -66,9 +66,12 @@ def sparql(branch_or_ref):
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
     else:
+        # TODO allow USING NAMED when fixed in rdflib
         if len(named_graph) > 0:
-            return make_response('FROM NAMED and USING NAMED not supportd, yet', 400)
+            return make_response('FROM NAMED and USING NAMED not supported, yet', 400)
+
         parse_type = getattr(helpers, 'parse_' + type + '_type')
+
         try:
             queryType, parsedQuery = parse_type(
                 query, quit.config.namespace, default_graph, named_graph)
@@ -104,7 +107,10 @@ def sparql(branch_or_ref):
             logger.exception(e)
             return make_response('Error after executing the update query.', 400)
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
-        res = graph.query(parsedQuery)
+        try:
+            res = graph.query(parsedQuery)
+        except UnSupportedQuery as e:
+            return make_response('Unsupported Query', 400)
     else:
         logger.debug("Unsupported Type: {}".format(queryType))
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
