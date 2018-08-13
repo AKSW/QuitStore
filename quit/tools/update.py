@@ -199,7 +199,8 @@ def evalModify(ctx, u):
 
                 ctx.load(d.default, default=True)
 
-            # TODO re-enable original behaviour if fixed
+            # TODO re-enable original behaviour if USING NAMED works with named graphs
+            # https://github.com/AKSW/QuitStore/issues/144
             elif d.named:
                 if otherDefault:
                     ctx = originalctx  # restore original default graph

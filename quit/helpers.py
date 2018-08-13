@@ -196,7 +196,6 @@ def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
         parsed_query = parseQuery(query)
         parsed_query = configure_query_dataset(parsed_query, default_graph, named_graph)
         translated_query = translateQuery(parsed_query, base=base)
-        # Check if BASE is absolute http(s) URI
     except ParseException:
         raise UnSupportedQuery()
     except SparqlProtocolError as e:
@@ -217,7 +216,6 @@ def parse_update_type(query, base=None, default_graph=[], named_graph=[]):
         parsed_update = parseUpdate(query)
         parsed_update = configure_update_dataset(parsed_update, default_graph, named_graph)
         translated_update = translateUpdate(parsed_update, base=base)
-        # Check if BASE is absolute http(s) URI
     except ParseException:
         raise UnSupportedQuery()
     except SparqlProtocolError as e:

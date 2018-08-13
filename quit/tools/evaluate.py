@@ -480,7 +480,8 @@ def evalQuery(graph, query, initBindings, base=None):
 
                 ctx.load(d.default, default=True)
 
-            # TODO re-enable original behaviour if fixed
+            # TODO re-enable original behaviour if FROM NAMED works with named graphs
+            # https://github.com/AKSW/QuitStore/issues/144
             elif d.named:
                 raise UnSupportedQuery
             #     g = d.named
