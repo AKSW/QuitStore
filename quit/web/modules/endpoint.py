@@ -95,9 +95,8 @@ def sparql(branch_or_ref):
             ref = request.values.get('ref', None) or default_branch
             ref = 'refs/heads/{}'.format(ref)
             quit.commit(
-                graph, res, 'New Commit from QuitStore',
-                branch_or_ref, ref, query=query
-            )
+                graph, res, 'New Commit from QuitStore', branch_or_ref, ref, query=query,
+                default_graph=default_graph, named_graph=named_graph)
             if exception is not None:
                 logger.exception(exception)
                 return 'Update query not executed (completely), (detected USING NAMED)', 400

@@ -2006,8 +2006,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'query: "INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}"\n\nNew Commit from QuitStore'
+            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}'
 
             commits = []
 
@@ -2045,8 +2045,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'query: "INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}"\n\nNew Commit from QuitStore'
+            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}'
 
             commits = []
 
