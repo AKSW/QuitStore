@@ -9,6 +9,7 @@ from quit import helpers as helpers
 from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
+from quit.exceptions import FromNamedError
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -108,6 +109,8 @@ def sparql(branch_or_ref):
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
         try:
             res = graph.query(parsedQuery)
+        except FromNamedError as e:
+            return make_response('FROM NAMED not supported, yet', 400)
         except UnSupportedQuery as e:
             return make_response('Unsupported Query', 400)
     else:
