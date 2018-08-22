@@ -321,6 +321,143 @@ class SparqlProtocolTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'urn:y'},
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
+    def testMultioperationalUpdate(self):
+        """Execute a multioperational Update query and test store and file content."""
+        select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+
+        update = 'DELETE DATA { GRAPH <urn:graph> { <urn:I> <urn:II> <urn:III> }} ; '
+        update += 'INSERT DATA { GRAPH <urn:graph> { <urn:a> <urn:b> <urn:c> }}'
+
+        # Prepate a git Repository
+        repoContent = {'urn:graph': '<urn:I> <urn:II> <urn:III> <urn:graph> .'}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'update': update}
+
+            # execute UPDATE
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            # execute SELECT query after UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:a'},
+                "p": {'type': 'uri', 'value': 'urn:b'},
+                "o": {'type': 'uri', 'value': 'urn:c'}})
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .', f.read())
+
+    def testAbortedMultioperationalUpdate(self):
+        """Execute two multioperational Update queries and test store and file content.
+
+        The first query sequence contains an error in the second query.
+
+        """
+        select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+
+        update = 'INSERT DATA { GRAPH <urn:graph> { <urn:I> <urn:II> <urn:III> }}; '
+        update += 'INSERT {GRAPH <urn:graph> {?s ?p ?o}} USING NAMED <http://http://example.org/1/> '
+        update += 'WHERE {graph ?g {?s ?p ?o .}};'
+
+        update2 = 'DELETE DATA { GRAPH <urn:graph> { <urn:I> <urn:II> <urn:III> }}; '
+        update2 += 'INSERT DATA { GRAPH <urn:graph> { <urn:a> <urn:b> <urn:c> }}'
+
+        # Prepate a git Repository
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/1/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/2/> .'
+        repoContent = {'http://example.org/1/': content1,
+                       'http://example.org/2/': content2,
+                       'urn:graph': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 0)
+
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'update': update}
+
+            # execute UPDATE
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 400)
+
+            # execute SELECT query after UPDATE
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:I'},
+                "p": {'type': 'uri', 'value': 'urn:II'},
+                "o": {'type': 'uri', 'value': 'urn:III'}})
+
+            with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
+                self.assertEqual('<urn:I> <urn:II> <urn:III> <urn:graph> .', f.read())
+
+            payload = {'update': update2}
+
+            # execute UPDATE2
+            response = app.post('/sparql', data=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
+            # execute SELECT query after UPDATE2
+            select_resp = app.post(
+                '/sparql',
+                data=dict(query=select),
+                headers=dict(accept="application/sparql-results+json")
+            )
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
+                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .', f.read())
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'urn:a'},
+                "p": {'type': 'uri', 'value': 'urn:b'},
+                "o": {'type': 'uri', 'value': 'urn:c'}})
+
     def testSelectFrom(self):
         select = "SELECT ?s ?p ?o FROM <http://example.org/graph1/> "
         select += "WHERE {?s ?p ?o . } ORDER BY ?s ?p ?o"
