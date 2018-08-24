@@ -1,5 +1,6 @@
 import pygit2
 
+import copy
 import logging
 
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
@@ -189,6 +190,7 @@ class Quit(object):
         return VirtualGraph(instance)
 
     def changeset(self, commit, delta=None):
+        """Write meta data about a commit to the provenance store."""
 
         if (
             not self.config.hasFeature(Feature.Persistence)
@@ -281,14 +283,15 @@ class Quit(object):
 
                 delta = graphdiff(i2.store if i2 else None, i1.store)
 
-            for index, (iri, changesets) in enumerate(delta.items()):
-                update_uri = QUIT['update-{}-{}'.format(commit.id, index)]
-                g.add((update_uri, QUIT['graph'], iri))
-                g.add((commit_uri, QUIT['updates'], update_uri))
-                for (op, triples) in changesets:
-                    op_uri = QUIT[op + '-' + commit.id]
-                    g.add((update_uri, QUIT[op], op_uri))
-                    g.addN((s, p, o, op_uri) for s, p, o in triples)
+            for index, values in enumerate(delta):
+                for iri, changesets in values.items():
+                    update_uri = QUIT['update-{}-{}'.format(commit.id, index)]
+                    g.add((update_uri, QUIT['graph'], iri))
+                    g.add((commit_uri, QUIT['updates'], update_uri))
+                    for (op, triples) in changesets:
+                        op_uri = QUIT[op + '-' + commit.id]
+                        g.add((update_uri, QUIT[op], op_uri))
+                        g.addN((s, p, o, op_uri) for s, p, o in triples)
 
         # Entities
         map = self.config.getgraphurifilemap()
@@ -446,6 +449,8 @@ class Quit(object):
         if not delta:
             return
 
+        orgdelta = copy.deepcopy(delta)
+
         commit = self.repository.revision(commit_id)
         index = self.repository.index(commit.id)
 
@@ -504,7 +509,7 @@ class Quit(object):
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
                     ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
-            self.syncSingle(commit, delta)
+            self.syncSingle(commit, orgdelta)
 
     def garbagecollection(self):
         """Start garbage collection.

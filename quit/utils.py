@@ -79,7 +79,7 @@ def graphdiff(first, second):
     """
     from rdflib.compare import to_isomorphic, graph_diff
 
-    diffs = {}
+    diffs = []
     iris = set()
 
     if first is not None and isinstance(first, InMemoryAggregatedGraph):
@@ -90,7 +90,7 @@ def graphdiff(first, second):
         iris = iris.union(second_identifiers)
 
     for iri in iris:
-        changes = diffs.get(iri, [])
+        changes = []
 
         if (
             first is not None and iri in first_identifiers
@@ -112,7 +112,7 @@ def graphdiff(first, second):
         else:
             continue
 
-        diffs[iri] = changes
+        diffs.append({iri: changes})
     return diffs
 
 
