@@ -2143,8 +2143,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}'
+            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: "INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}"'
 
             commits = []
 
@@ -2171,19 +2171,19 @@ class QuitAppTestCase(unittest.TestCase):
             config = objects['config']
             app = create_app(config).test_client()
 
-            update = "INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> <urn:z2> .}}"
+            update = 'INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> "literal" .}}'
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<urn:x2> <urn:y2> <urn:z2> <urn:graph> .\n'
+            expectedFileContent = '<urn:x2> <urn:y2> "literal" <urn:graph> .\n'
             expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .'
 
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x2> <urn:y2> <urn:z2> .}}'
+            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: "INSERT DATA {graph <urn:graph>'
+            expectedCommitMsg += ' {<urn:x2> <urn:y2> \\"literal\\" .}}"'
 
             commits = []
 

@@ -420,7 +420,7 @@ class Quit(object):
                 out.append(message)
                 out.append('')
             if query:
-                out.append('query: {}'.format(query))
+                out.append('query: "{}"'.format(query.replace('"', "\\\"")))
             if isinstance(default_graph, list) and len(default_graph) > 0:
                 out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
             if isinstance(named_graph, list) and len(named_graph) > 0:
