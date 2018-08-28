@@ -145,9 +145,9 @@ class Quit(object):
                 commit = commits.pop()
                 self.syncSingle(commit)
 
-    def syncSingle(self, commit, delta=None):
+    def syncSingle(self, commit):
         if not self._exists(commit.id):
-            self.changeset(commit, delta)
+            self.changeset(commit)
 
     def instance(self, commit_id=None, force=False):
         """Create and return dataset for a given commit id.
@@ -188,7 +188,7 @@ class Quit(object):
 
         return VirtualGraph(instance)
 
-    def changeset(self, commit, delta=None):
+    def changeset(self, commit):
 
         if (
             not self.config.hasFeature(Feature.Persistence)
@@ -274,12 +274,11 @@ class Quit(object):
                 g.add((commit_uri, PROV["wasInformedBy"], parent_uri))
 
             # Diff
-            if not delta:
-                parent = next(iter(commit.parents or []), None)
+            parent = next(iter(commit.parents or []), None)
 
-                i2 = self.instance(parent.id, True) if parent else None
+            i2 = self.instance(parent.id, True) if parent else None
 
-                delta = graphdiff(i2.store if i2 else None, i1.store)
+            delta = graphdiff(i2.store if i2 else None, i1.store)
 
             for index, (iri, changesets) in enumerate(delta.items()):
                 update_uri = QUIT['update-{}-{}'.format(commit.id, index)]
@@ -504,7 +503,7 @@ class Quit(object):
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
                     ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
-            self.syncSingle(commit, delta)
+            self.syncSingle(commit)
 
     def garbagecollection(self):
         """Start garbage collection.
