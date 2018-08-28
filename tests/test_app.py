@@ -1000,6 +1000,65 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
+    def testMultioperationalUpdateProvenance(self):
+        """Test multioperational update and compare created provenance information.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        4. Execute multioperational update query
+        5. Execute SELECT query
+        6. Re-start Quit
+        7. Execute SELECT query
+        8. Compare both query results
+        """
+        # Create querystrings
+        prov = 'SELECT DISTINCT ?op ?s ?p ?o '
+        prov += 'WHERE {?activity <http://quit.aksw.org/vocab/updates> ?update ; '
+        prov += '<http://www.w3.org/ns/prov#endedAtTime> ?time . '
+        prov += '?update ?op ?g . GRAPH ?g {?s ?p ?o .} FILTER ( '
+        prov += 'sameTerm(?op, <http://quit.aksw.org/vocab/additions>) '
+        prov += '|| sameTerm(?op, <http://quit.aksw.org/vocab/removals>) ) } '
+        prov += 'ORDER BY ?time ?update ?g ?s ?p ?o'
+
+        update = 'INSERT DATA {graph <http://example.org/> {<urn:1> <urn:2> <urn:3> . <urn:11> <urn:22> <urn:33>. }}; '
+        update += 'INSERT DATA {graph <http://aksw.org/> {<urn:do> <urn:something> <urn:here> }}; '
+        update += 'DELETE {GRAPH <http://example.org/> {<urn:1> <urn:2> <urn:3> .}} '
+        update += 'INSERT {GRAPH <http://example.org/> {<urn:I> <urn:II> <urn:III> .}} '
+        update += 'WHERE {GRAPH <http://example.org/> {<urn:1> <urn:2> <urn:3> .}}'
+
+        # Prepate a git Repository
+        repoContent = {'http://example.org/': '', 'http://aksw.org/': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute multioperational update query
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute PROVENANCE query
+            prov_1 = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+            changesets_1 = json.loads(prov_1.data.decode("utf-8"))
+
+            # re-start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute PROVENANCE query again
+            prov_2 = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+            changesets_2 = json.loads(prov_2.data.decode("utf-8"))
+
+            # compare provenance queries
+            self.assertDictEqual(changesets_1, changesets_2)
+
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testDeleteInsertUsingNamedWhere(self):
         """Test DELETE INSERT WHERE with one graph
