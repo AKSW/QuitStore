@@ -30,7 +30,7 @@ from rdflib.plugins.sparql.aggregates import Aggregator
 from rdflib.plugins.sparql.algebra import Join, ToMultiSet, Values
 
 from quit.web import service
-from quit.exceptions import UnSupportedQuery, UnSupportedQueryType
+from quit.exceptions import UnSupportedQuery, UnSupportedQueryType, FromNamedError
 
 def evalBGP(ctx, bgp):
 
@@ -480,8 +480,11 @@ def evalQuery(graph, query, initBindings, base=None):
 
                 ctx.load(d.default, default=True)
 
+            # TODO re-enable original behaviour if FROM NAMED works with named graphs
+            # https://github.com/AKSW/QuitStore/issues/144
             elif d.named:
-                g = d.named
-                ctx.load(g, default=False)
+                raise FromNamedError
+            #     g = d.named
+            #     ctx.load(g, default=False)
 
     return evalPart(ctx, main)

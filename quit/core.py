@@ -395,14 +395,38 @@ class Quit(object):
             return quitWorkingData
         return self._blobs.get(blob)
 
-    def commit(self, graph, delta, message, commit_id, ref, **kwargs):
+    def commit(self, graph, delta, message, commit_id, ref, query=None, default_graph=[],
+               named_graph=[], **kwargs):
+        """Commit changes after applying deltas to the blobs.
+
+        This methods analyzes the delta an apllies the changes to the blobs of the repository.
+        A commit message is built with help of message and if called from endpoint with query,
+        default_graph and named_graph. **kwargs can be used to extend the commit message with
+        custom key-value-pairs.
+
+        Args:
+            graph: the current graph instance
+            delta: delta that will be applied
+            message: commit message
+            commit_id: the commit-id of preceeding commit
+            ref: a ref/branch were the commit will be applied to
+            query: the query that lead to the commit
+            default_graph: using-graph-uri values from SPARQL protocol
+            named_graph: using-named-graph-uri values from SPARQL protocol
+        """
         def build_message(message, kwargs):
             out = list()
+            if message:
+                out.append(message)
+                out.append('')
+            if query:
+                out.append('query: "{}"'.format(query.replace('"', "\\\"")))
+            if isinstance(default_graph, list) and len(default_graph) > 0:
+                out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
+            if isinstance(named_graph, list) and len(named_graph) > 0:
+                out.append('using-named-graph-uri: {}'.format(', '.join(named_graph)))
             for k, v in kwargs.items():
                 out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
-            if message:
-                out.append('')
-                out.append(message)
             return "\n".join(out)
 
         def _apply(f, changeset, identifier):
