@@ -31,6 +31,7 @@ def createCommit(repository, message=None):
 
 class TemporaryRepository(object):
     """A Git repository initialized in a temporary directory as a context manager.
+
     usage:
     with TemporaryRepository() as tempRepo:
         print("workdir:", tempRepo.workdir)
@@ -76,7 +77,7 @@ class TemporaryRepositoryFactory(object):
             if graphContent:
                 graphFile.write(graphContent)
 
-        # Set Grapu URI to http://example.org/
+        # Set Graph URI to http://example.org/
         with open(path.join(tmpRepo.repo.workdir, "graph.nq.graph"), "w") as graphFile:
             graphFile.write(graphUri)
 
@@ -85,6 +86,37 @@ class TemporaryRepositoryFactory(object):
         index.read()
         index.add("graph.nq")
         index.add("graph.nq.graph")
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withGraphs(self, graphUriContentDict):
+        """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nq)."""
+        tmpRepo = TemporaryRepository()
+        index = tmpRepo.repo.index
+        index.read()
+
+        i = 0
+        for graphUri, graphContent in sorted(graphUriContentDict.items()):
+            filename = 'graph_{}.nq'.format(i)
+            with open(path.join(tmpRepo.repo.workdir, filename), "w") as graphFile:
+                if graphContent:
+                    graphFile.write(graphContent)
+
+            # Set Graph URI to http://example.org/
+            with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
+                graphFile.write(graphUri)
+
+            # Add and Commit the empty graph
+            index.add(filename)
+            index.add(filename + '.graph')
+            i += 1
+
         index.write()
 
         # Create commit

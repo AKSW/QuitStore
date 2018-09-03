@@ -16,6 +16,7 @@ import rdflib
 class TestConfiguration(unittest.TestCase):
 
     def setUp(self):
+        self.ns = 'http://quit.instance/'
         self.testData = './tests/samples/configuration_test'
         self.local = './tests/samples/local'
         self.remote = '.tests/samples/remote'
@@ -56,16 +57,34 @@ class TestConfiguration(unittest.TestCase):
 
         return
 
+    def testNamespace(self):
+        init_repository(self.local, False)
+
+        # missing namespace
+        self.assertRaises(InvalidConfigurationError, QuitConfiguration, 'configfile', self.localConfigFile)
+
+        good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
+        bad = ['file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
+
+        # good namespaces
+        for uri in good:
+            conf = QuitConfiguration(configfile=self.localConfigFile, namespace=uri)
+            self.assertEqual(conf.namespace, uri)
+
+        # bad namespaces
+        for uri in bad:
+            self.assertRaises(
+                InvalidConfigurationError, QuitConfiguration, 'configfile', self.localConfigFile, 'namespace', uri)
+
     def testInitExistingFolder(self):
-        conf = QuitConfiguration(configfile=self.localConfigFile)
+        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
         self.assertEqual(conf.getRepoPath(), self.local)
 
     def testInitExistingRepo(self):
         init_repository(self.local, False)
 
         conf = QuitConfiguration(
-            configfile=self.localConfigFile
-        )
+            configfile=self.localConfigFile, namespace=self.ns)
 
         conf.initgraphconfig()
 
@@ -74,8 +93,8 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='repoconfig'
-        )
+            configmode='repoconfig',
+            namespace=self.ns)
 
         conf.initgraphconfig()
 
@@ -83,8 +102,8 @@ class TestConfiguration(unittest.TestCase):
 
         conf = QuitConfiguration(
             configfile=self.localConfigFile,
-            configmode='localconfig'
-        )
+            configmode='localconfig',
+            namespace=self.ns)
         conf.initgraphconfig()
 
         self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
@@ -92,15 +111,14 @@ class TestConfiguration(unittest.TestCase):
     def testInitMissingConfiguration(self):
         init_repository(self.local, False)
 
-        with self.assertRaises(InvalidConfigurationError):
-            QuitConfiguration(configfile='no.config')
+        self.assertRaises(InvalidConfigurationError, QuitConfiguration, 'configfile', 'no.config', 'namespace', self.ns)
 
     def testInitWithMissingGraphFiles(self):
         # Mode: fallback to graphfiles
         remove(join(self.local, 'example1.nq'))
         remove(join(self.local, 'example2.nt'))
 
-        conf = QuitConfiguration(configfile=self.remoteConfigFile)
+        conf = QuitConfiguration(configfile=self.remoteConfigFile, namespace=self.ns)
         conf.initgraphconfig()
 
         files = conf.getfiles()
@@ -110,8 +128,8 @@ class TestConfiguration(unittest.TestCase):
         # Mode: graphfiles
         conf = QuitConfiguration(
             configfile=self.localConfigFile,
-            configmode='graphfiles'
-        )
+            configmode='graphfiles',
+            namespace=self.ns)
         conf.initgraphconfig()
 
         files = conf.getfiles()
@@ -121,8 +139,8 @@ class TestConfiguration(unittest.TestCase):
         # Mode: local config file
         conf = QuitConfiguration(
             configfile=self.remoteConfigFile,
-            configmode='localconfig'
-        )
+            configmode='localconfig',
+            namespace=self.ns)
         conf.initgraphconfig()
 
         files = conf.getfiles()
@@ -136,8 +154,8 @@ class TestConfiguration(unittest.TestCase):
         conf = QuitConfiguration(
             repository='assests/configuration_test',
             configfile=self.localConfigFile,
-            configmode='repoconfig'
-        )
+            configmode='repoconfig',
+            namespace=self.ns)
         conf.initgraphconfig()
 
         files = conf.getfiles()
@@ -147,7 +165,7 @@ class TestConfiguration(unittest.TestCase):
 
     def testStoreConfig(self):
         init_repository(self.local, False)
-        conf = QuitConfiguration(configfile=self.localConfigFile)
+        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
 
         self.assertEqual(conf.getRepoPath(), self.local)
         self.assertEqual(conf.getOrigin(), 'git://github.com/aksw/QuitStore.git')
@@ -156,9 +174,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(sorted(allFiles), sorted(['config.ttl', 'example1.nq', 'example2.nt', 'example3.nq']))
 
     def testGraphConfigDefaultMode(self):
-        conf = QuitConfiguration(
-                    configfile=self.localConfigFile
-                )
+        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
@@ -188,9 +204,7 @@ class TestConfiguration(unittest.TestCase):
 
     def testGraphConfigLocalConfig(self):
         conf = QuitConfiguration(
-                    configmode='localconfig',
-                    configfile=self.localConfigFile
-                )
+                    configmode='localconfig', configfile=self.localConfigFile, namespace=self.ns)
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
@@ -216,8 +230,8 @@ class TestConfiguration(unittest.TestCase):
     def testGraphConfigRemoteConfig(self):
         conf = QuitConfiguration(
                     configmode='repoconfig',
-                    configfile=self.localConfigFile
-                )
+                    configfile=self.localConfigFile,
+                    namespace=self.ns)
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()
@@ -243,8 +257,8 @@ class TestConfiguration(unittest.TestCase):
     def testGraphConfigGraphFiles(self):
         conf = QuitConfiguration(
                     configmode='graphfiles',
-                    configfile=self.localConfigFile
-                )
+                    configfile=self.localConfigFile,
+                    namespace=self.ns)
 
         conf.initgraphconfig()
         graphs = conf.getgraphs()

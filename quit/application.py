@@ -1,14 +1,8 @@
-#!/usr/bin/env python3
-
+import argparse
 import sys
 import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
-
-import argparse
 from quit.conf import Feature, QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
-from quit.utils import handle_exit
 from quit.web.app import create_app
 import logging
 
@@ -42,6 +36,8 @@ def initialize(args):
         logger.addHandler(ch)
         logger.debug('Loglevel: DEBUG')
 
+    logger.debug("Parsed args: {}".format(args))
+
     # add the handlers to the logger
 
     if args.logfile:
@@ -72,6 +68,7 @@ def initialize(args):
             repository=args.repourl,
             configmode=args.configmode,
             features=args.features,
+            namespace=args.namespace,
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -88,14 +85,6 @@ def initialize(args):
     logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'config': config}
-
-
-def savedexit():
-    """Perform actions to be exevuted on API shutdown.
-
-    Add methods you want to call on unexpected shutdown.
-    """
-    logger.info("Exiting store")
 
 
 class FeaturesAction(argparse.Action):
@@ -121,6 +110,7 @@ class FeaturesAction(argparse.Action):
 
 def parseArgs(args):
     """Parse command line arguments."""
+    basepathhelp = "Base path (aka. application root) (WSGI only)."
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
                 "repoconfig" - Use the configuration of the git repository for graphs settings.
@@ -131,15 +121,45 @@ def parseArgs(args):
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
     targethelp = 'The directory of the local store repository.'
+    namespacehelp = """A base namespace that will be applied when dealing with relative URIs in
+                    SPARQL UPDATE queries."""
+
+    port_default = 5000
+    logfile_default = None
+    basepath_default = None
+    namespace_default = 'http://quit.instance/'
+    targetdir_default = None
+    configfile_default = "config.ttl"
+
+    if 'QUIT_PORT' in os.environ:
+        port_default = os.environ['QUIT_PORT']
+
+    if 'QUIT_LOGFILE' in os.environ:
+        logfile_default = os.environ['QUIT_LOGFILE']
+
+    if 'QUIT_BASEPATH' in os.environ:
+        basepath_default = os.environ['QUIT_BASEPATH']
+
+    if 'QUIT_NAMESPACE' in os.environ:
+        namespace = os.environ['QUIT_NAMESPACE']
+
+    if 'QUIT_TARGETDIR' in os.environ:
+        targetdir_default = os.environ['QUIT_TARGETDIR']
+
+    if 'QUIT_CONFIGFILE' in os.environ:
+        configfile_default = os.environ['QUIT_CONFIGFILE']
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
+    parser.add_argument(
+        '-n', '--namespace', type=str, default=namespace_default, help=namespacehelp)
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-vv', '--verboseverbose', action='store_true')
-    parser.add_argument('-c', '--configfile', type=str, default='config.ttl', help=confighelp)
-    parser.add_argument('-l', '--logfile', type=str, help=loghelp)
+    parser.add_argument('-c', '--configfile', type=str, default=configfile_default, help=confighelp)
+    parser.add_argument('-l', '--logfile', type=str, default=logfile_default, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
-    parser.add_argument('-t', '--targetdir', type=str, help=targethelp)
+    parser.add_argument('-t', '--targetdir', type=str, default=targetdir_default, help=targethelp)
     parser.add_argument('-cm', '--configmode', type=str, choices=[
         'graphfiles',
         'localconfig',
@@ -148,25 +168,15 @@ def parseArgs(args):
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         default=Feature.Unknown,
                         help=featurehelp)
-    parser.add_argument('-p', '--port', default=5000, type=int)
+    parser.add_argument('-p', '--port', default=port_default, type=int)
     parser.add_argument('--host', default='0.0.0.0', type=str)
+
+    logger.debug("Parsing args: {}".format(args))
 
     return parser.parse_args(args)
 
 
-def main(config):
+def main(config, args):
     """Start the app."""
     app = create_app(config)
     app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
-
-
-if __name__ == '__main__':
-    args = parseArgs(sys.argv[1:])
-    objects = initialize(args)
-
-    config = objects['config']
-    sys.setrecursionlimit(2 ** 15)
-
-    # The app is started with an exit handler
-    with handle_exit(savedexit):
-        main(config)

@@ -26,12 +26,12 @@ WORKDIR /usr/src/app
 COPY quit/ /usr/src/app/quit
 COPY requirements.txt /usr/src/app/
 RUN pip install --no-cache-dir -r requirements.txt \
-    && ln -s /usr/src/app/quit/quit.py /usr/local/bin/quit
+    && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
 COPY docker/config.ttl /etc/quit/
 
-ENV QUIT_PORT 80
-ENV QUIT_CONFIGFILE /etc/quit/config.ttl
+ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
+ENV QUIT_LOGFILE="/var/log/quit.log"
 
 RUN mkdir /data
 
@@ -39,10 +39,7 @@ VOLUME /data
 VOLUME /etc/quit
 EXPOSE 80
 
-# Quit writes its log file to the current directory
-WORKDIR /var/log
-
 # Set default git user
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
-CMD quit --configfile ${QUIT_CONFIGFILE} --port ${QUIT_PORT}
+CMD uwsgi --socket 0.0.0.0:80 --protocol=http -w quit.run --pyargv "-vv"

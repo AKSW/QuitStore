@@ -145,9 +145,9 @@ class Quit(object):
                 commit = commits.pop()
                 self.syncSingle(commit)
 
-    def syncSingle(self, commit, delta=None):
+    def syncSingle(self, commit):
         if not self._exists(commit.id):
-            self.changeset(commit, delta)
+            self.changeset(commit)
 
     def instance(self, commit_id=None, force=False):
         """Create and return dataset for a given commit id.
@@ -188,7 +188,7 @@ class Quit(object):
 
         return VirtualGraph(instance)
 
-    def changeset(self, commit, delta=None):
+    def changeset(self, commit):
 
         if (
             not self.config.hasFeature(Feature.Persistence)
@@ -274,12 +274,11 @@ class Quit(object):
                 g.add((commit_uri, PROV["wasInformedBy"], parent_uri))
 
             # Diff
-            if not delta:
-                parent = next(iter(commit.parents or []), None)
+            parent = next(iter(commit.parents or []), None)
 
-                i2 = self.instance(parent.id, True) if parent else None
+            i2 = self.instance(parent.id, True) if parent else None
 
-                delta = graphdiff(i2.store if i2 else None, i1.store)
+            delta = graphdiff(i2.store if i2 else None, i1.store)
 
             for index, (iri, changesets) in enumerate(delta.items()):
                 update_uri = QUIT['update-{}-{}'.format(commit.id, index)]
@@ -395,18 +394,38 @@ class Quit(object):
             return quitWorkingData
         return self._blobs.get(blob)
 
-    def commit(self, graph, delta, message, commit_id, ref, **kwargs):
+    def commit(self, graph, delta, message, commit_id, ref, query=None, default_graph=[],
+               named_graph=[], **kwargs):
+        """Commit changes after applying deltas to the blobs.
 
+        This methods analyzes the delta an apllies the changes to the blobs of the repository.
+        A commit message is built with help of message and if called from endpoint with query,
+        default_graph and named_graph. **kwargs can be used to extend the commit message with
+        custom key-value-pairs.
+
+        Args:
+            graph: the current graph instance
+            delta: delta that will be applied
+            message: commit message
+            commit_id: the commit-id of preceeding commit
+            ref: a ref/branch were the commit will be applied to
+            query: the query that lead to the commit
+            default_graph: using-graph-uri values from SPARQL protocol
+            named_graph: using-named-graph-uri values from SPARQL protocol
+        """
         def build_message(message, kwargs):
             out = list()
-            for k, v in kwargs.items():
-                if '\n' not in v:
-                    out.append('%s: %s' % (k, v))
-                else:
-                    out.append('%s: "%s"' % (k, v))
             if message:
-                out.append('')
                 out.append(message)
+                out.append('')
+            if query:
+                out.append('query: "{}"'.format(query.replace('"', "\\\"")))
+            if isinstance(default_graph, list) and len(default_graph) > 0:
+                out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
+            if isinstance(named_graph, list) and len(named_graph) > 0:
+                out.append('using-named-graph-uri: {}'.format(', '.join(named_graph)))
+            for k, v in kwargs.items():
+                out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
             return "\n".join(out)
 
         def _apply(f, changeset, identifier):
@@ -440,10 +459,12 @@ class Quit(object):
             try:
                 file_reference, contexts = self.getFileReferenceAndContext(blob, commit)
                 for context in contexts:
-                    changeset = delta.get(context.identifier, [])
-                    if changeset:
-                        _apply(file_reference, changeset, context.identifier)
-                        del delta[context.identifier]
+                    for entry in delta:
+                        changeset = entry.get(context.identifier, None)
+
+                        if changeset:
+                            _apply(file_reference, changeset, context.identifier)
+                            del(entry[context.identifier])
 
                 index.add(file_reference.path, file_reference.content)
 
@@ -454,19 +475,19 @@ class Quit(object):
             except KeyError:
                 pass
 
-        if delta:
-            f_name = self.config.getGlobalFile() or 'unassigned.nq'
-            f_new = FileReference(f_name, "")
-            unassigned = set(graph.store.get_context(i) for i in delta.keys())
-            for identifier, changeset in delta.items():
-                if changeset:
-                    _apply(f_new, changeset, graph.store.identifier)
+        unassigned = set()
+        f_name = self.config.getGlobalFile() or 'unassigned.nq'
+        f_new = FileReference(f_name, "")
+        for entry in delta:
+            for identifier, changeset in entry.items():
+                unassigned.add(graph.store.get_context(identifier))
+                _apply(f_new, changeset, graph.store.identifier)
 
-            index.add(f_new.path, f_new.content)
+                index.add(f_new.path, f_new.content)
 
-            blob = f_name, index.stash[f_new.path][0]
-            self._blobs.set(blob, (f_new, unassigned))
-            blobs_new.add(blob)
+                blob = f_name, index.stash[f_new.path][0]
+                self._blobs.set(blob, (f_new, unassigned))
+                blobs_new.add(blob)
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
@@ -482,7 +503,7 @@ class Quit(object):
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
                     ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
-            self.syncSingle(commit, delta)
+            self.syncSingle(commit)
 
     def garbagecollection(self):
         """Start garbage collection.

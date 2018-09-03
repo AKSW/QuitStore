@@ -6,6 +6,7 @@ import signal
 import sys
 from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InMemoryAggregatedGraph
+from collections import OrderedDict
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -79,7 +80,7 @@ def graphdiff(first, second):
     """
     from rdflib.compare import to_isomorphic, graph_diff
 
-    diffs = {}
+    diffs = OrderedDict()
     iris = set()
 
     if first is not None and isinstance(first, InMemoryAggregatedGraph):
@@ -89,7 +90,7 @@ def graphdiff(first, second):
         second_identifiers = list((g.identifier for g in second.graphs()))
         iris = iris.union(second_identifiers)
 
-    for iri in iris:
+    for iri in sorted(list(iris)):
         changes = diffs.get(iri, [])
 
         if (
