@@ -900,9 +900,10 @@ class QuitAppTestCase(unittest.TestCase):
 
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
-        3. execute SELECT query
+        3. execute SELECT queries (/sparql, /provenance)
         4. execute DELETE INSERT WHERE query
-        5. execute SELECT query
+        5. execute SELECT queries (/sparql, /provenance)
+        6. test results
         """
         # Create queries
         prov = 'SELECT DISTINCT ?op ?s ?p ?o '
@@ -1006,9 +1007,9 @@ class QuitAppTestCase(unittest.TestCase):
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
         4. Execute multioperational update query
-        5. Execute SELECT query
+        5. Execute SELECT query against provenace endpoint
         6. Re-start Quit
-        7. Execute SELECT query
+        7. Re-execute SELECT query against provenance endpoint
         8. Compare both query results
         """
         # Create querystrings
