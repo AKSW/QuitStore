@@ -371,7 +371,7 @@ class SparqlProtocolTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'urn:b'},
                 "o": {'type': 'uri', 'value': 'urn:c'}})
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .', f.read())
+                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .\n', f.read())
 
     def testAbortedMultioperationalUpdate(self):
         """Execute two multioperational Update queries and test store and file content.
@@ -434,7 +434,7 @@ class SparqlProtocolTests(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:III'}})
 
             with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
-                self.assertEqual('<urn:I> <urn:II> <urn:III> <urn:graph> .', f.read())
+                self.assertEqual('<urn:I> <urn:II> <urn:III> <urn:graph> .\n', f.read())
 
             payload = {'update': update2}
 
@@ -452,7 +452,7 @@ class SparqlProtocolTests(unittest.TestCase):
             obj = json.loads(select_resp.data.decode("utf-8"))
             self.assertEqual(len(obj["results"]["bindings"]), 1)
             with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
-                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .', f.read())
+                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .\n', f.read())
             self.assertDictEqual(obj["results"]["bindings"][0], {
                 "s": {'type': 'uri', 'value': 'urn:a'},
                 "p": {'type': 'uri', 'value': 'urn:b'},
@@ -1002,9 +1002,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
     def testDeleteInsertWhereProvenance(self):
         """Test DELETE INSERT WHERE with an empty and a non empty graph with provenance feature.
@@ -1111,9 +1111,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
     def testMultioperationalUpdateProvenance(self):
         """Test multioperational update and compare created provenance information.
@@ -1242,9 +1242,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <http://example.org/> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <http://example.org/> <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <http://aksw.org/> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:1> <urn:2> <http://aksw.org/> <http://example.org/> .\n', f.read())
 
     def testDeleteInsertUsingWhere(self):
         """Test DELETE INSERT WHERE with one graph
@@ -1313,9 +1313,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
 
     def testDeleteMatchWhere(self):
         """Test DELETE WHERE with two non empty graphs.
@@ -1376,9 +1376,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
 
     def testDeleteWhere(self):
         """Test DELETE WHERE with two non empty graphs.
@@ -1434,7 +1434,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
     def testDeleteUsingWhere(self):
         """Test DELETE USING WHERE with two non empty graphs.
@@ -1495,9 +1495,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
 
     def testFeatureProvenance(self):
         """Test if feature is active or not."""
@@ -1799,7 +1799,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .'
+            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n'
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
@@ -1846,7 +1846,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .'
+            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n'
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
@@ -1923,9 +1923,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
 
     def testInsertWhereVariables(self):
         """Test INSERT WHERE with an empty and a non empty graph.
@@ -1996,10 +1996,10 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .', f.read())
+                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .\n', f.read())
 
     def testTwoInsertWhereVariables(self):
         """Test two INSERT WHERE (; concatenated) with an empty and a non empty graph.
@@ -2071,10 +2071,10 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .', f.read())
+                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .\n', f.read())
 
     def testInsertUsingWhere(self):
         """Test INSERT USING WHERE with an empty and a non empty graph.
@@ -2134,9 +2134,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
 
     def testLogfileExists(self):
         """Test if a logfile is created."""
@@ -2419,7 +2419,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .'
+            expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .\n'
 
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
@@ -2458,7 +2458,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # test file content
             expectedFileContent = '<urn:x2> <urn:y2> "literal" <urn:graph> .\n'
-            expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .'
+            expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .\n'
 
             with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
@@ -2558,9 +2558,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
 
     def testWithOnDeleteAndInsertUsing(self):
         """Test WITH on DELETE and INSERT plus USING.
@@ -2631,10 +2631,10 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
                     f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testWithOnDeleteAndInsertUsingNamed(self):
@@ -2709,7 +2709,7 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
                     f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
@@ -2781,9 +2781,9 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
 
     def testWithOnDelete(self):
         """Test WITH on DELETE and not on INSERT.
@@ -2847,10 +2847,10 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:Y> <urn:Z> <http://example.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:Y> <urn:Z> <http://example.org/> .\n', f.read())
 
     def testWithOnDeleteUsing(self):
         """Test WITH on DELETE and not on INSERT plus USING.
@@ -2921,11 +2921,11 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
                     f.read())
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testWithOnDeleteUsingNamed(self):
@@ -2997,7 +2997,7 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .',
+                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
                     f.read())
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
@@ -3075,11 +3075,11 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:2> <urn:3> <http://example.org/> .\n<urn:x> <urn:y> <urn:z> <http://example.org/> .',
+                    '<urn:x> <urn:2> <urn:3> <http://example.org/> .\n<urn:x> <urn:y> <urn:z> <http://example.org/> .\n',
                     f.read())
 
     def testWithOnInsertUsing(self):
@@ -3140,10 +3140,10 @@ class QuitAppTestCase(unittest.TestCase):
 
             # compare file content
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .', f.read())
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('', f.read())
+                self.assertEqual('\n', f.read())
 
 
 if __name__ == '__main__':
