@@ -2,6 +2,7 @@ from tempfile import TemporaryDirectory
 from pygit2 import init_repository, clone_repository, Signature
 from os import path, walk
 from os.path import join
+from rdflib import Graph
 
 
 def createCommit(repository, message=None):
@@ -95,8 +96,43 @@ class TemporaryRepositoryFactory(object):
 
         return tmpRepo
 
-    def withGraphs(self, graphUriContentDict):
+    def noConfigInformations(self, graphContent=''):
+        """Give a TemporaryRepository() initialized with a graph with the given content (and one commit)."""
+        tmpRepo = TemporaryRepository()
+
+        # Add a graph.nq and a graph.nq.graph file
+        with open(path.join(tmpRepo.repo.workdir, "graph.nq"), "w") as graphFile:
+            if graphContent:
+                graphFile.write(graphContent)
+
+        # Add and Commit the empty graph
+        index = tmpRepo.repo.index
+        index.read()
+        index.add("graph.nq")
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withGraphs(self, graphUriContentDict, mode='graphfiles'):
         """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nq)."""
+        uristring = ''
+        configFileContent = """@base <http://quit.aksw.org/vocab/> .
+                                @prefix conf: <http://my.quit.conf/> .
+
+                                conf:store a <QuitStore> ;
+                                  <origin> "git://github.com/aksw/QuitStore.git" ;
+                                  <pathOfGitRepo> "{}" .
+                                {}"""
+
+        graphResource = """conf:graph{} a <Graph> ;
+                            <graphUri> <{}> ;
+                            <graphFile> "{}" ."""
+
         tmpRepo = TemporaryRepository()
         index = tmpRepo.repo.index
         index.read()
@@ -108,14 +144,24 @@ class TemporaryRepositoryFactory(object):
                 if graphContent:
                     graphFile.write(graphContent)
 
-            # Set Graph URI to http://example.org/
-            with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
-                graphFile.write(graphUri)
+            if mode == 'graphfiles':
+                # Set Graph URI to http://example.org/
+                with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
+                    graphFile.write(graphUri)
+                index.add(filename + '.graph')
+            elif mode == 'configfile':
+                uristring += graphResource.format(i, graphUri, filename)
 
             # Add and Commit the empty graph
             index.add(filename)
-            index.add(filename + '.graph')
             i += 1
+        if mode == 'configfile':
+            graph = Graph()
+            with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as configFile:
+                rdf_content = configFileContent.format(tmpRepo.repo.workdir, uristring)
+                graph.parse(format='turtle', data=rdf_content)
+                configFile.write(graph.serialize(format='turtle').decode())
+            index.add('config.ttl')
 
         index.write()
 
