@@ -139,10 +139,8 @@ def provenance():
     """
     quit = current_app.config['quit']
 
-    q = request.values.get('query', None)
-    logger.info('Received provenance query: {}'.format(q))
-
     query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
+    logger.info('Received provenance query: {}'.format(query))
 
     if query is not None and type == 'query':
         if len(named_graph) > 0:
@@ -161,7 +159,7 @@ def provenance():
         if queryType not in ['SelectQuery', 'AskQuery', 'ConstructQuery', 'DescribeQuery']:
             return make_response('Unsupported Query Type', 400)
 
-        res = graph.query(q)
+        res = graph.query(query)
 
         try:
             if queryType in ['SelectQuery', 'AskQuery']:
