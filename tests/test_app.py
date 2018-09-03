@@ -892,6 +892,174 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('', f.read())
 
+    def testDeleteInsertWhereProvenance(self):
+        """Test DELETE INSERT WHERE with an empty and a non empty graph with provenance feature.
+
+        This test must behave like testDeleteInsertWhere plus writing the correct Provenance
+        informations to the provenance store.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute SELECT queries (/sparql, /provenance)
+        4. execute DELETE INSERT WHERE query
+        5. execute SELECT queries (/sparql, /provenance)
+        6. test results
+        """
+        # Create queries
+        prov = 'SELECT DISTINCT ?op ?s ?p ?o '
+        prov += 'WHERE {?activity <http://quit.aksw.org/vocab/updates> ?update ; '
+        prov += '<http://www.w3.org/ns/prov#endedAtTime> ?time . '
+        prov += '?update ?op ?g . GRAPH ?g {?s ?p ?o .} FILTER ( '
+        prov += 'sameTerm(?op, <http://quit.aksw.org/vocab/additions>) '
+        prov += '|| sameTerm(?op, <http://quit.aksw.org/vocab/removals>) ) } '
+        prov += 'ORDER BY ?time ?update ?g ?s ?p ?o'
+
+        select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
+
+        update = 'DELETE {GRAPH <http://example.org/> {?a <urn:y> <urn:z> .}} '
+        update += 'INSERT {GRAPH <http://aksw.org/> {?a <urn:1> "new" .}} '
+        update += 'WHERE {GRAPH <http://example.org/> {?a <urn:y> <urn:z> .}}'
+
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute SELECT query before DELETE INSERT WHERE
+            select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute PROVENANCE query before DELETE INSERT WHERE
+            prov_before = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+
+            # execute DELETE INSERT WHERE query
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute SELECT query after DELETE INSERT WHERE
+            select_resp_after = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            # execute PROVENANCE query after DELETE INSERT WHERE
+            prov_after = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+
+            # test select before
+            obj = json.loads(select_resp_before.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://example.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test prov before
+            changesets = json.loads(prov_before.data.decode("utf-8"))
+            self.assertEqual(len(changesets["results"]["bindings"]), 1)
+            self.assertDictEqual(changesets["results"]["bindings"][0], {
+                "op": {'type': 'uri', 'value': 'http://quit.aksw.org/vocab/additions'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # test select after
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "g": {'type': 'uri', 'value': 'http://aksw.org/'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:1'},
+                "o": {'type': 'literal', 'value': 'new'}})
+
+            # test prov after
+            changesets = json.loads(prov_after.data.decode("utf-8"))
+            self.assertEqual(len(changesets["results"]["bindings"]), 3)
+            self.assertDictEqual(changesets["results"]["bindings"][0], {
+                "op": {'type': 'uri', 'value': 'http://quit.aksw.org/vocab/additions'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+            self.assertDictEqual(changesets["results"]["bindings"][1], {
+                "op": {'type': 'uri', 'value': 'http://quit.aksw.org/vocab/additions'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:1'},
+                "o": {'type': 'literal', 'value': 'new'}})
+            self.assertDictEqual(changesets["results"]["bindings"][2], {
+                "op": {'type': 'uri', 'value': 'http://quit.aksw.org/vocab/removals'},
+                "s": {'type': 'uri', 'value': 'urn:x'},
+                "p": {'type': 'uri', 'value': 'urn:y'},
+                "o": {'type': 'uri', 'value': 'urn:z'}})
+
+            # compare file content
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+                self.assertEqual('', f.read())
+
+    def testMultioperationalUpdateProvenance(self):
+        """Test multioperational update and compare created provenance information.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        4. Execute multioperational update query
+        5. Execute SELECT query against provenace endpoint
+        6. Re-start Quit
+        7. Re-execute SELECT query against provenance endpoint
+        8. Compare both query results
+        """
+        # Create querystrings
+        prov = 'SELECT DISTINCT ?op ?s ?p ?o '
+        prov += 'WHERE {?activity <http://quit.aksw.org/vocab/updates> ?update ; '
+        prov += '<http://www.w3.org/ns/prov#endedAtTime> ?time . '
+        prov += '?update ?op ?g . GRAPH ?g {?s ?p ?o .} FILTER ( '
+        prov += 'sameTerm(?op, <http://quit.aksw.org/vocab/additions>) '
+        prov += '|| sameTerm(?op, <http://quit.aksw.org/vocab/removals>) ) } '
+        prov += 'ORDER BY ?time ?update ?g ?s ?p ?o'
+
+        update = 'INSERT DATA {graph <http://example.org/> {<urn:1> <urn:2> <urn:3> . <urn:11> <urn:22> <urn:33>. }}; '
+        update += 'INSERT DATA {graph <http://aksw.org/> {<urn:do> <urn:something> <urn:here> }}; '
+        update += 'DELETE {GRAPH <http://example.org/> {<urn:1> <urn:2> <urn:3> .}} '
+        update += 'INSERT {GRAPH <http://example.org/> {<urn:I> <urn:II> <urn:III> .}} '
+        update += 'WHERE {GRAPH <http://example.org/> {<urn:1> <urn:2> <urn:3> .}}'
+
+        # Prepate a git Repository
+        repoContent = {'http://example.org/': '', 'http://aksw.org/': ''}
+
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute multioperational update query
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            # execute PROVENANCE query
+            prov_1 = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+            changesets_1 = json.loads(prov_1.data.decode("utf-8"))
+
+            # re-start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            # execute PROVENANCE query again
+            prov_2 = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
+            changesets_2 = json.loads(prov_2.data.decode("utf-8"))
+
+            # compare provenance queries
+            self.assertDictEqual(changesets_1, changesets_2)
+
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
     def testDeleteInsertUsingNamedWhere(self):
         """Test DELETE INSERT WHERE with one graph
