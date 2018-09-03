@@ -98,6 +98,7 @@ class Quit(object):
         self.store = store
         self._commits = Cache()
         self._blobs = Cache()
+        self._configs = Cache()
 
     def _exists(self, cid):
         uri = QUIT['commit-' + cid]
