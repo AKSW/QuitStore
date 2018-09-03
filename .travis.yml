@@ -1,9 +1,9 @@
 language: python
 python:
-    - "3.4"
-    - "3.5"
-    - "3.6"
-    - "3.6-dev" # 3.6 development branch
+    - "3.4" # debian jessie, lts 2020-04
+    - "3.5" # debian stretch, lts 2022-06
+    - "3.6" # debian buster, testing as of 2018-09
+    - "3.7" # current stable python as of 2018-09
     - "3.7-dev" # 3.7 development branch
     - "nightly"
 
