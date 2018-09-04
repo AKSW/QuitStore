@@ -1,14 +1,15 @@
 language: python
 python:
-    - "3.4"
-    - "3.5"
-    - "3.5-dev" # 3.5 development branch
-    - "3.6-dev" # 3.6 development branch
-    - "nightly" # currently points to 3.7-dev
+    - "3.4" # debian jessie, lts 2020-04
+    - "3.5" # debian stretch, lts 2022-06
+    - "3.6" # debian buster, testing as of 2018-09
+    - "3.7-dev" # 3.7 development branch
+    - "nightly"
 
 matrix:
     allow_failures:
-        - python: nightly
+        - python: "3.7-dev"
+        - python: "nightly"
 
 dist: trusty
 sudo: required
