@@ -68,6 +68,7 @@ def initialize(args):
             repository=args.repourl,
             configmode=args.configmode,
             features=args.features,
+            namespace=args.namespace,
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -120,10 +121,13 @@ def parseArgs(args):
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
     targethelp = 'The directory of the local store repository.'
+    namespacehelp = """A base namespace that will be applied when dealing with relative URIs in
+                    SPARQL UPDATE queries."""
 
     port_default = 5000
     logfile_default = None
     basepath_default = None
+    namespace_default = 'http://quit.instance/'
     targetdir_default = None
     configfile_default = "config.ttl"
 
@@ -136,6 +140,9 @@ def parseArgs(args):
     if 'QUIT_BASEPATH' in os.environ:
         basepath_default = os.environ['QUIT_BASEPATH']
 
+    if 'QUIT_NAMESPACE' in os.environ:
+        namespace = os.environ['QUIT_NAMESPACE']
+
     if 'QUIT_TARGETDIR' in os.environ:
         targetdir_default = os.environ['QUIT_TARGETDIR']
 
@@ -144,6 +151,8 @@ def parseArgs(args):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
+    parser.add_argument(
+        '-n', '--namespace', type=str, default=namespace_default, help=namespacehelp)
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-vv', '--verboseverbose', action='store_true')

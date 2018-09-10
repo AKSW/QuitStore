@@ -14,7 +14,7 @@ from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
 from collections import defaultdict
 from itertools import tee
-
+from quit.exceptions import UnSupportedQuery
 
 def _append(dct, identifier, action, items):
     if items:
@@ -187,6 +187,7 @@ def evalModify(ctx, u):
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
         otherDefault = False
+
         for d in u.using:
             if d.default:
 
@@ -198,9 +199,14 @@ def evalModify(ctx, u):
 
                 ctx.load(d.default, default=True)
 
+            # TODO re-enable original behaviour if USING NAMED works with named graphs
+            # https://github.com/AKSW/QuitStore/issues/144
             elif d.named:
-                g = d.named
-                ctx.load(g, default=False)
+                if otherDefault:
+                    ctx = originalctx  # restore original default graph
+                raise UnSupportedQuery
+            #     g = d.named
+            #     ctx.load(g, default=False)
 
     # "The WITH clause provides a convenience for when an operation
     # primarily refers to a single graph. If a graph name is specified
@@ -211,8 +217,10 @@ def evalModify(ctx, u):
     # graphs referred to in USING clauses and/or USING NAMED clauses,
     # the WITH clause will be ignored while evaluating the WHERE
     # clause."
+    graphName = 'default'
     if not u.using and u.withClause:
         g = ctx.dataset.get_context(u.withClause)
+        graphName = str(g.identifier)
         ctx = ctx.pushGraph(g)
 
     _res = evalPart(ctx, u.where)
@@ -222,32 +230,31 @@ def evalModify(ctx, u):
             ctx = originalctx  # restore original default graph
         if u.withClause:
             g = ctx.dataset.get_context(u.withClause)
+            graphName = str(g.identifier)
             ctx = ctx.pushGraph(g)
 
     for c in _res:
         dg = ctx.graph
         if u.delete:
-            filled = _fillTemplate(u.delete.triples, c)
-            for item in filled:
-                triple = (item[0], item[1], item[2])
-                _append(res["delta"], 'default', 'removals', list(filled))
+            filled, filled_delta = tee(_fillTemplate(u.delete.triples, c))
+            _append(res["delta"], graphName, 'removals', list(filled_delta))
             dg -= filled
 
             for g, q in u.delete.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
-                filledq = _fillTemplate(q, c)
-                _append(res["delta"], cg.identifier, 'removals', list(filledq))
+                filledq, filledq_delta = tee(_fillTemplate(q, c))
+                _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
                 cg -= filledq
 
         if u.insert:
-            filled = _fillTemplate(u.insert.triples, c)
-            _append(res["delta"], 'default', 'additions', list(filled))
+            filled, filled_delta = tee(_fillTemplate(u.insert.triples, c))
+            _append(res["delta"], graphName, 'additions', list(filled_delta))
             dg += filled
 
             for g, q in u.insert.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
-                filledq = _fillTemplate(q, c)
-                _append(res["delta"], cg.identifier, 'additions', list(filledq))
+                filledq, filledq_delta = tee(_fillTemplate(q, c))
+                _append(res["delta"], cg.identifier, 'additions', list(filledq_delta))
                 cg += filledq
 
     return res
@@ -386,7 +393,9 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                     res.append(result)
             else:
                 raise Exception('Unknown update operation: %s' % (u,))
+        except UnSupportedQuery as e:
+            return res, e
         except Exception:
             if not u.silent:
                 raise
-    return res
+    return res, None
