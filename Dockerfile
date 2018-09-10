@@ -20,8 +20,6 @@ RUN git clone --depth 1 --branch v0.25.1 https://github.com/libgit2/libgit2.git 
     && ldconfig \
     && cd ../.. && rm -r libgit2
 
-#RUN mkdir -p /usr/src/app
-
 RUN useradd -md /usr/src/app quit
 USER quit
 WORKDIR /usr/src/app
