@@ -36,7 +36,7 @@ COPY docker/config.ttl /etc/quit/
 ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
 ENV QUIT_LOGFILE="/var/log/quit.log"
 
-RUN mkdir /data
+RUN mkdir /data && chown quit /data
 RUN touch $QUIT_LOGFILE && chown quit $QUIT_LOGFILE
 
 USER quit
