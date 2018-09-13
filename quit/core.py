@@ -10,7 +10,7 @@ from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal
 from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
-from quit.conf import Feature
+from quit.conf import Feature, QuitGraphConfiguration
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff, git_timestamp
@@ -98,7 +98,7 @@ class Quit(object):
         self.store = store
         self._commits = Cache()
         self._blobs = Cache()
-        self._configs = Cache()
+        self._graphconfigs = Cache()
 
     def _exists(self, cid):
         uri = QUIT['commit-' + cid]
@@ -291,7 +291,12 @@ class Quit(object):
                     g.addN((s, p, o, op_uri) for s, p, o in triples)
 
         # Entities
-        map = self.config.getgraphurifilemap()
+        if commit.id not in self._graphconfigs:
+            graphconf = QuitGraphConfiguration(self.repository._repository)
+            graphconf.initgraphconfig(commit.id)
+            self._graphconfigs.set(commit.id, graphconf)
+
+        map = self._graphconfigs.get(commit.id).getgraphurifilemap()
 
         for entity in commit.node().entries(recursive=True):
             # todo check if file was changed
@@ -300,7 +305,7 @@ class Quit(object):
                 if entity.name not in map.values():
                     continue
 
-                graphUris = self.config.getgraphuriforfile(entity.name)
+                graphUris = self._graphconfigs.get(commit.id).getgraphuriforfile(entity.name)
                 graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
 
                 blob = (entity.name, entity.oid)
@@ -358,10 +363,16 @@ class Quit(object):
 
         On Cache miss this method also updates the commits cache.
         """
-        uriFileMap = self.config.getgraphurifilemap()
 
         if commit.id not in self._commits:
+            if commit.id not in self._graphconfigs:
+                graphconf = QuitGraphConfiguration(self.repository._repository)
+                graphconf.initgraphconfig(commit.id)
+                self._graphconfigs.set(commit.id, graphconf)
+
+            uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
             blobs = set()
+
             for entity in commit.node().entries(recursive=True):
                 if entity.is_file:
                     if entity.name not in uriFileMap.values():
@@ -377,13 +388,18 @@ class Quit(object):
 
         On Cache miss this method also updates teh commits cache.
         """
-        uriFileMap = self.config.getgraphurifilemap()
+        if commit.id not in self._graphconfigs:
+            graphconf = QuitGraphConfiguration(self.repository._repository)
+            graphconf.initgraphconfig(commit.id)
+            self._graphconfigs.set(commit.id, graphconf)
+
+        uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
 
         if blob not in self._blobs:
             (name, oid) = blob
             content = commit.node(path=name).content
             # content = self.repository._repository[oid].data
-            graphUris = self.config.getgraphuriforfile(name)
+            graphUris = self._graphconfigs.get(commit.id).getgraphuriforfile(name)
             graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
             tmp = ConjunctiveGraph()
             tmp.parse(data=content, format='nquads')

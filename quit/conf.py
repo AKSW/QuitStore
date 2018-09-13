@@ -28,6 +28,7 @@ class Feature:
 class QuitConfiguration:
     quit = Namespace('http://quit.aksw.org/vocab/')
 
+
 class QuitStoreConfiguration(QuitConfiguration):
     """A class that provides information about settings, filesystem and git."""
     def __init__(
@@ -216,38 +217,36 @@ class QuitGraphConfiguration(QuitConfiguration):
             self.nsMngrGraphconf = NamespaceManager(self.graphconf)
             self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
 
-        rdf_files, config_files = self.get_files_from_repository(rev)
+        graph_files, config_files, rdf_files = self.get_blobs_from_repository(rev)
 
-        if len(rdf_files) == 0 and len(config_files) == 0:
+        if len(graph_files) == 0 and len(config_files) == 0:
             raise InvalidConfigurationError(
                 "Did not find graphfiles or a QuitStore configuration file.")
-        elif len(rdf_files) > 0 and len(config_files) > 0:
+        elif len(graph_files) > 0 and len(config_files) > 0:
             raise InvalidConfigurationError(
                 "Conflict. Found graphfiles and QuitStore configuration file.")
-        elif len(rdf_files) > 0:
+        elif len(graph_files) > 0:
             self.mode = 'graphfiles'
-            self.__init_graph_conf_with_blobs(rdf_files, rev)
+            self.__init_graph_conf_with_blobs(graph_files, rev)
         elif len(config_files) == 1:
             self.mode = 'configuration'
-            self.__init_graph_conf_from_configuration(config_files[0], rev)
+            self.__init_graph_conf_from_configuration(config_files[0], rdf_files)
         else:
             raise InvalidConfigurationError(
                 "Conflict. Found more than one QuitStore configuration file.")
-
-        try:
-            self.__read_graph_conf()
-        except InvalidConfigurationError as e:
-            raise e
 
     def __init_graph_conf_with_blobs(self, files, rev):
         """Init a repository by analyzing all existing files."""
         for file, values in files.items():
             format = values[0]
             graphFileId = values[1]
-            graphuri = self.__getUriFromGraphfileBlob(graphFileId)
+            graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
 
             if graphuri and format == 'nquads':
                 self.addgraph(file=file, graphuri=graphuri, format=format)
+                self.graphs[graphuri] = file
+                self.files[file] = {
+                    'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
             elif graphuri is None and format == 'nquads':
                 tmpgraph = ConjunctiveGraph(identifier='default')
 
@@ -267,6 +266,9 @@ class QuitGraphConfiguration(QuitConfiguration):
 
                 if len(founduris) == 1:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
+                    self.graphs[graphuri] = file
+                    self.files[file] = {
+                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
                 elif len(founduris) > 1:
                     logger.info("No named graph found. {} skipped.".format(file))
                 elif len(founduris) < 1:
@@ -275,14 +277,17 @@ class QuitGraphConfiguration(QuitConfiguration):
             elif format == 'nt':
                 if graphuri:
                     self.addgraph(file=file, graphuri=graphuri, format=format)
+                    self.graphs[graphuri] = file
+                    self.files[file] = {
+                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
                 else:
                     logger.warning('No *.graph file found. ' + file + ' skipped.')
 
-    def __init_graph_conf_from_configuration(self, configfileId):
+    def __init_graph_conf_from_configuration(self, configfileId, known_blobs):
         """Init graphs with setting from config.ttl."""
         try:
             configfile = self.repository.get(configfileId)
-        except:
+        except Exception as e:
             raise InvalidConfigurationError(
                 "Blob for configfile with id {} not found in repository {}".format(configfileId, e))
 
@@ -294,37 +299,6 @@ class QuitGraphConfiguration(QuitConfiguration):
             raise InvalidConfigurationError(
                 "Configfile could not be parsed {} {}".format(configfileId, e)
             )
-
-    def __getUriFromGraphfileBlob(self, id):
-        """Search for a graph uri in graph file and return it.
-
-        Args:
-            graphfile: String containing the path of a graph file
-
-        Returns:
-            graphuri: String with the graph URI
-        """
-        blob = self.repository.get(id)
-        content = blob.read_raw().decode().strip()
-        uri = urlparse(content.strip())
-        # try:
-        #     with open(graphfile, 'r') as f:
-        #         graphuri = f.readline().strip()
-        # except FileNotFoundError:
-        #     logger.debug("File not found {}".format(graphfile))
-        #     return
-        #
-        # try:
-        #     urlparse(graphuri)
-        #     logger.debug("Graph URI {} found in {}".format(graphuri, graphfile))
-        # except Exception:
-        #     graphuri = None
-        #     logger.debug("No graph URI found in {}".format(graphfile))
-
-        return content
-
-    def __read_graph_conf(self):
-        """Set all URIs and file paths of graphs that are configured in config.ttl."""
         nsQuit = 'http://quit.aksw.org/vocab/'
         query = 'SELECT DISTINCT ?graphuri ?filename ?format WHERE { '
         query += '  ?graph a <' + nsQuit + 'Graph> . '
@@ -342,19 +316,43 @@ class QuitGraphConfiguration(QuitConfiguration):
                 format = str(row['format'])
             if format not in ['nt', 'nquads']:
                 break
+            if filename not in known_blobs.keys():
+                break
 
             graphuri = URIRef(str(row['graphuri']))
 
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
-            # and furthermore we assume that one file can contain data of more
-            # than one named graph and so we store for each file a set of graphs
-            if filename in self.files.keys():
-                self.files[filename]['graphs'].append(graphuri)
-            else:
-                self.files[filename] = {'serialization': format, 'graphs': [graphuri]}
+            self.files[filename] = {
+                'serialization': format, 'graphs': [graphuri], 'oid': known_blobs[filename]}
 
-        return
+    def __get_uri_from_graphfile_blob(self, oid):
+        """Search for a graph uri in graph file and return it.
+
+        Args
+        ----
+           oid: String oid of a graph file
+
+        Returns
+        -------
+            graphuri: String with the graph URI
+
+        """
+        try:
+            blob = self.repository.get(oid)
+        except ValueError:
+            logger.debug("Object with OID { } not found in repository.".format(oid))
+            return
+
+        content = blob.read_raw().decode().strip()
+
+        try:
+            urlparse(content)
+        except Exception:
+            logger.debug("No graph URI found in blob with OID {}.".format(oid))
+            return
+
+        return content
 
     def addgraph(self, graphuri, file, format=None):
         self.graphconf.add((self.quit[quote(graphuri)], RDF.type, self.quit.Graph))
@@ -373,27 +371,34 @@ class QuitGraphConfiguration(QuitConfiguration):
     def getgraphs(self):
         """Get all graphs known to conf.
 
-        Returns:
+        Returns
+        -------
             A list containig all graph uris as string,
+
         """
         return self.graphs
 
     def getfiles(self):
         """Get all files known to conf.
 
-        Returns:
+        Returns
+        -------
             A list containig all files as string,
+
         """
         return self.files
 
     def getfileforgraphuri(self, graphuri):
         """Get the file for a given graph uri.
 
-        Args:
+        Args
+        ----
             graphuri: A String of the named graph
 
-        Returns:
+        Returns
+        -------
             A string of the path to the file asociated with named graph
+
         """
         if isinstance(graphuri, str):
             graphuri = URIRef(graphuri)
@@ -406,20 +411,24 @@ class QuitGraphConfiguration(QuitConfiguration):
     def getgraphurifilemap(self):
         """Get the dictionary of graphuris and their files.
 
-        Returns:
-            A dictionary of graphuris and information about their files.
-        """
+        Returns
+        -------
+            A dictionary of graphuris and information about their representation in repository.
 
+        """
         return self.graphs
 
     def getserializationoffile(self, file):
         """Get the file for a given graph uri.
 
-        Args:
+        Args
+        ----
             file: A String of a file path
 
-        Returns:
+        Returns
+        -------
             A string containing the RDF serialization of file
+
         """
         if file in self.files.keys():
             return self.files[file]['serialization']
@@ -429,42 +438,52 @@ class QuitGraphConfiguration(QuitConfiguration):
     def getgraphuriforfile(self, file):
         """Get the file for a given graph uri.
 
-        Args:
+        Args
+        ----
             file: A String of a file path
 
-        Returns:
+        Returns
+        -------
             A set containing strings of graph uris asociated to that file
+
         """
         if file in self.files:
             return self.files[file]['graphs']
 
         return []
 
-    def get_files_from_repository(self, rev):
-        """Get rdf files and QuitStore configuration files from git repository.
+    def get_blobs_from_repository(self, rev):
+        """Analyze all blobs of a revision.
 
-        Returns:
-            A dictionary filepathes and format and a list of configuration files.
+        Returns
+        -------
+            A triple (dictionary, list, dictionary)
+            dict: containg names of rdf-files plus their format and oid of graph file.
+            list: containing names of config files.
+            dict: containing names rdf files plus format and oid.
+
         """
-        configfiles = []
-        graphfiles = {}
+        config_files = []
+        graph_files = {}
         commit = self.repository.revparse_single(rev)
         graph_file_blobs = {}
+        rdf_file_blobs = {}
 
-        # Collect grahfiles
-        for entry in commit.tree:
-            if entry.type == 'blob' and entry.name.endswith('.graph'):
-                graph_file_blobs[entry.name] = entry.id
-
-        # Collect RDF files and configfiles
+        # Collect graph files, rdf files and config files
         for entry in commit.tree:
             if entry.type == 'blob':
                 format = guess_format(entry.name)
-                if entry.name.endswith('quit.ttl') or entry.name.endswith('config.ttl'):
-                    configfiles.append(entry.id)
+                if format is None and entry.name.endswith('.graph'):
+                    graph_file_blobs[entry.name] = entry.id
                 elif format is not None and format in ['nquads', 'nt']:
-                    if str(entry.name) + '.graph' in graph_file_blobs.keys():
-                        graphFileBlobId = graph_file_blobs[entry.name + '.graph']
-                        graphfiles[str(entry.name)] = (format, graphFileBlobId)
+                    rdf_file_blobs[entry.name] = (entry.id, format)
+                elif format is not None and entry.name == 'config.ttl':
+                    config_files.append(str(entry.id))
 
-        return graphfiles, configfiles
+        # collect pairs of rdf files and graph files
+        for filename in rdf_file_blobs.keys():
+            if filename + '.graph' in graph_file_blobs.keys():
+                graph_file_blob_id = graph_file_blobs[filename + '.graph']
+                graph_files[filename] = (rdf_file_blobs[filename][1], str(graph_file_blob_id))
+
+        return graph_files, config_files, rdf_file_blobs

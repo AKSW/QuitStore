@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from quit.conf import Feature, QuitConfiguration
+from quit.conf import Feature, QuitStoreConfiguration
 from quit.exceptions import InvalidConfigurationError
 import rdflib.plugins.sparql
 from rdflib.plugins.sparql.algebra import SequencePath
@@ -98,11 +98,10 @@ def initialize(args):
         'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
 
     try:
-        config = QuitConfiguration(
+        config = QuitStoreConfiguration(
             configfile=args.configfile,
             targetdir=args.targetdir,
-            repository=args.repourl,
-            configmode=args.configmode,
+            upstream=args.repourl,
             features=args.features,
             namespace=args.namespace,
         )
@@ -111,14 +110,9 @@ def initialize(args):
         sys.exit('Exiting quit')
 
     # since repo is handled, we can add graphs to config
-    config.initgraphconfig()
 
-    logger.info('QuitStore successfully running.')
-    logger.info('Known graphs: ' + str(config.getgraphs()))
-    logger.info('Known files: ' + str(config.getfiles()))
+    logger.info('QuitStore Configuration initialized.')
     logger.debug('Path of Gitrepo: ' + config.getRepoPath())
-    logger.debug('Config mode: ' + str(config.getConfigMode()))
-    logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'config': config}
 
