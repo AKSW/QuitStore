@@ -201,8 +201,8 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
-    parser.add_argument('--flask-debug', action='store_false')
-    parser.add_argument('--defaultgraph-union', action='store_false')
+    parser.add_argument('--flask-debug', action='store_true')
+    parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         default=Feature.Unknown,
                         help=featurehelp)
