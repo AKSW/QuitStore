@@ -171,7 +171,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testInitNotExistingsRepo(self):
         dir = TemporaryDirectory()
 
-        repo = quit.git.Repository(self.dir.name)
+        repo = quit.git.Repository(dir.name, create=True)
         self.assertFalse(repo.is_bare)
         self.assertEqual(len(repo.revisions()), 0)
 
@@ -179,7 +179,7 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testInitEmptyRepo(self):
         self.addfile()
-        repo = quit.git.Repository(self.dir.name)
+        repo = quit.git.Repository(self.dir.name, create=True)
         self.assertFalse(repo.is_bare)
         self.assertEqual(len(repo.revisions()), 0)
 
