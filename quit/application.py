@@ -86,10 +86,6 @@ def initialize(args):
     rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS = False
 
     register(
-        'nquad-ordered', Serializer,
-        'quit.plugins.serializers.nquadsordered', 'OrderedNQuadsSerializer')
-
-    register(
         'sparql', Processor,
         'quit.tools.processor', 'SPARQLProcessor')
 
