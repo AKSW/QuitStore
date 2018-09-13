@@ -2,16 +2,11 @@
 
 block_cipher = None
 
-from PyInstaller.utils.hooks import collect_submodules
-
-hiddenimports = collect_submodules('rdflib.plugins')
-hiddenimports.append('quit.tools.processor')
-
 a = Analysis(['quit/run.py'],
              pathex=['.'],
              binaries=[],
              datas=[('quit/web/templates/*', 'quit/web/templates/'), ('quit/web/static/css/*', 'quit/web/static/css'), ('quit/web/static/fonts/*', 'quit/web/static/fonts'), ('quit/web/static/js/*', 'quit/web/static/js')],
-             hiddenimports=hiddenimports,
+             hiddenimports=['quit.tools.processor'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
