@@ -2,19 +2,23 @@ import pygit2
 
 import logging
 
+from copy import copy
+
 from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
 from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal
-from rdflib.plugins.serializers.nquads import _nq_row as _nq
 
 from quit.conf import Feature, QuitGraphConfiguration
+from quit.helpers import applyChangeset
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
 from quit.utils import graphdiff, git_timestamp
 from quit.cache import Cache, FileReference
+
+from urllib.parse import quote_plus
 
 import subprocess
 
@@ -292,9 +296,7 @@ class Quit(object):
 
         # Entities
         if commit.id not in self._graphconfigs:
-            graphconf = QuitGraphConfiguration(self.repository._repository)
-            graphconf.initgraphconfig(commit.id)
-            self._graphconfigs.set(commit.id, graphconf)
+            self.updateGraphConfig(commit.id)
 
         map = self._graphconfigs.get(commit.id).getgraphurifilemap()
 
@@ -366,9 +368,7 @@ class Quit(object):
 
         if commit.id not in self._commits:
             if commit.id not in self._graphconfigs:
-                graphconf = QuitGraphConfiguration(self.repository._repository)
-                graphconf.initgraphconfig(commit.id)
-                self._graphconfigs.set(commit.id, graphconf)
+                self.updateGraphConfig(commit.id)
 
             uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
             blobs = set()
@@ -389,9 +389,7 @@ class Quit(object):
         On Cache miss this method also updates teh commits cache.
         """
         if commit.id not in self._graphconfigs:
-            graphconf = QuitGraphConfiguration(self.repository._repository)
-            graphconf.initgraphconfig(commit.id)
-            self._graphconfigs.set(commit.id, graphconf)
+            self.updateGraphConfig(commit.id)
 
         uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
 
@@ -406,8 +404,7 @@ class Quit(object):
             contexts = set((context for context in tmp.contexts(None)
                             if context.identifier in uriFileMap)) | graphsFromConfig
             quitWorkingData = (FileReference(name, content), contexts)
-            self._blobs.set(
-                blob, quitWorkingData)
+            self._blobs.set(blob, quitWorkingData)
             return quitWorkingData
         return self._blobs.get(blob)
 
@@ -445,19 +442,44 @@ class Quit(object):
                 out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
             return "\n".join(out)
 
-        def _apply(f, changeset, identifier):
-            """Update the FileReference (graph uri) of a file with help of the changeset."""
-            for (op, triples) in changeset:
-                if op == 'additions':
-                    for triple in triples:
-                        # the internal _nq serializer appends '\n'
-                        line = _nq(triple, identifier).rstrip()
-                        f.add(line)
-                elif op == 'removals':
-                    for triple in triples:
-                        # the internal _nq serializer appends '\n'
-                        line = _nq(triple, identifier).rstrip()
-                        f.remove(line)
+        def _applyKnownGraphs(delta, blobs):
+            blobs_new = set()
+            for blob in blobs:
+                (fileName, oid) = blob
+                try:
+                    file_reference, contexts = self.getFileReferenceAndContext(blob, parent_commit)
+                    for context in contexts:
+                        for entry in delta:
+                            changeset = entry.get(context.identifier, None)
+
+                            if changeset:
+                                applyChangeset(file_reference, changeset, context.identifier)
+                                del(entry[context.identifier])
+
+                    index.add(file_reference.path, file_reference.content)
+
+                    self._blobs.remove(blob)
+                    blob = fileName, index.stash[file_reference.path][0]
+                    self._blobs.set(blob, (file_reference, contexts))
+                    blobs_new.add(blob)
+                except KeyError:
+                    pass
+            return blobs_new
+
+        def _applyUnknownGraphs(delta):
+            new_contexts = {}
+            for entry in delta:
+                for identifier, changeset in entry.items():
+                    if isinstance(identifier, BNode) or identifier == 'default':
+                        continue  # TODO
+
+                    fileName = quote_plus(identifier + '.nq')
+                    if identifier not in new_contexts.keys():
+                        new_contexts[identifier] = FileReference(fileName, '')
+
+                    fileReference = new_contexts[identifier]
+                    applyChangeset(fileReference, changeset, identifier)
+            return new_contexts
 
         if not delta:
             return
@@ -477,40 +499,37 @@ class Quit(object):
                 pass
         index = self.repository.index(parent_commit_id)
 
-        for blob in blobs:
-            (fileName, oid) = blob
-            try:
-                file_reference, contexts = self.getFileReferenceAndContext(blob, parent_commit)
-                for context in contexts:
-                    for entry in delta:
-                        changeset = entry.get(context.identifier, None)
+        if parent_commit_id not in self._graphconfigs:
+            self.updateGraphConfig(parent_commit_id)
 
-                        if changeset:
-                            _apply(file_reference, changeset, context.identifier)
-                            del(entry[context.identifier])
+        graphconfig = self._graphconfigs.get(parent_commit_id)
 
-                index.add(file_reference.path, file_reference.content)
+        try:
+            blobs = self.getFilesForCommit(parent_commit)
+        except KeyError:
+            blobs = []
 
-                self._blobs.remove(blob)
-                blob = fileName, index.stash[file_reference.path][0]
-                self._blobs.set(blob, (file_reference, contexts))
-                blobs_new.add(blob)
-            except KeyError:
-                pass
+        blobs_new = _applyKnownGraphs(delta, blobs)
+        new_contexts = _applyUnknownGraphs(delta)
+        new_config = copy(graphconfig)
 
-        unassigned = set()
-        f_name = self.config.getGlobalFile() or 'unassigned.nq'
-        f_new = FileReference(f_name, "")
-        for entry in delta:
-            for identifier, changeset in entry.items():
-                unassigned.add(graph.store.get_context(identifier))
-                _apply(f_new, changeset, graph.store.identifier)
+        for identifier, fileReference in new_contexts.items():
+            # Add new blobs to repo
+            index.add(fileReference.path, fileReference.content)
+            if graphconfig.mode == 'graphfiles':
+                index.add(fileReference.path + '.graph', identifier)
 
-                index.add(f_new.path, f_new.content)
-
-                blob = f_name, index.stash[f_new.path][0]
-                self._blobs.set(blob, (f_new, unassigned))
-                blobs_new.add(blob)
+            # Update config
+            new_config.addgraph(identifier, fileReference.path, 'nquads')
+            # Update Cache and add new contexts to store
+            blob = fileReference.path, index.stash[fileReference.path][0]
+            tmpRepo = ConjunctiveGraph()
+            tmpRepo.parse(format='nquads', data=fileReference.content)
+            # contexts = set(context for context in tmpRepo.contexts(None))
+            self._blobs.set(blob, (fileReference, set(tmpRepo.get_context(identifier))))
+            blobs_new.add(blob)
+        if graphconfig.mode == 'configuration':
+            index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())
 
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
@@ -545,3 +564,9 @@ class Quit(object):
         except Exception as e:
             logger.debug('Git garbage collection failed to spawn.')
             logger.debug(e)
+
+    def updateGraphConfig(self, commitId):
+        """Update the graph configuration for a given commit id."""
+        graphconf = QuitGraphConfiguration(self.repository._repository)
+        graphconf.initgraphconfig(commitId)
+        self._graphconfigs.set(commitId, graphconf)
