@@ -220,8 +220,7 @@ class QuitGraphConfiguration(QuitConfiguration):
         graph_files, config_files, rdf_files = self.get_blobs_from_repository(rev)
 
         if len(graph_files) == 0 and len(config_files) == 0:
-            raise InvalidConfigurationError(
-                "Did not find graphfiles or a QuitStore configuration file.")
+            self.mode = 'graphfiles'
         elif len(graph_files) > 0 and len(config_files) > 0:
             raise InvalidConfigurationError(
                 "Conflict. Found graphfiles and QuitStore configuration file.")
@@ -465,9 +464,12 @@ class QuitGraphConfiguration(QuitConfiguration):
         """
         config_files = []
         graph_files = {}
-        commit = self.repository.revparse_single(rev)
         graph_file_blobs = {}
         rdf_file_blobs = {}
+        try:
+            commit = self.repository.revparse_single(rev)
+        except Exception:
+            return graph_files, config_files, rdf_file_blobs
 
         # Collect graph files, rdf files and config files
         for entry in commit.tree:
