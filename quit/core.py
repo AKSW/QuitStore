@@ -470,7 +470,7 @@ class Quit(object):
             new_contexts = {}
             for entry in delta:
                 for identifier, changeset in entry.items():
-                    if isinstance(identifier, BNode) or identifier == 'default':
+                    if isinstance(identifier, BNode) or str(identifier) == 'default':
                         continue  # TODO
 
                     fileName = quote_plus(identifier + '.nq')
