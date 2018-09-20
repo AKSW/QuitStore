@@ -2,6 +2,7 @@ from context import quit
 import os
 from os import path
 
+from urllib.parse import quote_plus
 from datetime import datetime
 from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
 import quit.application as quitApp
@@ -522,7 +523,6 @@ class SparqlProtocolTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'urn:y'},
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
-
     def testQueryProvenanceViaGet(self):
         # Prepate a git Repository
         content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
@@ -637,7 +637,9 @@ class SparqlProtocolTests(unittest.TestCase):
             response = app.post('/provenance', data=self.update, headers=headers)
             self.assertEqual(response.status_code, 400)
 
+
 class QuitAppTestCase(unittest.TestCase):
+    """Test API and synchronization of Store and Git."""
 
     author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
     comitter = Signature('QuitStoreTest', 'quit@quit.aksw.org')
@@ -3189,6 +3191,93 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
                 self.assertEqual('\n', f.read())
+
+
+class FileHandlingTests(unittest.TestCase):
+    def testNewNamedGraph(self):
+        """Test if a new graph is added to the repository.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute Update query
+        4. check filesystem for new .nq and .nq.graph file with expected content
+        """
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+            filename = quote_plus('http://aksw.org/') + '.nq'
+
+            self.assertFalse(path.isfile(path.join(repo.workdir, filename)))
+            self.assertFalse(path.isfile(path.join(repo.workdir, filename + '.graph')))
+
+            # execute UPDATE query
+            update = 'INSERT DATA { GRAPH <http://aksw.org/> { <urn:1> <urn:2> <urn:3> . } }'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, filename), 'r') as f:
+                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
+            with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
+                self.assertEqual('http://aksw.org/', f.read())
+
+    def testNewNamedGraphConfigfile(self):
+        """Test if a new graph is added to the repository.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute Update query
+        4. check filesystem and configfile content (before/after)
+        """
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            with open(path.join(repo.workdir, 'config.ttl'), 'r') as f:
+                configfile_before = f.read()
+
+            # execute DELETE INSERT WHERE query
+            update = 'INSERT DATA { GRAPH <http://aksw.org/> { <urn:1> <urn:2> <urn:3> . } }'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            filename = quote_plus('http://aksw.org/') + '.nq'
+
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, filename), 'r') as f:
+                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'config.ttl'), 'r') as f:
+                configfile_after = f.read()
+
+            config_before = [x.strip() for x in configfile_before.split('\n')]
+            config_after = [x.strip() for x in configfile_after.split('\n')]
+            diff = list(set(config_after) - set(config_before))
+
+            self.assertFalse('ns1:graphFile "' + filename + '" ;' in config_before)
+            self.assertFalse('ns1:hasFormat "nquads" .' in config_before)
+            self.assertFalse('ns1:graphUri <http://aksw.org/> ;' in config_before)
+
+            self.assertTrue('ns1:graphFile "' + filename + '" ;' in diff)
+            self.assertTrue('ns1:hasFormat "nquads" .' in diff)
+            self.assertTrue('ns1:graphUri <http://aksw.org/> ;' in diff)
 
 
 if __name__ == '__main__':
