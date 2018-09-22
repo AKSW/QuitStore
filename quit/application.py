@@ -207,7 +207,7 @@ def parseArgs(args):
                         default=Feature.Unknown,
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
-    parser.add_argument('--host', default='0.0.0.0', type=str)
+    parser.add_argument('--host', default='::', type=str)
 
     logger.debug("Parsing args: {}".format(args))
 
