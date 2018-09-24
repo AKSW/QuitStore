@@ -904,6 +904,7 @@ class QuitAppTestCase(unittest.TestCase):
             app = create_app(config).test_client()
 
             query = 'SELECT * WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
+            ask = 'ASK {graph <urn:graph> {<urn:bla> <urn:blub> <urn:foo> .}} LIMIT 1'
             construct = 'CONSTRUCT {?s ?p ?o} WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
 
             test_values = {
@@ -911,10 +912,19 @@ class QuitAppTestCase(unittest.TestCase):
                         '*/*': 'application/sparql-results+xml',
                         'application/sparql-results+xml': 'application/sparql-results+xml',
                         'application/xml': 'application/xml',
-                        'application/rdf+xml': 'application/rdf+xml',
                         'application/json': 'application/json',
                         'application/sparql-results+json': 'application/sparql-results+json',
                         'text/csv': 'text/csv',
+                        'text/html': 'text/html',
+                        'application/xhtml+xml': 'application/xhtml+xml'
+                    }
+                ],
+                'ask': [query, {
+                        '*/*': 'application/sparql-results+xml',
+                        'application/sparql-results+xml': 'application/sparql-results+xml',
+                        'application/xml': 'application/xml',
+                        'application/json': 'application/json',
+                        'application/sparql-results+json': 'application/sparql-results+json',
                         'text/html': 'text/html',
                         'application/xhtml+xml': 'application/xhtml+xml'
                     }
