@@ -904,6 +904,7 @@ class QuitAppTestCase(unittest.TestCase):
             app = create_app(config).test_client()
 
             query = 'SELECT * WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
+            ask = 'ASK {graph <urn:graph> {<urn:bla> <urn:blub> <urn:foo> .}} LIMIT 1'
             construct = 'CONSTRUCT {?s ?p ?o} WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
 
             test_values = {
@@ -911,10 +912,19 @@ class QuitAppTestCase(unittest.TestCase):
                         '*/*': 'application/sparql-results+xml',
                         'application/sparql-results+xml': 'application/sparql-results+xml',
                         'application/xml': 'application/xml',
-                        'application/rdf+xml': 'application/rdf+xml',
                         'application/json': 'application/json',
                         'application/sparql-results+json': 'application/sparql-results+json',
                         'text/csv': 'text/csv',
+                        'text/html': 'text/html',
+                        'application/xhtml+xml': 'application/xhtml+xml'
+                    }
+                ],
+                'ask': [ask, {
+                        '*/*': 'application/sparql-results+xml',
+                        'application/sparql-results+xml': 'application/sparql-results+xml',
+                        'application/xml': 'application/xml',
+                        'application/json': 'application/json',
+                        'application/sparql-results+json': 'application/sparql-results+json',
                         'text/html': 'text/html',
                         'application/xhtml+xml': 'application/xhtml+xml'
                     }
@@ -933,20 +943,20 @@ class QuitAppTestCase(unittest.TestCase):
 
             for ep_path in ['/sparql', '/provenance']:
                 for query_type, values in test_values.items():
-                    query = values[0]
+                    query_string = values[0]
 
                     # test supported
                     for accept_type, content_type in values[1].items():
                         response = app.post(
                             ep_path,
-                            data=dict(query=query),
+                            data=dict(query=query_string),
                             headers={'Accept': accept_type}
                         )
                         self.assertEqual(response.status, '200 OK')
                         self.assertEqual(response.headers['Content-Type'], content_type)
 
                     # test unsupported
-                    resp = app.post(ep_path, data=dict(query=query), headers={'Accept': 'foo/bar'})
+                    resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})
                     self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
     def testDeleteInsertWhere(self):
