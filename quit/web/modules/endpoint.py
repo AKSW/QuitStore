@@ -126,9 +126,9 @@ def sparql(branch_or_ref):
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
 
     try:
-        if queryType in ['SelectQuery']:
+        if queryType == 'SelectQuery':
             return create_result_response(res, resultSetMimetypes[mimetype])
-        elif queryType in ['AskQuery']:
+        elif queryType == 'AskQuery':
             return create_result_response(res, askMimetypes[mimetype])
         elif queryType in ['ConstructQuery', 'DescribeQuery']:
             return create_result_response(res, rdfMimetypes[mimetype])
