@@ -3,6 +3,7 @@ import re
 
 import logging
 from flask import Blueprint, request, current_app, make_response
+from werkzeug.http import parse_accept_header
 from rdflib import ConjunctiveGraph
 from quit.conf import Feature
 from quit import helpers as helpers
