@@ -22,10 +22,18 @@ resultSetMimetypes = {
     '*/*': ['application/sparql-results+xml', 'xml'],
     'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
     'application/xml': ['application/xml', 'xml'],
-    'application/rdf+xml': ['application/rdf+xml', 'xml'],
-    'application/json': ['application/json', 'json'],
     'application/sparql-results+json': ['application/sparql-results+json', 'json'],
+    'application/json': ['application/json', 'json'],
     'text/csv': ['text/csv', 'csv'],
+    'text/html': ['text/html', 'html'],
+    'application/xhtml+xml': ['application/xhtml+xml', 'html']
+}
+askMimetypes = {
+    '*/*': ['application/sparql-results+xml', 'xml'],
+    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
+    'application/xml': ['application/xml', 'xml'],
+    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
+    'application/json': ['application/json', 'json'],
     'text/html': ['text/html', 'html'],
     'application/xhtml+xml': ['application/xhtml+xml', 'html']
 }
@@ -118,8 +126,10 @@ def sparql(branch_or_ref):
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
 
     try:
-        if queryType in ['SelectQuery', 'AskQuery']:
+        if queryType in ['SelectQuery']:
             return create_result_response(res, resultSetMimetypes[mimetype])
+        elif queryType in ['AskQuery']:
+            return create_result_response(res, askMimetypes[mimetype])
         elif queryType in ['ConstructQuery', 'DescribeQuery']:
             return create_result_response(res, rdfMimetypes[mimetype])
     except KeyError as e:
