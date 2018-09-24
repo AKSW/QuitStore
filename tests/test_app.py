@@ -919,7 +919,7 @@ class QuitAppTestCase(unittest.TestCase):
                         'application/xhtml+xml': 'application/xhtml+xml'
                     }
                 ],
-                'ask': [query, {
+                'ask': [ask, {
                         '*/*': 'application/sparql-results+xml',
                         'application/sparql-results+xml': 'application/sparql-results+xml',
                         'application/xml': 'application/xml',
@@ -943,20 +943,20 @@ class QuitAppTestCase(unittest.TestCase):
 
             for ep_path in ['/sparql', '/provenance']:
                 for query_type, values in test_values.items():
-                    query = values[0]
+                    query_string = values[0]
 
                     # test supported
                     for accept_type, content_type in values[1].items():
                         response = app.post(
                             ep_path,
-                            data=dict(query=query),
+                            data=dict(query=query_string),
                             headers={'Accept': accept_type}
                         )
                         self.assertEqual(response.status, '200 OK')
                         self.assertEqual(response.headers['Content-Type'], content_type)
 
                     # test unsupported
-                    resp = app.post(ep_path, data=dict(query=query), headers={'Accept': 'foo/bar'})
+                    resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})
                     self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
     def testDeleteInsertWhere(self):
