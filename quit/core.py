@@ -355,7 +355,7 @@ class Quit(object):
     def getFilesForCommit(self, commit):
         """Get all entry, oid tupples for a commit.
 
-        On Cache miss this method also updates teh commits cache.
+        On Cache miss this method also updates the commits cache.
         """
         uriFileMap = self.config.getgraphurifilemap()
 
@@ -398,7 +398,7 @@ class Quit(object):
                named_graph=[], **kwargs):
         """Commit changes after applying deltas to the blobs.
 
-        This methods analyzes the delta an apllies the changes to the blobs of the repository.
+        This methods analyzes the delta and applies the changes to the blobs of the repository.
         A commit message is built with help of message and if called from endpoint with query,
         default_graph and named_graph. **kwargs can be used to extend the commit message with
         custom key-value-pairs.
