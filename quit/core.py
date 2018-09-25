@@ -355,7 +355,7 @@ class Quit(object):
     def getFilesForCommit(self, commit):
         """Get all entry, oid tupples for a commit.
 
-        On Cache miss this method also updates teh commits cache.
+        On Cache miss this method also updates the commits cache.
         """
         uriFileMap = self.config.getgraphurifilemap()
 
@@ -394,11 +394,11 @@ class Quit(object):
             return quitWorkingData
         return self._blobs.get(blob)
 
-    def commit(self, graph, delta, message, commit_id, ref, query=None, default_graph=[],
+    def commit(self, graph, delta, message, parent_commit_ref, ref, query=None, default_graph=[],
                named_graph=[], **kwargs):
         """Commit changes after applying deltas to the blobs.
 
-        This methods analyzes the delta an apllies the changes to the blobs of the repository.
+        This methods analyzes the delta and applies the changes to the blobs of the repository.
         A commit message is built with help of message and if called from endpoint with query,
         default_graph and named_graph. **kwargs can be used to extend the commit message with
         custom key-value-pairs.
@@ -407,7 +407,7 @@ class Quit(object):
             graph: the current graph instance
             delta: delta that will be applied
             message: commit message
-            commit_id: the commit-id of preceeding commit
+            parent_commit_ref: the commit-id of preceeding commit
             ref: a ref/branch were the commit will be applied to
             query: the query that lead to the commit
             default_graph: using-graph-uri values from SPARQL protocol
@@ -445,19 +445,25 @@ class Quit(object):
         if not delta:
             return
 
-        commit = self.repository.revision(commit_id)
-        index = self.repository.index(commit.id)
-
+        parent_commit_id = None
+        parent_commit = None
+        blobs = []
         blobs_new = set()
-        try:
-            blobs = self.getFilesForCommit(commit)
-        except KeyError:
-            blobs = []
+
+        if parent_commit_ref:
+            parent_commit = self.repository.revision(parent_commit_ref)
+        if parent_commit:
+            parent_commit_id = parent_commit.id
+            try:
+                blobs = self.getFilesForCommit(parent_commit)
+            except KeyError:
+                pass
+        index = self.repository.index(parent_commit_id)
 
         for blob in blobs:
             (fileName, oid) = blob
             try:
-                file_reference, contexts = self.getFileReferenceAndContext(blob, commit)
+                file_reference, contexts = self.getFileReferenceAndContext(blob, parent_commit)
                 for context in contexts:
                     for entry in delta:
                         changeset = entry.get(context.identifier, None)
