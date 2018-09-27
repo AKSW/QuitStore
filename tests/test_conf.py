@@ -130,13 +130,6 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nq')
             self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nq')
 
-    def testInitWithMissingInformation(self):
-        """Start QuitStore without graphfiles and configfile."""
-        with TemporaryRepositoryFactory().noConfigInformations() as repo:
-
-            conf = QuitGraphConfiguration(repository=repo)
-            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
-
 
 def main():
     unittest.main()
