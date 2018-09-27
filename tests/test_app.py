@@ -2309,12 +2309,12 @@ class QuitAppTestCase(unittest.TestCase):
 
                 assertResultBindingsEqual(self, resultBindings, [afterPull])
 
-    @unittest.skip("See https://github.com/AKSW/QuitStore/issues/81")
+    @unittest.skip("See https://github.com/AKSW/QuitStore/issues/171")
     def testPullStartFromEmptyRepository(self):
         """Test /pull API request starting the store from an empty repository.
 
-        CAUTION: This test is disabled, because we currently have problems starting a store when no
-        graph is configured. See https://github.com/AKSW/QuitStore/issues/81
+        CAUTION: This test is disabled, because we currently have a problem with our pull
+        implementation. See https://github.com/AKSW/QuitStore/issues/171
         """
         graphContent = """
             <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
