@@ -98,7 +98,7 @@ def sparql(branch_or_ref):
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
 
-    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
+    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Create']:
         res, exception = graph.update(parsedQuery)
 
         try:

@@ -3193,6 +3193,37 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual('\n', f.read())
 
 
+class GraphManagementTests(unittest.TestCase):
+    def testCreateGraph(self):
+        """Test if a new empty graph file is added.
+
+        1. Prepare a git repository with an empty and a non empty graph
+        2. Start Quit
+        3. execute Update query
+        4. check filesystem for new .nq and .nq.graph file with expected content
+        """
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+            filename = quote_plus('http://aksw.org/') + '.nq'
+
+            # execute UPDATE query
+            update = 'CREATE GRAPH <http://aksw.org/>'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+
+
 class FileHandlingTests(unittest.TestCase):
     def testNewNamedGraph(self):
         """Test if a new graph is added to the repository.

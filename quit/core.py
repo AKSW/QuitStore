@@ -384,9 +384,9 @@ class Quit(object):
         return self._commits.get(commit.id)
 
     def getFileReferenceAndContext(self, blob, commit):
-        """Get the FielReference and Context for a given blob (name, oid) of a commit.
+        """Get the FileReference and Context for a given blob (name, oid) of a commit.
 
-        On Cache miss this method also updates teh commits cache.
+        On Cache miss this method also updates the commits cache.
         """
         if commit.id not in self._graphconfigs:
             self.updateGraphConfig(commit.id)
@@ -442,6 +442,39 @@ class Quit(object):
                 out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
             return "\n".join(out)
 
+        def prepare_commit():
+            removed = set()
+            touched = set()
+            commit_objects = {}
+
+            # find all named graphs that occur in update
+            for update in delta:
+                if update['type'] in ['ADD', 'CLEAR', 'CREATE', 'COPY']:
+                    touched.add(update['graph'])
+                elif update == 'COPY':
+                    touched.add(update['src_graph'])
+                    touched.add(update['dst_graph'])
+                elif update['type'] in ['DROP', 'MOVE']:
+                    removed.add(update['src_graph'])
+                    touched.add(update['dst_graph'])
+                else:
+                    for identifier, changeset in update['delta'].items():
+                        touched.add(identifier)
+
+            file_map = graphconfig.files
+            graphs = graphconfig.graphs
+
+            for identifier in set(touched | removed):
+                file_name = graphconfig.getfileforgraphuri(str(identifier))
+                if file_name:
+                    file_oid = file_map[file_name]['oid']
+                    blob = (file_name, file_oid)
+                else:  # unknown named graph
+                    fr = FileReference(quote_plus(str(identifier)), '')
+
+                # commit_objects[identifier] = {
+                # }
+
         def _applyKnownGraphs(delta, blobs):
             blobs_new = set()
             for blob in blobs:
@@ -471,7 +504,7 @@ class Quit(object):
             for entry in delta:
                 for identifier, changeset in entry.items():
                     if isinstance(identifier, BNode) or str(identifier) == 'default':
-                        continue  # TODO
+                        continue  # TODO default graph
 
                     fileName = quote_plus(identifier + '.nq')
                     if identifier not in new_contexts.keys():
@@ -505,15 +538,50 @@ class Quit(object):
         graphconfig = self._graphconfigs.get(parent_commit_id)
 
         try:
-            blobs = self.getFilesForCommit(parent_commit)
+            known_blobs = self.getFilesForCommit(parrent_commit)
         except KeyError:
-            blobs = []
+            known_blobs = []
 
-        blobs_new = _applyKnownGraphs(delta, blobs)
-        new_contexts = _applyUnknownGraphs(delta)
+        known_blobs_dict = {}
+        for (blob_name, blob_oid) in known_blobs:
+            known_blobs_dict[blob_name] = blob_oid
+
+        # blobs_new = _applyKnownGraphs(delta, blobs)
+        # new_contexts = _applyUnknownGraphs(delta)
         new_config = copy(graphconfig)
+        prepare_commit()
 
-        for identifier, fileReference in new_contexts.items():
+        # new_file_references = {}
+        # blobs_new = set
+        # for update in delta:
+        #     if update['type'] in ['ADD', 'CLEAR', 'CREATE', 'DROP', 'MOVE', 'COPY']:
+        #         continue  # TODO
+        #     else:
+        #         for identifier, changeset in update['delta'].items():
+        #             if identifier in known_blobs_dict.keys():
+        #                 file_name = new_config.getfileforgraphuri(identifier)
+        #                 id = known_blobs_dict[file_name]
+        #                 blob = (file_name, id)
+        #                 file_reference, contexts = self.getFileReferenceAndContext(blob, commit)
+        #                 applyChangeset(file_reference, changeset, identifier)
+        #                 index.add(file_reference.path, file_reference.content)
+        #                 self._blobs.remove(blob)
+        #                 new_blob = file_name, index.stash[file_reference.path][0]
+        #                 self._blobs.set(new_blob, (file_reference, contexts))
+        #             else:
+        #                 if isinstance(identifier, BNode) or str(identifier) == 'default':
+        #                     continue  # TODO default graph
+        #
+        #                 file_name = quote_plus(identifier + '.nq')
+        #                 if identifier not in new_file_references.keys():
+        #                     new_file_references[identifier] = FileReference(file_name, '')
+        #
+        #                 file_reference = new_file_references[identifier]
+        #                 applyChangeset(file_reference, changeset, identifier)
+        #                 index.add(file_reference.path, file_reference.content)
+
+
+        for identifier, fileReference in new_file_references.items():
             # Add new blobs to repo
             index.add(fileReference.path, fileReference.content)
             if graphconfig.mode == 'graphfiles':

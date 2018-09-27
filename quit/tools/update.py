@@ -16,7 +16,8 @@ from collections import defaultdict
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
 
-def _append(dct, identifier, action, items):
+
+def _appendChangesets(dct, identifier, action, items):
     if items:
         if not isinstance(identifier, Node):
             identifier = URIRef(identifier)
@@ -51,32 +52,30 @@ def evalLoad(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#load
     """
-    res = {}
-    res["type_"] = "LOAD"
-    res["graph"] = u.iri
-
     if u.graphiri:
         ctx.load(u.iri, default=False, publicID=u.graphiri)
     else:
         ctx.load(u.iri, default=True)
-
-    return res
 
 
 def evalCreate(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#create
     """
-    g = ctx.datset.get_context(u.graphiri)
+    g = ctx.dataset.get_context(u.graphiri)
     if len(g) > 0:
         raise Exception("Graph %s already exists." % g.identifier)
-    raise Exception("Create not implemented!")
+    # raise Exception("Create not implemented!")
 
 
 def evalClear(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#clear
     """
+    res = {}
+    res['type'] = "CLEAR"
+    res["graph"] = u.graphiri
+
     for g in _graphAll(ctx, u.graphiri):
         g.remove((None, None, None))
 
@@ -98,14 +97,14 @@ def evalInsertData(ctx, u):
     """
 
     res = {}
-    res["type_"] = "INSERT"
-    res["delta"] = {}
+    res['type'] = "INSERT"
+    res['delta'] = {}
 
     # add triples
     g = ctx.graph
     filled = list(filter(lambda triple: triple not in g, u.triples))
     if filled:
-        _append(res["delta"], 'default', 'additions', filled)
+        _appendChangesets(res['delta'], 'default', 'additions', filled)
         g += filled
 
     # add quads
@@ -114,7 +113,7 @@ def evalInsertData(ctx, u):
         cg = ctx.dataset.get_context(g)
         filledq = list(filter(lambda triple: triple not in cg, u.quads[g]))
         if filledq:
-            _append(res["delta"], cg.identifier, 'additions', filledq)
+            _appendChangesets(res['delta'], cg.identifier, 'additions', filledq)
             cg += filledq
 
     return res
@@ -125,14 +124,14 @@ def evalDeleteData(ctx, u):
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
     res = {}
-    res["type_"] = "DELETE"
-    res["delta"] = {}
+    res['type'] = "DELETE"
+    res['delta'] = {}
 
     # remove triples
     g = ctx.graph
     filled = list(filter(lambda triple: triple in g, u.triples))
     if filled:
-        _append(res["delta"], 'default', 'removals', filled)
+        _appendChangesets(res['delta'], 'default', 'removals', filled)
         g -= filled
 
     # remove quads
@@ -141,7 +140,7 @@ def evalDeleteData(ctx, u):
         cg = ctx.dataset.get_context(g)
         filledq = list(filter(lambda triple: triple in cg, u.quads[g]))
         if filledq:
-            _append(res["delta"], cg.identifier, 'removals', filledq)
+            _appendChangesets(res['delta'], cg.identifier, 'removals', filledq)
             cg -= filledq
 
     return res
@@ -153,8 +152,8 @@ def evalDeleteWhere(ctx, u):
     """
 
     res = {}
-    res["type_"] = "DELETEWHERE"
-    res["delta"] = {}
+    res['type'] = "DELETEWHERE"
+    res['delta'] = {}
 
     _res = evalBGP(ctx, u.triples)
     for g in u.quads:
@@ -165,13 +164,13 @@ def evalDeleteWhere(ctx, u):
     for c in _res:
         g = ctx.graph
         filled, filled_delta = tee(_fillTemplate(u.triples, c))
-        _append(res["delta"], 'default', 'removals', list(filled_delta))
+        _appendChangesets(res['delta'], 'default', 'removals', list(filled_delta))
         g -= filled
 
         for g in u.quads:
             cg = ctx.dataset.get_context(c.get(g))
             filledq, filledq_delta = tee(_fillTemplate(u.quads[g], c))
-            _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
+            _appendChangesets(res['delta'], cg.identifier, 'removals', list(filledq_delta))
             cg -= filledq
 
     return res
@@ -181,8 +180,8 @@ def evalModify(ctx, u):
     originalctx = ctx
 
     res = {}
-    res["type_"] = "MODIFY"
-    res["delta"] = {}
+    res['type'] = "MODIFY"
+    res['delta'] = {}
 
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
@@ -237,24 +236,24 @@ def evalModify(ctx, u):
         dg = ctx.graph
         if u.delete:
             filled, filled_delta = tee(_fillTemplate(u.delete.triples, c))
-            _append(res["delta"], graphName, 'removals', list(filled_delta))
+            _appendChangesets(res['delta'], graphName, 'removals', list(filled_delta))
             dg -= filled
 
             for g, q in u.delete.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
                 filledq, filledq_delta = tee(_fillTemplate(q, c))
-                _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
+                _appendChangesets(res['delta'], cg.identifier, 'removals', list(filledq_delta))
                 cg -= filledq
 
         if u.insert:
             filled, filled_delta = tee(_fillTemplate(u.insert.triples, c))
-            _append(res["delta"], graphName, 'additions', list(filled_delta))
+            _appendChangesets(res['delta'], graphName, 'additions', list(filled_delta))
             dg += filled
 
             for g, q in u.insert.quads.items():
                 cg = ctx.dataset.get_context(c.get(g))
                 filledq, filledq_delta = tee(_fillTemplate(q, c))
-                _append(res["delta"], cg.identifier, 'additions', list(filledq_delta))
+                _appendChangesets(res['delta'], cg.identifier, 'additions', list(filledq_delta))
                 cg += filledq
 
     return res
@@ -360,35 +359,43 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
         try:
             if u.name == 'Load':
-                result = evalLoad(ctx, u).get('delta', None)
-                if result:
-                    res.append(result)
+                result = evalLoad(ctx, u)
+                res.append({'type': 'LOAD', 'graph': u.graphiri})
             elif u.name == 'Clear':
                 evalClear(ctx, u)
+                res.append({'type': 'CLEAR', 'graph': u.graphiri})
             elif u.name == 'Drop':
                 evalDrop(ctx, u)
+                res.append({'type': 'DROP', 'graph': u.graphiri})
             elif u.name == 'Create':
                 evalCreate(ctx, u)
+                res.append({'type': 'CREATE', 'graph': u.graphiri})
             elif u.name == 'Add':
                 evalAdd(ctx, u)
+                src, dst = u.graph
+                res.append({'type': 'ADD', 'src_graph': src, 'dst_graph': dst})
             elif u.name == 'Move':
                 evalMove(ctx, u)
+                src, dst = u.graph
+                res.append({'type': 'MOVE', 'src_graph': src, 'dst_graph': dst})
             elif u.name == 'Copy':
                 evalCopy(ctx, u)
+                src, dst = u.graph
+                res.append({'type': 'COPY', 'src_graph': src, 'dst_graph': dst})
             elif u.name == 'InsertData':
-                result = evalInsertData(ctx, u).get('delta', None)
+                result = evalInsertData(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'DeleteData':
-                result = evalDeleteData(ctx, u).get('delta', None)
+                result = evalDeleteData(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'DeleteWhere':
-                result = evalDeleteWhere(ctx, u).get('delta', None)
+                result = evalDeleteWhere(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'Modify':
-                result = evalModify(ctx, u).get('delta', None)
+                result = evalModify(ctx, u)
                 if result:
                     res.append(result)
             else:

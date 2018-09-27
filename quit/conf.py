@@ -217,70 +217,43 @@ class QuitGraphConfiguration(QuitConfiguration):
             self.nsMngrGraphconf = NamespaceManager(self.graphconf)
             self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
 
-        graph_files, config_files, rdf_files = self.get_blobs_from_repository(rev)
+        grphfile_count, conf_file_count, configured, blobs = self.get_blobs_from_repository(rev)
 
+<<<<<<< HEAD
         if len(graph_files) == 0 and len(config_files) == 0:
             self.mode = 'graphfiles'
         elif len(graph_files) > 0 and len(config_files) > 0:
+=======
+        if grphfile_count == 0 and conf_file_count == 0:
+            raise InvalidConfigurationError(
+                "Did not find graphfiles or a QuitStore configuration file.")
+        elif grphfile_count > 0 and conf_file_count > 0:
+>>>>>>> 3db2d87... Work on graph management
             raise InvalidConfigurationError(
                 "Conflict. Found graphfiles and QuitStore configuration file.")
-        elif len(graph_files) > 0:
+        elif grphfile_count > 0:
             self.mode = 'graphfiles'
-            self.__init_graph_conf_with_blobs(graph_files, rev)
-        elif len(config_files) == 1:
+            self.__init_graph_conf_with_blobs(configured, rev, blobs)
+        elif conf_file_count == 1:
             self.mode = 'configuration'
-            self.__init_graph_conf_from_configuration(config_files[0], rdf_files)
+            self.__init_graph_conf_from_configuration(blobs['config.ttl'], blobs)
         else:
             raise InvalidConfigurationError(
                 "Conflict. Found more than one QuitStore configuration file.")
 
-    def __init_graph_conf_with_blobs(self, files, rev):
-        """Init a repository by analyzing all existing files."""
-        for file, values in files.items():
-            format = values[0]
-            graphFileId = values[1]
+    def __init_graph_conf_with_blobs(self, files, rev, known_blobs):
+        """Init graph configuration if graphfile contains a valid IRI."""
+        for filename in files:
+            format = known_blobs[filename][1]
+            oid = known_blobs[filename][0]
+            graphFileId = known_blobs[filename + '.graph']
             graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
 
-            if graphuri and format == 'nquads':
-                self.addgraph(file=file, graphuri=graphuri, format=format)
-                self.graphs[graphuri] = file
-                self.files[file] = {
-                    'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-            elif graphuri is None and format == 'nquads':
-                tmpgraph = ConjunctiveGraph(identifier='default')
-
-                try:
-                    tmpgraph.parse(source=os.path.join(file), format=format)
-                except Exception:
-                    logger.error("Could not parse file {}. File skipped.".format(file))
-                    continue
-
-                namedgraphs = tmpgraph.contexts()
-                founduris = []
-
-                for graph in namedgraphs:
-                    if not isinstance(graph, BNode) and str(graph.identifier) != 'default':
-                        graphuri = graph.identifier
-                        founduris.append(graphuri)
-
-                if len(founduris) == 1:
-                    self.addgraph(file=file, graphuri=graphuri, format=format)
-                    self.graphs[graphuri] = file
-                    self.files[file] = {
-                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-                elif len(founduris) > 1:
-                    logger.info("No named graph found. {} skipped.".format(file))
-                elif len(founduris) < 1:
-                    logger.info(
-                        "More than one named graphs found. Can't decide. {} skipped.".format(file))
-            elif format == 'nt':
-                if graphuri:
-                    self.addgraph(file=file, graphuri=graphuri, format=format)
-                    self.graphs[graphuri] = file
-                    self.files[file] = {
-                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-                else:
-                    logger.warning('No *.graph file found. ' + file + ' skipped.')
+            if graphuri:
+                self.graphs[graphuri] = filename
+                self.files[filename] = {
+                    'serialization': format, 'graphs': [graphuri], 'oid': oid}
+                self.files[filename + '.graph'] = {'oid': graphFileId}
 
     def __init_graph_conf_from_configuration(self, configfileId, known_blobs):
         """Init graphs with setting from config.ttl."""
@@ -298,6 +271,8 @@ class QuitGraphConfiguration(QuitConfiguration):
             raise InvalidConfigurationError(
                 "Configfile could not be parsed {} {}".format(configfileId, e)
             )
+        self.files['config.ttl'] = {'oid': configfileId}
+
         nsQuit = 'http://quit.aksw.org/vocab/'
         query = 'SELECT DISTINCT ?graphuri ?filename ?format WHERE { '
         query += '  ?graph a <' + nsQuit + 'Graph> . '
@@ -462,6 +437,7 @@ class QuitGraphConfiguration(QuitConfiguration):
             dict: containing names rdf files plus format and oid.
 
         """
+<<<<<<< HEAD
         config_files = []
         graph_files = {}
         graph_file_blobs = {}
@@ -470,22 +446,31 @@ class QuitGraphConfiguration(QuitConfiguration):
             commit = self.repository.revparse_single(rev)
         except Exception:
             return graph_files, config_files, rdf_file_blobs
+=======
+        commit = self.repository.revparse_single(rev)
+        config_files_count = 0
+        graph_files_count = 0
+        relevant_blobs = {}
+>>>>>>> 3db2d87... Work on graph management
 
         # Collect graph files, rdf files and config files
         for entry in commit.tree:
             if entry.type == 'blob':
+                print(entry.name, entry.id)
                 format = guess_format(entry.name)
                 if format is None and entry.name.endswith('.graph'):
-                    graph_file_blobs[entry.name] = entry.id
+                    graph_files_count += 1
+                    relevant_blobs[entry.name] = (str(entry.id))
                 elif format is not None and format in ['nquads', 'nt']:
-                    rdf_file_blobs[entry.name] = (entry.id, format)
+                    relevant_blobs[entry.name] = (str(entry.id), format)
                 elif format is not None and entry.name == 'config.ttl':
-                    config_files.append(str(entry.id))
+                    config_files_count += 1
+                    relevant_blobs[entry.name] = (str(entry.id))
 
         # collect pairs of rdf files and graph files
-        for filename in rdf_file_blobs.keys():
-            if filename + '.graph' in graph_file_blobs.keys():
-                graph_file_blob_id = graph_file_blobs[filename + '.graph']
-                graph_files[filename] = (rdf_file_blobs[filename][1], str(graph_file_blob_id))
+        graphfiles_configured = []
+        for filename in relevant_blobs.keys():
+            if filename + '.graph' in relevant_blobs.keys():
+                graphfiles_configured.append(filename)
 
-        return graph_files, config_files, rdf_file_blobs
+        return graph_files_count, config_files_count, graphfiles_configured, relevant_blobs

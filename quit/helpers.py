@@ -120,6 +120,8 @@ def applyChangeset(f, changeset, identifier):
                 # the internal _nq serializer appends '\n'
                 line = _nq(triple, identifier).rstrip()
                 f.remove(line)
+        elif op == 'CREATE':
+            print('erkannt')
 
 
 def isAbsoluteUri(uri):
