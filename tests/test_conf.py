@@ -16,30 +16,24 @@ import rdflib
 
 
 class TestConfiguration(unittest.TestCase):
-
     ns = 'http://quit.instance/'
 
     def testNamespace(self):
         content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
         repoContent = {'http://example.org/': content1}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
-
-            # missing namespace
-            self.assertRaises(
-                InvalidConfigurationError, QuitStoreConfiguration, 'targetdir', repo.workdir)
-
             good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
-            bad = ['file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
+            bad = [None, 'file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
 
-            # good namespaces
+            # good base namespaces
             for uri in good:
                 conf = QuitStoreConfiguration(targetdir=repo.workdir, namespace=uri)
                 self.assertEqual(conf.namespace, uri)
 
-            # bad namespaces
+            # bad base namespaces
             for uri in bad:
-                self.assertRaises(
-                    InvalidConfigurationError, QuitStoreConfiguration, 'targetdir', repo.workdir, 'namespace', uri)
+                with self.assertRaises(InvalidConfigurationError):
+                    QuitStoreConfiguration(targetdir=repo.workdir, namespace=uri)
 
     def testStoreConfigurationWithDir(self):
         content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
@@ -47,6 +41,7 @@ class TestConfiguration(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             conf = QuitStoreConfiguration(targetdir=repo.workdir, namespace=self.ns)
             self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getDefaultBranch(), 'master')
 
     def testStoreConfigurationWithConfigfile(self):
         content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'

@@ -473,7 +473,7 @@ class Quit(object):
             for entry in delta:
                 for identifier, changeset in entry.items():
                     if isinstance(identifier, BNode) or str(identifier) == 'default':
-                        continue  # TODO
+                        continue  # TODO default graph use case
 
                     fileName = quote_plus(identifier + '.nq')
                     if identifier not in new_contexts.keys():

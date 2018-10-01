@@ -25,12 +25,11 @@ class Feature:
     All = Provenance | Persistence | GarbageCollection
 
 
-class QuitConfiguration:
+class QuitStoreConfiguration():
+    """A class that provides information about settings, filesystem and git."""
+
     quit = Namespace('http://quit.aksw.org/vocab/')
 
-
-class QuitStoreConfiguration(QuitConfiguration):
-    """A class that provides information about settings, filesystem and git."""
     def __init__(
         self,
         configfile='config.ttl',
@@ -39,7 +38,7 @@ class QuitStoreConfiguration(QuitConfiguration):
         targetdir=None,
         namespace=None
     ):
-        """The init method.
+        """Initialize store configuration.
 
         This method checks if the config file is given and reads the config file.
         If the config file is missing, it will be generated after analyzing the
@@ -55,15 +54,14 @@ class QuitStoreConfiguration(QuitConfiguration):
         self.namespace = None
 
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
-        self.nsMngrSysconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
+        self.nsMngrSysconf.bind('', self.quit, override=False)
 
         try:
             self.__initstoreconfig(
                 namespace=namespace,
                 upstream=upstream,
                 targetdir=targetdir,
-                configfile=configfile
-            )
+                configfile=configfile)
         except InvalidConfigurationError as e:
             logger.error(e)
             raise e
@@ -100,7 +98,7 @@ class QuitStoreConfiguration(QuitConfiguration):
             self.setRepoPath(targetdir)
 
         if upstream:
-            self.setGitUpstream(upstream)
+            self.setUpstream(upstream)
 
         return
 
@@ -187,11 +185,13 @@ class QuitStoreConfiguration(QuitConfiguration):
         return
 
 
-class QuitGraphConfiguration(QuitConfiguration):
+class QuitGraphConfiguration():
     """A class that keeps track of the relation between named graphs and files."""
 
+    quit = Namespace('http://quit.aksw.org/vocab/')
+
     def __init__(self, repository):
-        """The init method.
+        """Init graph configuration.
 
         This method checks if the config file is given and reads the config file.
         If the config file is missing, it will be generated after analyzing the
@@ -215,7 +215,7 @@ class QuitGraphConfiguration(QuitConfiguration):
         if self.graphconf is None:
             self.graphconf = Graph()
             self.nsMngrGraphconf = NamespaceManager(self.graphconf)
-            self.nsMngrGraphconf.bind('', 'http://quit.aksw.org/vocab/', override=False)
+            self.nsMngrGraphconf.bind('', self.quit, override=False)
 
         graph_files, config_files, rdf_files = self.get_blobs_from_repository(rev)
 
