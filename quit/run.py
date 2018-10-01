@@ -8,6 +8,7 @@ import logging
 from quit.application import parseArgs, initialize
 from quit.web.app import create_app
 from werkzeug.wsgi import DispatcherMiddleware
+from werkzeug.debug import DebuggedApplication
 
 logger = logging.getLogger('quit.run')
 
@@ -16,6 +17,9 @@ objects = initialize(parsedArgs)
 config = objects['config']
 sys.setrecursionlimit(2 ** 15)
 application = create_app(config)
+
+if parsedArgs.flask_debug:
+    application = DebuggedApplication(application)
 
 # Set the basepath
 if parsedArgs.basepath:
@@ -32,7 +36,8 @@ if parsedArgs.basepath:
 
 
 if __name__ == "__main__":
-    application.run(debug=parsedArgs.flask_debug,
-                    use_reloader=False,
-                    host=parsedArgs.host,
-                    port=parsedArgs.port)
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
+    server = pywsgi.WSGIServer((parsedArgs.host, parsedArgs.port), application, handler_class=WebSocketHandler)
+    server.serve_forever()

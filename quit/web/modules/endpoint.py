@@ -14,9 +14,10 @@ from quit.exceptions import FromNamedError
 
 logger = logging.getLogger('quit.modules.endpoint')
 
-__all__ = ('endpoint')
+__all__ = ('endpoint', 'sockets')
 
 endpoint = Blueprint('endpoint', __name__)
+sockets = Blueprint('websocket', __name__)
 
 # querytype: { accept type: [content type, serializer_format]}
 resultSetMimetypes = {
@@ -182,6 +183,17 @@ def provenance():
     else:
         if mimetype == 'text/html':
             return render_template('provenance.html')
+
+
+@sockets.route('/echo')
+def echo_socket(ws):
+    while not ws.closed:
+        message = ws.receive()
+        if message:
+            logger.info("Websocket sagt: " + message)
+            ws.send(message)
+        else:
+            logger.info("Websocket sagt Nain")
 
 
 def create_result_response(res, mimetype):

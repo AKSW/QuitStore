@@ -8,6 +8,7 @@ from functools import wraps
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
 from flask import url_for, redirect
 from flask_cors import CORS
+from flask_sockets import Sockets
 
 from jinja2 import Environment, contextfilter, Markup
 
@@ -129,9 +130,13 @@ def register_blueprints(app):
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
+    from quit.web.modules.endpoint import sockets
 
     for bp in [debug, endpoint, git]:
         app.register_blueprint(bp)
+
+    websockets = Sockets(app)
+    websockets.register_blueprint(sockets)
 
     @app.route("/")
     def index():
