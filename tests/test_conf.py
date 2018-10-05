@@ -139,6 +139,32 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nq')
             self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nq')
 
+    def testGraphConfigurationMethods(self):
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> <http://aksw.org/> .'
+        repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+
+            conf.removegraph('http://aksw.org/')
+
+            self.assertEqual(conf.getgraphurifilemap(), {
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'})
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), None)
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nq'), [])
+            self.assertEqual(conf.getserializationoffile('graph_0.nq'), None)
+
+            conf.addgraph('http://aksw.org/', 'new_file.nq', 'nquads')
+
+            self.assertEqual(conf.getgraphurifilemap(), {
+                    rdflib.term.URIRef('http://aksw.org/'): 'new_file.nq',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'})
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nq')
+            self.assertEqual(conf.getgraphuriforfile('new_file.nq'), ['http://aksw.org/'])
+            self.assertEqual(conf.getserializationoffile('new_file.nq'), 'nquads')
+
 
 def main():
     unittest.main()

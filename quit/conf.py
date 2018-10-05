@@ -215,46 +215,10 @@ class QuitGraphConfiguration():
             graphFileId = values[1]
             graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
 
-            if graphuri and format == 'nquads':
+            if graphuri:
                 self.addgraph(file=file, graphuri=graphuri, format=format)
-                self.graphs[graphuri] = file
-                self.files[file] = {
-                    'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-            elif graphuri is None and format == 'nquads':
-                tmpgraph = ConjunctiveGraph(identifier='default')
-
-                try:
-                    tmpgraph.parse(source=os.path.join(file), format=format)
-                except Exception:
-                    logger.error("Could not parse file {}. File skipped.".format(file))
-                    continue
-
-                namedgraphs = tmpgraph.contexts()
-                founduris = []
-
-                for graph in namedgraphs:
-                    if not isinstance(graph, BNode) and str(graph.identifier) != 'default':
-                        graphuri = graph.identifier
-                        founduris.append(graphuri)
-
-                if len(founduris) == 1:
-                    self.addgraph(file=file, graphuri=graphuri, format=format)
-                    self.graphs[graphuri] = file
-                    self.files[file] = {
-                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-                elif len(founduris) > 1:
-                    logger.info("No named graph found. {} skipped.".format(file))
-                elif len(founduris) < 1:
-                    logger.info(
-                        "More than one named graphs found. Can't decide. {} skipped.".format(file))
-            elif format == 'nt':
-                if graphuri:
-                    self.addgraph(file=file, graphuri=graphuri, format=format)
-                    self.graphs[graphuri] = file
-                    self.files[file] = {
-                        'serialization': format, 'graphs': [graphuri], 'oid': files[file][1]}
-                else:
-                    logger.warning('No *.graph file found. ' + file + ' skipped.')
+            else:
+                logger.warning('No *.graph file found. {} skipped'.format(file))
 
     def __init_graph_conf_from_configuration(self, configfileId, known_blobs):
         """Init graphs with setting from config.ttl."""
@@ -328,16 +292,30 @@ class QuitGraphConfiguration():
         return content
 
     def addgraph(self, graphuri, file, format=None):
+        graphuri_obj = URIRef(graphuri)
+        if graphuri_obj in self.graphs.keys():
+            return
+
         self.graphconf.add((self.quit[quote(graphuri)], RDF.type, self.quit.Graph))
         self.graphconf.add((self.quit[quote(graphuri)], self.quit.graphUri, URIRef(graphuri)))
         self.graphconf.add((self.quit[quote(graphuri)], self.quit.graphFile, Literal(file)))
+        self.graphs[graphuri_obj] = file
+
         if format is not None:
             self.graphconf.add((self.quit[quote(graphuri)], self.quit.hasFormat, Literal(format)))
-
-        return
+            self.files[file] = {'serialization': format, 'graphs': [graphuri], 'oid': file}
+        else:
+            self.files[file] = {'graphs': [graphuri_obj], 'oid': file}
 
     def removegraph(self, graphuri):
-        self.graphconf.remove((self.quit[urlencode(graphuri)], None, None))
+        self.graphconf.remove((self.quit[quote(graphuri)], None, None))
+
+        if not isinstance(graphuri, URIRef):
+            graphuri = URIRef(graphuri)
+        if graphuri in self.graphs.keys():
+            filename = self.graphs[graphuri]
+            del self.files[filename]
+            del self.graphs[graphuri]
 
         return
 
