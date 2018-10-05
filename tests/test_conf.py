@@ -49,6 +49,20 @@ class TestConfiguration(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitStoreConfiguration(configfile=join(repo.workdir, 'config.ttl'), namespace=self.ns)
             self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getDefaultBranch(), 'master')
+
+    def testStoreConfigurationUpstream(self):
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitStoreConfiguration(
+                configfile=join(repo.workdir, 'config.ttl'),
+                upstream='http://cool.repo.git',
+                namespace=self.ns)
+            self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getUpstream(), 'http://cool.repo.git')
+
+
 
     def testExistingRepoGraphFiles(self):
         content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'

@@ -29,6 +29,7 @@ class QuitStoreConfiguration():
     """A class that provides information about settings, filesystem and git."""
 
     quit = Namespace('http://quit.aksw.org/vocab/')
+    store = URIRef('http://quit.aksw.org/instance/store')
 
     def __init__(
         self,
@@ -106,7 +107,6 @@ class QuitStoreConfiguration():
         return flags == (self.features & flags)
 
     def getBindings(self):
-        ns = Namespace('http://quit.aksw.org/vocab/')
         q = """SELECT DISTINCT ?prefix ?namespace WHERE {{
             {{
                 ?ns a <{binding}> ;
@@ -114,8 +114,8 @@ class QuitStoreConfiguration():
                     <{predicate_namespace}> ?namespace .
             }}
         }}""".format(
-            binding=ns['Binding'], predicate_prefix=ns['prefix'],
-            predicate_namespace=ns['namespace']
+            binding=self.quit['Binding'], predicate_prefix=self.quit['prefix'],
+            predicate_namespace=self.quit['namespace']
         )
 
         result = self.sysconf.query(q)
@@ -127,28 +127,10 @@ class QuitStoreConfiguration():
         Returns:
             A string containing the branch name.
         """
-        nsQuit = 'http://quit.aksw.org/vocab/'
-        storeuri = URIRef('http://my.quit.conf/store')
-        property = URIRef(nsQuit + 'defaultBranch')
-
-        for s, p, o in self.sysconf.triples((None, property, None)):
+        for s, p, o in self.sysconf.triples((None, self.quit.defaultBranch, None)):
             return str(o)
 
         return "master"
-
-    def getGlobalFile(self):
-        """Get the graph file which should be used for unassigned graphs.
-
-        Returns
-            The filename of the graph file where unassigned graphs should be stored.
-
-        """
-        nsQuit = 'http://quit.aksw.org/vocab/'
-        storeuri = URIRef('http://my.quit.conf/store')
-        property = URIRef(nsQuit + 'globalFile')
-
-        for s, p, o in self.sysconf.triples((None, property, None)):
-            return str(o)
 
     def getRepoPath(self):
         """Get the path of Git repository from configuration.
@@ -156,31 +138,23 @@ class QuitStoreConfiguration():
         Returns:
             A string containig the path of the git repo.
         """
-        nsQuit = 'http://quit.aksw.org/vocab/'
-        storeuri = URIRef('http://my.quit.conf/store')
-        property = URIRef(nsQuit + 'pathOfGitRepo')
-
-        for s, p, o in self.sysconf.triples((None, property, None)):
+        for s, p, o in self.sysconf.triples((None, self.quit.pathOfGitRepo, None)):
             return str(o)
 
     def getUpstream(self):
         """Get the URI of Git remote from configuration."""
-        nsQuit = 'http://quit.aksw.org/vocab/'
-        storeuri = URIRef('http://my.quit.conf/store')
-        property = self.quit.upstream
-
-        for s, p, o in self.sysconf.triples((storeuri, property, None)):
+        for s, p, o in self.sysconf.triples((None, self.quit.upstream, None)):
             return str(o)
 
     def setUpstream(self, origin):
-        self.sysconf.remove((None, self.quit.origin, None))
-        self.sysconf.add((self.quit.Store, self.quit.upstream, Literal(origin)))
+        self.sysconf.remove((None, self.quit.upstream, None))
+        self.sysconf.add((self.store, self.quit.upstream, Literal(origin)))
 
         return
 
     def setRepoPath(self, path):
         self.sysconf.remove((None, self.quit.pathOfGitRepo, None))
-        self.sysconf.add((self.quit.Store, self.quit.pathOfGitRepo, Literal(path)))
+        self.sysconf.add((self.store, self.quit.pathOfGitRepo, Literal(path)))
 
         return
 
