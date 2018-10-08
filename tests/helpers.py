@@ -96,25 +96,61 @@ class TemporaryRepositoryFactory(object):
 
         return tmpRepo
 
-    def noConfigInformations(self, graphContent=''):
-        """Give a TemporaryRepository() initialized with a graph with the given content (and one commit)."""
+    def withBothConfigurations(self):
+        """Give a TemporaryRepository() initialized with config.ttl and graph + graphfile."""
         tmpRepo = TemporaryRepository()
 
         # Add a graph.nq and a graph.nq.graph file
         with open(path.join(tmpRepo.repo.workdir, "graph.nq"), "w") as graphFile:
-            if graphContent:
-                graphFile.write(graphContent)
+            graphFile.write('')
 
-        # Add and Commit the empty graph
+        # Set Graph URI to http://example.org/
+        with open(path.join(tmpRepo.repo.workdir, "graph.nq.graph"), "w") as graphFile:
+            graphFile.write('http://example.org/')
+
+        # Add config.ttl
+        with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as graphFile:
+            graphFile.write('')
+
+        # Add and Commit
         index = tmpRepo.repo.index
         index.read()
+        index.add("config.ttl")
         index.add("graph.nq")
+        index.add("graph.nq.graph")
         index.write()
 
         # Create commit
         tree = index.write_tree()
         message = "init"
         tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withWrongInformationFile(self):
+        """Give a TemporaryRepository() with a config.ttl containing incorrect turtle content."""
+        tmpRepo = TemporaryRepository()
+
+        # Add config.ttl
+        with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as graphFile:
+            graphFile.write('This is not written in turtle syntax.')
+
+        # Add and Commit
+        index = tmpRepo.repo.index
+        index.read()
+        index.add("config.ttl")
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withNoConfigInformation(self):
+        """Give an empty TemporaryRepository()."""
+        tmpRepo = TemporaryRepository()
 
         return tmpRepo
 

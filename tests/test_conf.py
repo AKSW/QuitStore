@@ -72,6 +72,7 @@ class TestConfiguration(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             conf = QuitGraphConfiguration(repository=repo)
             conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
 
             graphs = conf.getgraphs()
             self.assertEqual(
@@ -111,6 +112,7 @@ class TestConfiguration(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitGraphConfiguration(repository=repo)
             conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'configuration')
 
             graphs = conf.getgraphs()
             self.assertEqual(sorted([str(x) for x in graphs]), ['http://aksw.org/', 'http://example.org/'])
@@ -164,6 +166,22 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nq')
             self.assertEqual(conf.getgraphuriforfile('new_file.nq'), ['http://aksw.org/'])
             self.assertEqual(conf.getserializationoffile('new_file.nq'), 'nquads')
+
+    def testGraphConfigurationFailing(self):
+        with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
+
+    def testWrongConfigurationFile(self):
+        with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
+
+    def testNoConfigInformation(self):
+        with TemporaryRepositoryFactory().withNoConfigInformation() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
 
 
 def main():
