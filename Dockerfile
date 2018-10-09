@@ -12,7 +12,7 @@ RUN apt-get update && apt-get -y install \
     libssh2-1-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 --branch v0.25.1 https://github.com/libgit2/libgit2.git \
+RUN git clone --depth 1 --branch v0.27.5 https://github.com/libgit2/libgit2.git \
     && cd libgit2 \
     && mkdir build && cd build \
     && cmake .. \
