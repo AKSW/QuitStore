@@ -118,6 +118,7 @@ def initialize(args):
 
 
 class FeaturesAction(argparse.Action):
+    """Actions that are executied for the configuration passed with the `--feature` option."""
     CHOICES = {
         'provenance': Feature.Provenance,
         'persistence': Feature.Persistence,
@@ -139,7 +140,11 @@ class FeaturesAction(argparse.Action):
 
 
 def parseArgs(args):
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Returns:
+        parsed object representing the config arguments.
+    """
     basepathhelp = "Base path (aka. application root) (WSGI only)."
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.

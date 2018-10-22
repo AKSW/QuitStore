@@ -18,6 +18,7 @@ logger = logging.getLogger('quit.conf')
 
 
 class Feature:
+    """Represents the fetures passed by the `--feature` parameter."""
     Unknown = 0
     Provenance = 1 << 0
     Persistence = 1 << 1
