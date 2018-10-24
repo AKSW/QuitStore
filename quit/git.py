@@ -3,6 +3,7 @@ import pygit2
 import re
 import logging
 
+from _pygit2 import GitError
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitMergeConflict, QuitGitRefNotFound, QuitGitRepoError
@@ -45,7 +46,7 @@ class Repository(object):
 
         try:
             self._repository = pygit2.Repository(path)
-        except KeyError:
+        except (KeyError, GitError):
             if not create:
                 raise RepositoryNotFound(
                     'Repository "%s" does not exist' % path)

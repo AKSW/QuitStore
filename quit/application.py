@@ -3,7 +3,11 @@ import sys
 import os
 from quit.conf import Feature, QuitConfiguration
 from quit.exceptions import InvalidConfigurationError
-from quit.web.app import create_app
+import rdflib.plugins.sparql
+from rdflib.plugins.sparql.algebra import SequencePath
+from rdflib.plugin import register
+from rdflib.serializer import Serializer
+from rdflib.query import Processor, UpdateProcessor, ResultSerializer
 import logging
 
 werkzeugLogger = logging.getLogger('werkzeug')
@@ -61,6 +65,38 @@ def initialize(args):
         )
         args.features |= Feature.GarbageCollection
 
+    # from Github: https://github.com/RDFLib/rdflib/issues/617
+    # Egregious hack, the SequencePath object doesn't support compare, this implements the __lt__
+    # method so that algebra.py works on sorting in SPARQL queries on e.g. rdf:List paths
+
+    def sequencePathCompareLt(self, other):
+        return str(self) < str(other)
+
+    def sequencePathCompareGt(self, other):
+        return str(self) < str(other)
+
+    setattr(SequencePath, '__lt__', sequencePathCompareLt)
+    setattr(SequencePath, '__gt__', sequencePathCompareGt)
+    # End egregious hack
+
+    # To get the best behavior, but still we have https://github.com/RDFLib/rdflib/issues/810
+    rdflib.plugins.sparql.SPARQL_DEFAULT_GRAPH_UNION = args.defaultgraph_union
+
+    # To disable web access: https://github.com/RDFLib/rdflib/issues/810
+    rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS = False
+
+    register(
+        'sparql', Processor,
+        'quit.tools.processor', 'SPARQLProcessor')
+
+    register(
+        'sparql', UpdateProcessor,
+        'quit.tools.processor', 'SPARQLUpdateProcessor')
+
+    register(
+        'html', ResultSerializer,
+        'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
+
     try:
         config = QuitConfiguration(
             configfile=args.configfile,
@@ -68,6 +104,7 @@ def initialize(args):
             repository=args.repourl,
             configmode=args.configmode,
             features=args.features,
+            namespace=args.namespace,
             oauthclientid=args.oauth_clientid,
             oauthclientsecret=args.oauth_clientsecret,
         )
@@ -122,10 +159,13 @@ def parseArgs(args):
     confighelp = """Path of config file (turtle). Defaults to ./config.ttl."""
     loghelp = """Path to the log file."""
     targethelp = 'The directory of the local store repository.'
+    namespacehelp = """A base namespace that will be applied when dealing with relative URIs in
+                    SPARQL UPDATE queries."""
 
     port_default = 5000
     logfile_default = None
     basepath_default = None
+    namespace_default = 'http://quit.instance/'
     targetdir_default = None
     configfile_default = "config.ttl"
     oauthclientid_default = None
@@ -139,6 +179,9 @@ def parseArgs(args):
 
     if 'QUIT_BASEPATH' in os.environ:
         basepath_default = os.environ['QUIT_BASEPATH']
+
+    if 'QUIT_NAMESPACE' in os.environ:
+        namespace = os.environ['QUIT_NAMESPACE']
 
     if 'QUIT_TARGETDIR' in os.environ:
         targetdir_default = os.environ['QUIT_TARGETDIR']
@@ -154,6 +197,8 @@ def parseArgs(args):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
+    parser.add_argument(
+        '-n', '--namespace', type=str, default=namespace_default, help=namespacehelp)
     parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-vv', '--verboseverbose', action='store_true')
@@ -166,20 +211,16 @@ def parseArgs(args):
         'localconfig',
         'repoconfig'
     ], help=graphhelp)
+    parser.add_argument('--flask-debug', action='store_true')
+    parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         default=Feature.Unknown,
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
-    parser.add_argument('--host', default='0.0.0.0', type=str)
+    parser.add_argument('--host', default='::', type=str)
     parser.add_argument('--oauth-clientid', default=oauthclientid_default, type=str)
     parser.add_argument('--oauth-clientsecret', default=oauthclientsecret_default, type=str)
 
     logger.debug("Parsing args: {}".format(args))
 
     return parser.parse_args(args)
-
-
-def main(config, args):
-    """Start the app."""
-    app = create_app(config)
-    app.run(debug=True, use_reloader=False, host=args.host, port=args.port)

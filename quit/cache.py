@@ -75,7 +75,7 @@ class FileReference:
 
     @property
     def content(self):
-        return "\n".join(self._content)
+        return "\n".join(self._content) + "\n"
 
     def add(self, data):
         """Add a quad to the file content."""
