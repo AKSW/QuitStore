@@ -41,8 +41,8 @@ class Repository(object):
                   (default: False)
         garbageCollection -- boolean whether to activate the garbage collection on the git
                   repository (default: False)
-        callback -- an instance of pygit2.RemoteCallbacks to handle cedentials and push_update_reference
-                  (default: None)
+        callback -- an instance of pygit2.RemoteCallbacks to handle cedentials and
+                  push_update_reference (default: None)
         """
         if not callback:
             callback = QuitRemoteCallbacks()
