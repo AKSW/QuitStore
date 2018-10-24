@@ -41,7 +41,11 @@ class Repository(object):
                   (default: False)
         garbageCollection -- boolean whether to activate the garbage collection on the git
                   repository (default: False)
+        callback -- an instance of pygit2.RemoteCallbacks to handle cedentials and push_update_reference
+                  (default: None)
         """
+        if not callback:
+            callback = QuitRemoteCallbacks()
         self.callback = callback
 
         try:
@@ -703,7 +707,7 @@ class IndexTree(object):
 class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
     """Set a pygit callback for user authentication when acting with remotes."""
 
-    def __init__(self, session):
+    def __init__(self, session=None):
         self.session = session
 
     def credentials(self, url, username_from_url, allowed_types):
@@ -737,7 +741,7 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
                         "your ~/.ssh/"
                     )
         elif pygit2.credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
-            if "OAUTH_TOKEN" in self.session:
+            if self.session and "OAUTH_TOKEN" in self.session:
                 return pygit2.UserPass(self.session["OAUTH_TOKEN"], 'x-oauth-basic')
             elif "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
                 return pygit2.UserPass(os.environ["GIT_USERNAME"], os.environ["GIT_PASSWORD"])
