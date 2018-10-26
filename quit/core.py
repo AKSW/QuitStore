@@ -483,7 +483,7 @@ class Quit(object):
                                 fileName = quote_plus(identifier + '_{}.nq'.format(i))
                             else:
                                 break
-                            i+= 1
+                            i += 1
 
                         new_contexts[identifier] = FileReference(fileName, '')
 
