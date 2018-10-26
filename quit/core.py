@@ -475,8 +475,16 @@ class Quit(object):
                     if isinstance(identifier, BNode) or str(identifier) == 'default':
                         continue  # TODO default graph use case
 
-                    fileName = quote_plus(identifier + '.nq')
                     if identifier not in new_contexts.keys():
+                        while True:
+                            fileName = quote_plus(identifier + '.nq')
+                            i = 0
+                            if fileName in blobs:
+                                fileName = quote_plus(identifier + '_{}.nq'.format(i))
+                            else:
+                                break
+                            i+= 1
+
                         new_contexts[identifier] = FileReference(fileName, '')
 
                     fileReference = new_contexts[identifier]
