@@ -107,9 +107,6 @@ def register_app(app, config):
 
     content = quit.store.store.serialize(format='trig').decode()
     logger.debug("Initialize store with following content: {}".format(content))
-    logger.debug("Initialize store with following graphs: {}".format(
-        quit.config.getgraphurifilemap())
-    )
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)

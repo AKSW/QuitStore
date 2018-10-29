@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from quit.conf import Feature, QuitConfiguration
+from quit.conf import Feature, QuitStoreConfiguration
 from quit.exceptions import InvalidConfigurationError
 import rdflib.plugins.sparql
 from rdflib.plugins.sparql.algebra import SequencePath
@@ -98,11 +98,10 @@ def initialize(args):
         'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
 
     try:
-        config = QuitConfiguration(
+        config = QuitStoreConfiguration(
             configfile=args.configfile,
             targetdir=args.targetdir,
-            repository=args.repourl,
-            configmode=args.configmode,
+            upstream=args.repourl,
             features=args.features,
             namespace=args.namespace,
         )
@@ -111,19 +110,15 @@ def initialize(args):
         sys.exit('Exiting quit')
 
     # since repo is handled, we can add graphs to config
-    config.initgraphconfig()
 
-    logger.info('QuitStore successfully running.')
-    logger.info('Known graphs: ' + str(config.getgraphs()))
-    logger.info('Known files: ' + str(config.getfiles()))
+    logger.info('QuitStore Configuration initialized.')
     logger.debug('Path of Gitrepo: ' + config.getRepoPath())
-    logger.debug('Config mode: ' + str(config.getConfigMode()))
-    logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'config': config}
 
 
 class FeaturesAction(argparse.Action):
+    """Actions that are executied for the configuration passed with the `--feature` option."""
     CHOICES = {
         'provenance': Feature.Provenance,
         'persistence': Feature.Persistence,
@@ -145,7 +140,11 @@ class FeaturesAction(argparse.Action):
 
 
 def parseArgs(args):
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Returns:
+        parsed object representing the config arguments.
+    """
     basepathhelp = "Base path (aka. application root) (WSGI only)."
     graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
                 "localconfig" - Use the given local file for graph settings.
