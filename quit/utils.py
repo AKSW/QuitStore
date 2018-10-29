@@ -41,12 +41,14 @@ def git_timestamp(ts, offset):
         tz = tzinfo.TZ(offset, tzname)
     return datetime.fromtimestamp(ts, tz)
 
+
 def iri_to_name(iri):
     parsedIri = urlparse(iri)
     nameParts = [parsedIri.netloc]
     if parsedIri.path.strip("/"):
         nameParts += parsedIri.path.strip("/").split("/")
     return quote_plus("_".join(nameParts))
+
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""
