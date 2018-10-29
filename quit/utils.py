@@ -7,6 +7,8 @@ import sys
 from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InMemoryAggregatedGraph
 from collections import OrderedDict
+from urllib.parse import quote_plus, urlparse
+
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -39,6 +41,12 @@ def git_timestamp(ts, offset):
         tz = tzinfo.TZ(offset, tzname)
     return datetime.fromtimestamp(ts, tz)
 
+def iri_to_name(iri):
+    parsedIri = urlparse(iri)
+    nameParts = [parsedIri.netloc]
+    if parsedIri.path.strip("/"):
+        nameParts += parsedIri.path.strip("/").split("/")
+    return quote_plus("_".join(nameParts))
 
 def sparqlresponse(result, format):
     """Create a FLASK HTTP response for sparql-result+json."""

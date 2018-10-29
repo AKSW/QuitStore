@@ -16,10 +16,8 @@ from quit.conf import Feature, QuitGraphConfiguration
 from quit.helpers import applyChangeset
 from quit.namespace import RDFS, FOAF, XSD, PROV, QUIT, is_a
 from quit.graphs import RewriteGraph, InMemoryAggregatedGraph
-from quit.utils import graphdiff, git_timestamp
+from quit.utils import graphdiff, git_timestamp, iri_to_name
 from quit.cache import Cache, FileReference
-
-from urllib.parse import quote_plus, urlparse
 
 import subprocess
 
@@ -477,28 +475,21 @@ class Quit(object):
                         continue  # TODO default graph use case
 
                     if identifier not in new_contexts.keys():
-                        fileName = _iriToName(identifier) + '.nq'
+                        fileName = iri_to_name(identifier) + '.nq'
 
                         if fileName in known_blobs:
-                            reg = re.compile(re.escape(_iriToName(identifier)) + "_([0-9]+).nq")
+                            reg = re.compile(re.escape(iri_to_name(identifier)) + "_([0-9]+).nq")
                             #  n ~ numbers (in blobname), b ~ blobname, m ~ match
                             n = [
                                 int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                             ] + [0]
-                            fileName = '{}_{}.nq'.format(_iriToName(identifier), max(n)+1)
+                            fileName = '{}_{}.nq'.format(iri_to_name(identifier), max(n)+1)
 
                         new_contexts[identifier] = FileReference(fileName, '')
 
                     fileReference = new_contexts[identifier]
                     applyChangeset(fileReference, changeset, identifier)
             return new_contexts
-
-        def _iriToName(iri):
-            parsedIri = urlparse(iri)
-            nameParts = [parsedIri.netloc]
-            if parsedIri.path.strip("/"):
-                nameParts += parsedIri.path.strip("/").split("/")
-            return quote_plus("_".join(nameParts))
 
         if not delta:
             return
