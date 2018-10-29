@@ -12,6 +12,7 @@ from helpers import TemporaryRepository, TemporaryRepositoryFactory
 import json
 from helpers import createCommit, assertResultBindingsEqual
 from tempfile import TemporaryDirectory
+from quit.utils import iri_to_name
 
 
 class SparqlProtocolTests(unittest.TestCase):
@@ -3246,7 +3247,7 @@ class FileHandlingTests(unittest.TestCase):
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
-            filename = quote_plus('http://aksw.org/') + '.nq'
+            filename = iri_to_name('http://aksw.org/') + '.nq'
 
             self.assertFalse(path.isfile(path.join(repo.workdir, filename)))
             self.assertFalse(path.isfile(path.join(repo.workdir, filename + '.graph')))
@@ -3292,7 +3293,7 @@ class FileHandlingTests(unittest.TestCase):
                      content_type="application/sparql-update",
                      data=update)
 
-            filename = quote_plus('http://aksw.org/') + '.nq'
+            filename = iri_to_name('http://aksw.org/') + '.nq'
 
             with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
@@ -3325,20 +3326,31 @@ class FileHandlingTests(unittest.TestCase):
         """
         # Prepate a git Repository
         content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
-        with TemporaryRepositoryFactory().withHashedFileNames(content) as repo:
+        with TemporaryRepository() as repo:
+
+            hashed_identifier = iri_to_name('http://aksw.org/')
+
+            files = {
+                hashed_identifier + '.nq': ('http://example.org/', content),
+                hashed_identifier + '_1.nq': ('urn:graph1', '\n'),
+                hashed_identifier + '_11.nq': ('urn:graph2', '\n')}
+
+            # Prepare Git Repository
+            for filename, (graph_iri, content) in files.items():
+                with open(path.join(repo.workdir, filename), 'w') as graph_file:
+                        graph_file.write(content)
+
+                # Set Graph URI to http://example.org/
+                with open(path.join(repo.workdir, filename + '.graph'), 'w') as graph_file:
+                    graph_file.write(graph_iri)
+
+            createCommit(repo, "init")
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
-
-            hashed_identifier = quote_plus('http://aksw.org/')
-
-            files = {
-                hashed_identifier + '.nq': ('http://example.org/', content),
-                hashed_identifier + '_1.nq': ('urn:graph1', '\n'),
-                hashed_identifier + '_11.nq': ('urn:graph2', '\n')}
 
             commit = repo.revparse_single('master')
 
