@@ -480,10 +480,11 @@ class Quit(object):
                         fileName = quote_plus(identifier) + '.nq'
 
                         if fileName in known_blobs:
-                            reg = re.compile("(" + quote_plus(identifier) + "_)([0-9]*)(.nq)")
+                            reg = re.compile(re.escape(quote_plus(identifier)) + "_([0-9]*).nq")
                             #  n ~ numbers (in blobname), b ~ blobname, m ~ match
-                            n = [int(m.group(2)) for b in known_blobs for m in [reg.search(b)] if m]
-                            fileName = quote_plus(identifier + '_{}.nq'.format(max(n)+1))
+                            n = [int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m]
+                            n.append(0)
+                            fileName = '{}_{}.nq'.format(quote_plus(identifier), max(n)+1)
 
                         new_contexts[identifier] = FileReference(fileName, '')
 
