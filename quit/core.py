@@ -10,6 +10,7 @@ from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal
+import re
 
 from quit.conf import Feature, QuitGraphConfiguration
 from quit.helpers import applyChangeset
@@ -468,7 +469,7 @@ class Quit(object):
                     pass
             return blobs_new
 
-        def _applyUnknownGraphs(delta):
+        def _applyUnknownGraphs(delta, known_blobs):
             new_contexts = {}
             for entry in delta:
                 for identifier, changeset in entry.items():
@@ -476,14 +477,13 @@ class Quit(object):
                         continue  # TODO default graph use case
 
                     if identifier not in new_contexts.keys():
-                        while True:
-                            fileName = quote_plus(identifier + '.nq')
-                            i = 0
-                            if fileName in blobs:
-                                fileName = quote_plus(identifier + '_{}.nq'.format(i))
-                            else:
-                                break
-                            i += 1
+                        fileName = quote_plus(identifier) + '.nq'
+
+                        if fileName in known_blobs:
+                            reg = re.compile("(" + quote_plus(identifier) + "_)([0-9]*)(.nq)")
+                            #  n ~ numbers (in blobname), b ~ blobname, m ~ match
+                            n = [int(m.group(2)) for b in known_blobs for m in [reg.search(b)] if m]
+                            fileName = quote_plus(identifier + '_{}.nq'.format(max(n)+1))
 
                         new_contexts[identifier] = FileReference(fileName, '')
 
@@ -513,9 +513,10 @@ class Quit(object):
             self.updateGraphConfig(parent_commit_id)
 
         graphconfig = self._graphconfigs.get(parent_commit_id)
+        known_files = graphconfig.getfiles().keys()
 
         blobs_new = _applyKnownGraphs(delta, blobs)
-        new_contexts = _applyUnknownGraphs(delta)
+        new_contexts = _applyUnknownGraphs(delta, known_files)
         new_config = copy(graphconfig)
 
         for identifier, fileReference in new_contexts.items():

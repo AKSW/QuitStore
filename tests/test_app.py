@@ -3314,5 +3314,70 @@ class FileHandlingTests(unittest.TestCase):
             self.assertTrue('ns1:graphUri <http://aksw.org/> ;' in diff)
 
 
+    def testFileNameCollision(self):
+        """Test if a new graph is added to the repository.
+
+        1. Prepare a git repository with files that use hashed names of a graph that will be inserted
+        2. Start Quit
+        3. check filesystem for filenames
+        4. execute Update query
+        5. check filesystem for filenames
+        """
+        # Prepate a git Repository
+        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        with TemporaryRepositoryFactory().withHashedFileNames(content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            hashed_identifier = quote_plus('http://aksw.org/')
+
+            files = {
+                hashed_identifier + '.nq': ('http://example.org/', content),
+                hashed_identifier + '_1.nq': ('urn:graph1', '\n'),
+                hashed_identifier + '_11.nq': ('urn:graph2', '\n')}
+
+            commit = repo.revparse_single('master')
+
+            for entry in commit.tree:
+                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                    self.assertTrue(entry.name in files.keys())
+                else:
+                    self.assertTrue(entry.name[:-6] in files.keys())
+
+            for filename, (graph_iri, content) in files.items():
+                with open(path.join(repo.workdir, filename), 'r') as f:
+                    self.assertEqual(content, f.read())
+                with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
+                    self.assertEqual(graph_iri, f.read())
+
+            # execute Update query
+            update = 'INSERT DATA { GRAPH <http://aksw.org/> { <urn:1> <urn:2> <urn:3> . } }'
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            #  add the new file we expext after Update Query
+            files[hashed_identifier + '_12.nq'] = (
+                'http://aksw.org/', '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n')
+
+            commit = repo.revparse_single('master')
+
+            for entry in commit.tree:
+                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                    self.assertTrue(entry.name in files.keys())
+                else:
+                    self.assertTrue(entry.name[:-6] in files.keys())
+
+            for filename, (graph_iri, content) in files.items():
+                with open(path.join(repo.workdir, filename), 'r') as f:
+                    self.assertEqual(content, f.read())
+                with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
+                    self.assertEqual(graph_iri, f.read())
+
+
 if __name__ == '__main__':
     unittest.main()

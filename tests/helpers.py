@@ -3,6 +3,7 @@ from pygit2 import init_repository, clone_repository, Signature
 from os import path, walk
 from os.path import join
 from rdflib import Graph
+from urllib.parse import quote_plus
 
 
 def createCommit(repository, message=None):
@@ -95,6 +96,42 @@ class TemporaryRepositoryFactory(object):
         tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
 
         return tmpRepo
+
+    def withHashedFileNames(self, graphContent='\n'):
+        """Give a TemporaryRepository() initialized with a graph name that will force a collision."""
+        tmpRepo = TemporaryRepository()
+
+        # Add a graph.nq and a graph.nq.graph file
+        identifier = quote_plus('http://aksw.org/')
+
+        files = {
+            identifier + '.nq': ('http://example.org/', graphContent),
+            identifier + '_1.nq': ('urn:graph1', '\n'),
+            identifier + '_11.nq': ('urn:graph2', '\n')}
+
+        for filename, (graph_iri, content) in files.items():
+            with open(path.join(tmpRepo.repo.workdir, filename), 'w') as graph_file:
+                    graph_file.write(content)
+
+            # Set Graph URI to http://example.org/
+            with open(path.join(tmpRepo.repo.workdir, filename + '.graph'), 'w') as graph_file:
+                graph_file.write(graph_iri)
+
+        # Add and Commit the empty graph
+        index = tmpRepo.repo.index
+        index.read()
+        for filename, (graph_iri, content) in files.items():
+            index.add(filename)
+            index.add(filename + '.graph')
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
 
     def withBothConfigurations(self):
         """Give a TemporaryRepository() initialized with config.ttl and graph + graphfile."""
