@@ -9,6 +9,7 @@ logger = logging.getLogger('quit.modules.application')
 
 application = Blueprint('application', __name__)
 
+
 @application.route("/login", methods=['GET', 'POST'])
 def login():
     if "state" not in session:
@@ -49,6 +50,7 @@ def login():
         session["OAUTH_TOKEN"] = token
         return "success (<a href='{}'>back to quit</a>)".format(url_for("git.commits"))
 
+
 @application.route("/logout", methods=['GET', 'POST'])
 def logout():
     print(session)
@@ -56,13 +58,16 @@ def logout():
     session.clear()
     print("logout")
     print(session)
-    return "you are successfully logged out (<a href='{}'>back to quit</a>)".format(url_for("git.commits"))
+    return "you are successfully logged out (<a href='{}'>back to quit</a>)".format(
+           url_for("git.commits"))
+
 
 def isLoggedIn():
     """Returns true if OAUTH_TOKEN is set in the session."""
     if "OAUTH_TOKEN" in session:
         return True
     return False
+
 
 def githubEnabled():
     """Returns true if oauthclientid and oauthclientsecret are configured."""

@@ -44,7 +44,9 @@ def commits(branch_or_ref):
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             data = generate_graph_data(CommitGraph.gets(results))
-            response = make_response(render_template('commits.html', results=results, data=data, isLoggedIn=isLoggedIn, githubEnabled=githubEnabled))
+            response = make_response(render_template('commits.html', results=results, data=data,
+                                                     isLoggedIn=isLoggedIn,
+                                                     githubEnabled=githubEnabled))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:
