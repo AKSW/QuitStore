@@ -3263,7 +3263,7 @@ class FileHandlingTests(unittest.TestCase):
             with open(path.join(repo.workdir, filename), 'r') as f:
                 self.assertEqual('<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
             with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
-                self.assertEqual('http://aksw.org/', f.read().strip())
+                self.assertEqual('http://aksw.org/', f.read())
 
     def testNewNamedGraphConfigfile(self):
         """Test if a new graph is added to the repository.
@@ -3437,7 +3437,7 @@ class FileHandlingTests(unittest.TestCase):
                 with open(path.join(repo.workdir, filename), 'r') as f:
                     self.assertEqual(content, f.read())
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
-                    self.assertEqual(graph_iri, f.read().strip())
+                    self.assertEqual(graph_iri, f.read())
 
             # execute Update query
             update = 'INSERT DATA { GRAPH <http://aksw.org/> { <urn:1> <urn:2> <urn:3> . } }'
@@ -3461,7 +3461,7 @@ class FileHandlingTests(unittest.TestCase):
                 with open(path.join(repo.workdir, filename), 'r') as f:
                     self.assertEqual(content, f.read())
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
-                    self.assertEqual(graph_iri, f.read().strip())
+                    self.assertEqual(graph_iri, f.read())
 
 
 if __name__ == '__main__':

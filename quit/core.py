@@ -523,7 +523,7 @@ class Quit(object):
             # Add new blobs to repo
             index.add(fileReference.path, fileReference.content)
             if graphconfig.mode == 'graphfiles':
-                index.add(fileReference.path + '.graph', identifier + "\n")
+                index.add(fileReference.path + '.graph', identifier)
 
             # Update config
             new_config.addgraph(identifier, fileReference.path, 'nquads')
