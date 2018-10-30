@@ -8,6 +8,7 @@ from werkzeug.http import parse_accept_header
 from quit.web.app import render_template
 from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
 from quit.utils import git_timestamp
+from quit.web.modules.application import isLoggedIn, githubEnabled
 import json
 
 __all__ = ('git')
@@ -43,7 +44,9 @@ def commits(branch_or_ref):
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             data = generate_graph_data(CommitGraph.gets(results))
-            response = make_response(render_template('commits.html', results=results, data=data))
+            response = make_response(render_template('commits.html', results=results, data=data,
+                                                     isLoggedIn=isLoggedIn,
+                                                     githubEnabled=githubEnabled))
             response.headers['Content-Type'] = 'text/html'
             return response
         elif mimetype in ['application/json', 'application/sparql-results+json']:

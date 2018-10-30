@@ -1,3 +1,4 @@
+import os
 import urllib
 import hashlib
 import rdflib
@@ -6,14 +7,14 @@ import logging
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import url_for, redirect
+from flask import url_for, redirect, session, request
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
-from quit.git import Repository
+from quit.git import Repository, QuitRemoteCallbacks
 import quit.utils as utils
 
 from quit.namespace import QUIT
@@ -83,9 +84,10 @@ def create_app(config):
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
+    app.secret_key = os.urandom(24)
     register_app(app, config)
     register_hook(app)
-    register_blueprints(app)
+    register_blueprints(app, config)
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
@@ -99,7 +101,8 @@ def register_app(app, config):
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
 
-    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection)
+    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection,
+                            callback=QuitRemoteCallbacks(session=session))
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))
@@ -120,14 +123,15 @@ def register_extensions(app):
     cors.init_app(app)
 
 
-def register_blueprints(app):
+def register_blueprints(app, config):
     """Register blueprints in views."""
 
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
+    from quit.web.modules.application import application
 
-    for bp in [debug, endpoint, git]:
+    for bp in [debug, endpoint, git, application]:
         app.register_blueprint(bp)
 
     @app.route("/")

@@ -38,7 +38,9 @@ class QuitStoreConfiguration():
         features=None,
         upstream=None,
         targetdir=None,
-        namespace=None
+        namespace=None,
+        oauthclientid=None,
+        oauthclientsecret=None
     ):
         """Initialize store configuration.
 
@@ -54,6 +56,8 @@ class QuitStoreConfiguration():
         self.sysconf = Graph()
         self.upstream = None
         self.namespace = None
+        self.oauthclientid = oauthclientid
+        self.oauthclientsecret = oauthclientsecret
 
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
         self.nsMngrSysconf.bind('', self.quit, override=False)
