@@ -3385,7 +3385,7 @@ class FileHandlingTests(unittest.TestCase):
                 with open(path.join(repo.workdir, filename), 'r') as f:
                     self.assertEqual(content, f.read())
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
-                    self.assertEqual(graph_iri, f.read())
+                    self.assertEqual(graph_iri, f.read().strip())
 
 
     def testFileNameCollision(self):
