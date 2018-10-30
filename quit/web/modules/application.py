@@ -58,8 +58,16 @@ def logout():
     print(session)
     return "you are successfully logged out (<a href='{}'>back to quit</a>)".format(url_for("git.commits"))
 
-
 def isLoggedIn():
-    if "OAUTH_TOKEN" in session and "state" in session:
+    """Returns true if OAUTH_TOKEN is set in the session."""
+    if "OAUTH_TOKEN" in session:
+        return True
+    return False
+
+def githubEnabled():
+    """Returns true if oauthclientid and oauthclientsecret are configured."""
+    config = current_app.config['quit'].config
+
+    if config.oauthclientid and config.oauthclientsecret:
         return True
     return False

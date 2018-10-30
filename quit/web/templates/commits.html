@@ -3,6 +3,7 @@
 {% block headline %}<div class="lead">Commits</div>{% endblock %}
 
 {% block quit_content %}
+{% if githubEnabled() %}
 <div style="float: right">
 {% if isLoggedIn() %}
 You are Logged in To GitHub (<a href="{{ url_for('application.logout') }}">logout</a>)
@@ -10,6 +11,7 @@ You are Logged in To GitHub (<a href="{{ url_for('application.logout') }}">logou
 <a style="float: right" href="{{ url_for('application.login') }}" class="btn btn-default"><i class="fa fa-sign-in" aria-hidden="true"></i> Login with GitHub</a>
 {% endif %}
 </div>
+{% endif %}
 <form class="form-inline" style="display: inline" id="transmission" role="navigation">
 <ul class="nav nav-tabs">
   <li role="presentation" class="active"><a href="#fetch" action="{{ url_for('.fetch')}}" data-toggle="tab" transmission_method="fetch"><i class="fa fa-cloud-download" aria-hidden="true"></i> Fetch</a></li>
