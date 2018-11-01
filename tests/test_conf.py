@@ -19,7 +19,7 @@ class TestConfiguration(unittest.TestCase):
     ns = 'http://quit.instance/'
 
     def testNamespace(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content1}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
@@ -36,7 +36,7 @@ class TestConfiguration(unittest.TestCase):
                     QuitStoreConfiguration(targetdir=repo.workdir, namespace=uri)
 
     def testStoreConfigurationWithDir(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content1}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             conf = QuitStoreConfiguration(targetdir=repo.workdir, namespace=self.ns)
@@ -44,7 +44,7 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getDefaultBranch(), 'master')
 
     def testStoreConfigurationWithConfigfile(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content1}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitStoreConfiguration(configfile=join(repo.workdir, 'config.ttl'), namespace=self.ns)
@@ -52,7 +52,7 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getDefaultBranch(), 'master')
 
     def testStoreConfigurationUpstream(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content1}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitStoreConfiguration(
@@ -62,12 +62,10 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getRepoPath(), repo.workdir)
             self.assertEqual(conf.getUpstream(), 'http://cool.repo.git')
 
-
-
     def testExistingRepoGraphFiles(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/> .\n'
-        content2 += '<urn:a> <urn:b> <urn:c> <http://aksw.org/> .\n'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .\n'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             conf = QuitGraphConfiguration(repository=repo)
@@ -79,35 +77,35 @@ class TestConfiguration(unittest.TestCase):
                 sorted([str(x) for x in graphs]), ['http://aksw.org/', 'http://example.org/'])
 
             files = conf.getfiles()
-            self.assertEqual(sorted(files), ['graph_0.nq', 'graph_1.nq'])
+            self.assertEqual(sorted(files), ['graph_0.nt', 'graph_1.nt'])
 
-            serialization = conf.getserializationoffile('graph_0.nq')
-            self.assertEqual(serialization, 'nquads')
+            serialization = conf.getserializationoffile('graph_0.nt')
+            self.assertEqual(serialization, 'nt')
 
-            serialization = conf.getserializationoffile('graph_1.nq')
-            self.assertEqual(serialization, 'nquads')
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
             gfMap = conf.getgraphurifilemap()
 
             self.assertEqual(gfMap, {
-                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nq',
-                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
                 })
 
             self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_0.nq')],
+                [str(x) for x in conf.getgraphuriforfile('graph_0.nt')],
                 ['http://aksw.org/']
             )
             self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_1.nq')],
+                [str(x) for x in conf.getgraphuriforfile('graph_1.nt')],
                 ['http://example.org/']
             )
-            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nq')
-            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nq')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
+            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
     def testExistingRepoConfigfile(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/> .\n'
-        content2 += '<urn:a> <urn:b> <urn:c> <http://aksw.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitGraphConfiguration(repository=repo)
@@ -118,33 +116,33 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(sorted([str(x) for x in graphs]), ['http://aksw.org/', 'http://example.org/'])
 
             files = conf.getfiles()
-            self.assertEqual(sorted(files), ['graph_0.nq', 'graph_1.nq'])
+            self.assertEqual(sorted(files), ['graph_0.nt', 'graph_1.nt'])
 
-            serialization = conf.getserializationoffile('graph_0.nq')
-            self.assertEqual(serialization, 'nquads')
-            serialization = conf.getserializationoffile('graph_1.nq')
-            self.assertEqual(serialization, 'nquads')
+            serialization = conf.getserializationoffile('graph_0.nt')
+            self.assertEqual(serialization, 'nt')
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
 
             gfMap = conf.getgraphurifilemap()
             self.assertEqual(gfMap, {
-                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nq',
-                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
                 })
 
             self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_0.nq')],
+                [str(x) for x in conf.getgraphuriforfile('graph_0.nt')],
                 ['http://aksw.org/']
             )
             self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_1.nq')], ['http://example.org/']
+                [str(x) for x in conf.getgraphuriforfile('graph_1.nt')], ['http://example.org/']
             )
-            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nq')
-            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nq')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
+            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
     def testGraphConfigurationMethods(self):
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/> .\n'
-        content2 += '<urn:a> <urn:b> <urn:c> <http://aksw.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = QuitGraphConfiguration(repository=repo)
@@ -153,19 +151,19 @@ class TestConfiguration(unittest.TestCase):
             conf.removegraph('http://aksw.org/')
 
             self.assertEqual(conf.getgraphurifilemap(), {
-                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'})
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), None)
-            self.assertEqual(conf.getgraphuriforfile('graph_0.nq'), [])
-            self.assertEqual(conf.getserializationoffile('graph_0.nq'), None)
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt'), [])
+            self.assertEqual(conf.getserializationoffile('graph_0.nt'), None)
 
-            conf.addgraph('http://aksw.org/', 'new_file.nq', 'nquads')
+            conf.addgraph('http://aksw.org/', 'new_file.nt', 'nt')
 
             self.assertEqual(conf.getgraphurifilemap(), {
-                    rdflib.term.URIRef('http://aksw.org/'): 'new_file.nq',
-                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nq'})
-            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nq')
-            self.assertEqual(conf.getgraphuriforfile('new_file.nq'), ['http://aksw.org/'])
-            self.assertEqual(conf.getserializationoffile('new_file.nq'), 'nquads')
+                    rdflib.term.URIRef('http://aksw.org/'): 'new_file.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nt')
+            self.assertEqual(conf.getgraphuriforfile('new_file.nt'), ['http://aksw.org/'])
+            self.assertEqual(conf.getserializationoffile('new_file.nt'), 'nt')
 
     def testGraphConfigurationFailing(self):
         with TemporaryRepositoryFactory().withBothConfigurations() as repo:

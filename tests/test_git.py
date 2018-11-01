@@ -207,7 +207,7 @@ class GitRepositoryTests(unittest.TestCase):
 
         dir = TemporaryDirectory()
         repo = quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        self.assertTrue(path.exists(path.join(dir.name, 'example.nq')))
+        self.assertTrue(path.exists(path.join(dir.name, 'example.nt')))
         self.assertFalse(repo.is_bare)
         dir.cleanup()
 
@@ -394,7 +394,7 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertFalse(local.is_empty)
                 self.assertFalse(quitRepo.is_empty)
 
-                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphContent = """
                         <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
                     graphFile.write(graphContent)
@@ -514,7 +514,7 @@ class GitRepositoryTests(unittest.TestCase):
                 index = remoteQuitRepo.index(remoteHead)
                 graphContent += """
                     <http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> ."""
-                index.add("graph.nq", graphContent)
+                index.add("graph.nt", graphContent)
 
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
                 commitid = index.commit("from test", author.name, author.email)
@@ -539,8 +539,8 @@ class GitRepositoryTests(unittest.TestCase):
 
                 index = quitRepo.index(remoteHead)
                 graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example.org/> .\n"
-                index.add("graph2.nq", graph2Content)
-                index.add("graph2.nq.graph", "http://example2.org/")
+                index.add("graph2.nt", graph2Content)
+                index.add("graph2.nt.graph", "http://example2.org/")
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
                 localCommitid = index.commit("from local", author.name, author.email)
                 quitRepo._repository.checkout_tree(quitRepo._repository.get(localCommitid))
@@ -553,7 +553,7 @@ class GitRepositoryTests(unittest.TestCase):
                 remoteQuitRepo = quit.git.Repository(remote.workdir)
                 index = remoteQuitRepo.index(remoteHead)
                 graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n"
-                index.add("graph.nq", graphContent)
+                index.add("graph.nt", graphContent)
                 remoteCommitid = index.commit("from remote", author.name, author.email)
                 remoteQuitRepo._repository.checkout_tree(remoteQuitRepo._repository.get(remoteCommitid))
 
@@ -567,10 +567,10 @@ class GitRepositoryTests(unittest.TestCase):
                                      [str(localCommitid), str(remoteCommitid)])
 
                 # check if the merged commit contains all file contents
-                with open(path.join(localDirectory, "graph.nq")) as f:
+                with open(path.join(localDirectory, "graph.nt")) as f:
                     self.assertEqual("".join(f.readlines()), graphContent)
 
-                with open(path.join(localDirectory, "graph2.nq")) as f:
+                with open(path.join(localDirectory, "graph2.nt")) as f:
                     self.assertEqual("".join(f.readlines()), graph2Content)
 
     def testPullRepoClonedAndPullWithConflict(self):
@@ -588,10 +588,10 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
                 index = quitRepo._repository.index
-                with open(path.join(localDirectory, "graph.nq"), "a") as graphFile:
+                with open(path.join(localDirectory, "graph.nt"), "a") as graphFile:
                     graphFile.write(
                         "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example.org/> .\n")
-                index.add("graph.nq")
+                index.add("graph.nt")
                 index.write()
                 tree = index.write_tree()
 
@@ -603,10 +603,10 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertFalse(quitRepo.is_empty)
 
                 index = remote.index
-                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphFile.write(
                         "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n")
-                index.add("graph.nq")
+                index.add("graph.nt")
                 index.write()
                 tree = index.write_tree()
                 remoteCommitid = remote.create_commit(
