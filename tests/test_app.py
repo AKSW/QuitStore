@@ -3463,6 +3463,37 @@ class FileHandlingTests(unittest.TestCase):
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
                     self.assertEqual(graph_iri, f.read().strip())
 
+    def testDeleteWithWhitespaceFile(self):
+        """Test deleting data from a nq-file with additional whitespace in serialization.
+
+        1. Prepare a git repository with one graph
+        2. Start Quit
+        3. compare File content
+        4. execute DELETE DATA query
+        5. compare File content
+        """
+        # Prepate a git Repository
+        graphContent = "<urn:x>  <urn:y>   <urn:z>   <http://example.org/> . "
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual(graphContent, f.read())
+
+            # execute DELETE query
+            update = "DELETE DATA {graph <http://example.org/> {<urn:x> <urn:y> <urn:z> .}};"
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual('\n', f.read())
+
 
 if __name__ == '__main__':
     unittest.main()
