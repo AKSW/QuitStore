@@ -126,16 +126,12 @@ def sparql(parent_commit_ref):
                     # parent_commit_ref
                     try:
                         quit.repository.merge(target=parent_commit_ref, branch=target_ref)
+                        response = make_response('success', 200)
+                        target_ref = parent_commit_ref
                     except QuitMergeConflict as e:
                         response = make_response('merge failed', 400)
-                        response.headers["X-CurrentBranch"] = target_ref
-                        response.headers["X-CurrentCommit"] = oid
-                        return response
-                    response = make_response('success', 200)
-                    response.headers["X-CurrentBranch"] = parent_commit_ref
-                    response.headers["X-CurrentCommit"] = oid
-                    return response
-                response = make_response('branched', 200)
+                else:
+                    response = make_response('branched', 200)
                 response.headers["X-CurrentBranch"] = target_ref
                 response.headers["X-CurrentCommit"] = oid
                 return response
