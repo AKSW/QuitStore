@@ -281,7 +281,7 @@ class Quit(object):
             # Diff
             parent = next(iter(commit.parents or []), None)
 
-            i2, commitid = self.instance(parent.id, True) if parent else None
+            i2, commitid = self.instance(parent.id, True) if parent else None, None
 
             delta = graphdiff(i2.store if i2 else None, i1.store)
 
