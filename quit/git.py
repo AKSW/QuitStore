@@ -335,7 +335,7 @@ class Repository(object):
           'reference' to the resulting commit
 
         Keyword arguments:
-        reference -- The reference which should point ot the result of the merge
+        reference -- The reference which should point to the result of the merge
         target -- The target of the merge operation (if omitted, 'branch' will be merged into
                   'reference')
         branch -- The branche which should be merged into 'target' respective 'reference'

@@ -112,7 +112,6 @@ def sparql(parent_commit_ref):
             elif resolution_method in ("merge", "branch"):
                 logger.debug("writing update to a branch of {} because it is at {} but {} was " +
                              "expected".format(parent_commit_ref, commit_id, parent_commit_id))
-                # TODO apply update on graph, commitid
                 time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
                 shortUUID = uuid.uuid1().bytes.encode('base64').rstrip('=\n').replace('/', '_')
                 target_ref = "refs/heads/tmp/" + time + shortUUID
@@ -125,10 +124,22 @@ def sparql(parent_commit_ref):
                                  "expected".format(parent_commit_ref, commit_id, parent_commit_id))
                     # TODO merge graph, commitid with original graph, commitid and commit to
                     # parent_commit_ref
+                    try:
+                        quit.repository.merge(target=parent_commit_ref, branch=target_ref)
+                    except QuitMergeConflict as e:
+                        response = make_response('merge failed', 400)
+                        response.headers["X-CurrentBranch"] = target_ref
+                        response.headers["X-CurrentCommit"] = oid
+                        return response
+                    response = make_response('success', 200)
+                    response.headers["X-CurrentBranch"] = parent_commit_ref
+                    response.headers["X-CurrentCommit"] = oid
+                    return response
+                response = make_response('branched', 200)
+                response.headers["X-CurrentBranch"] = target_ref
+                response.headers["X-CurrentCommit"] = oid
+                return response
 
-                    return make_response('branched', 200)
-
-                return make_response('branched', 200)
                 # Add info about temporary branch
         else:
             graph, commitid = quit.instance(parent_commit_id)
