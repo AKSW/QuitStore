@@ -3,7 +3,7 @@ import pygit2
 import re
 import logging
 
-from _pygit2 import GitError
+from _pygit2 import GitError, Oid
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitMergeConflict, QuitGitRefNotFound, QuitGitRepoError
@@ -272,9 +272,9 @@ class Repository(object):
             local_branch = groups.group("dst")
             logger.debug("pull: parsed refspec is: {}, {}, {}".format(plus, remote_branch,
                                                                       local_branch))
-        remote_master_id = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
-        if remote_master_id is not None:
-            self.merge(reference=local_branch, branch=remote_master_id)
+        remote_reference = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
+        if remote_reference is not None:
+            self.merge(reference=local_branch, branch=remote_reference)
 
     def push(self, remote_name=None, refspec=None):
         """Push changes on a local repository to a remote repository.
@@ -350,7 +350,11 @@ class Repository(object):
 
         logger.debug("merge: {}, {}, {}".format(reference, target, branch))
 
-        merge_result, _ = self._repository.merge_analysis(branch)
+        if not isinstance(branch, Oid):
+            branch_id = self._repository.lookup_reference(branch).target
+        else:
+            branch_id = branch
+        merge_result, _ = self._repository.merge_analysis(branch_id)
 
         if reference != "master":
             raise Exception("We first have to implement switching branches")

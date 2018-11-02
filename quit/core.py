@@ -424,6 +424,7 @@ class Quit(object):
                           named_graph=named_graph)
         if exception:
             raise exception
+        return oid
 
     def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
                default_graph=[], named_graph=[], **kwargs):

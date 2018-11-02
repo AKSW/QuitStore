@@ -10,9 +10,10 @@ from quit import helpers as helpers
 from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
-from quit.exceptions import FromNamedError
+from quit.exceptions import FromNamedError, QuitMergeConflict
 import datetime
 import uuid
+import base64
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -110,11 +111,14 @@ def sparql(parent_commit_ref):
                              parent_commit_ref, commit_id, parent_commit_id))
                 return make_response('reject', 409)  # alternative 412
             elif resolution_method in ("merge", "branch"):
-                logger.debug("writing update to a branch of {} because it is at {} but {} was " +
-                             "expected".format(parent_commit_ref, commit_id, parent_commit_id))
+                logger.debug(("writing update to a branch of {} because it is at {} but {} was "
+                             "expected").format(parent_commit_ref, commit_id, parent_commit_id))
                 time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
-                shortUUID = uuid.uuid1().bytes.encode('base64').rstrip('=\n').replace('/', '_')
-                target_ref = "refs/heads/tmp/" + time + shortUUID
+                shortUUID = (base64.urlsafe_b64encode(uuid.uuid1().bytes).decode("utf-8")
+                             ).rstrip('=\n').replace('/', '_')
+                target_branch = "tmp/{}_{}".format(time, shortUUID)
+                target_ref = "refs/heads/" + target_branch
+                logger.debug("target ref is: {}".format(target_ref))
                 oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
                                               query=query, default_graph=default_graph,
                                               named_graph=named_graph)
@@ -125,7 +129,7 @@ def sparql(parent_commit_ref):
                     # TODO merge graph, commitid with original graph, commitid and commit to
                     # parent_commit_ref
                     try:
-                        quit.repository.merge(target=parent_commit_ref, branch=target_ref)
+                        quit.repository.merge(reference=parent_commit_ref, branch=target_ref)
                         response = make_response('success', 200)
                         target_ref = parent_commit_ref
                     except QuitMergeConflict as e:
