@@ -11,6 +11,8 @@ from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
 from quit.exceptions import FromNamedError
+import datetime
+import uuid
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -111,7 +113,9 @@ def sparql(parent_commit_ref):
                 logger.debug("writing update to a branch of {} because it is at {} but {} was " +
                              "expected".format(parent_commit_ref, commit_id, parent_commit_id))
                 # TODO apply update on graph, commitid
-                target_ref = "some temorary reference"
+                time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+                shortUUID = uuid.uuid1().bytes.encode('base64').rstrip('=\n').replace('/', '_')
+                target_ref = "refs/heads/tmp/" + time + shortUUID
                 oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
                                               query=query, default_graph=default_graph,
                                               named_graph=named_graph)
