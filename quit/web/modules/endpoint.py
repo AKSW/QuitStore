@@ -136,7 +136,8 @@ def sparql(parent_commit_ref):
             response = create_result_response(res, askMimetypes[mimetype])
         elif queryType in ['ConstructQuery', 'DescribeQuery']:
             response = create_result_response(res, rdfMimetypes[mimetype])
-        response.headers["X-CurrentCommit"] = commitid
+        if commitid:
+            response.headers["X-CurrentCommit"] = commitid
         return response
     except KeyError as e:
         return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
@@ -342,5 +343,6 @@ def statements(branch_or_ref):
     response = make_response(body or '', code)
     for k, v in headers.items():
         response.headers[k] = v
-    response.headers["X-CurrentCommit"] = commitid
+    if commitid:
+        response.headers["X-CurrentCommit"] = commitid
     return response

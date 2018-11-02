@@ -153,42 +153,45 @@ class Quit(object):
         if not self._exists(commit.id):
             self.changeset(commit)
 
-    def instance(self, commit_id, force=False):
+    def instance(self, reference, force=False):
         """Create and return dataset for a given commit id.
 
         Args:
-            commit_id: commit id of the commit to retrieve
+            reference: commit id or reference of the commit to retrieve
             force: force to get the dataset from the git repository instead of the internal cache
         Returns:
             Instance of VirtualGraph representing the respective dataset
         """
         default_graphs = []
+        commitid = None
 
-        commit = self.repository.revision(commit_id)
+        if reference:
+            commit = self.repository.revision(reference)
+            commitid = commit.id
 
-        for blob in self.getFilesForCommit(commit):
-            try:
-                (name, oid) = blob
-                f, contexts = self.getFileReferenceAndContext(blob, commit)
-                for context in contexts:
-                    internal_identifier = context.identifier + '-' + str(oid)
+            for blob in self.getFilesForCommit(commit):
+                try:
+                    (name, oid) = blob
+                    f, contexts = self.getFileReferenceAndContext(blob, commit)
+                    for context in contexts:
+                        internal_identifier = context.identifier + '-' + str(oid)
 
-                    if force or not self.config.hasFeature(Feature.Persistence):
-                        g = context
-                    else:
-                        g = RewriteGraph(
-                            self.store.store.store,
-                            internal_identifier,
-                            context.identifier
-                        )
-                    default_graphs.append(g)
-            except KeyError:
-                pass
+                        if force or not self.config.hasFeature(Feature.Persistence):
+                            g = context
+                        else:
+                            g = RewriteGraph(
+                                self.store.store.store,
+                                internal_identifier,
+                                context.identifier
+                            )
+                        default_graphs.append(g)
+                except KeyError:
+                    pass
 
         instance = InMemoryAggregatedGraph(
             graphs=default_graphs, identifier='default')
 
-        return VirtualGraph(instance), commit.id
+        return VirtualGraph(instance), commitid
 
     def changeset(self, commit):
 
