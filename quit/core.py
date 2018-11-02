@@ -416,9 +416,15 @@ class Quit(object):
         """Apply an update query on the graph and the git repository."""
         graph, commitid = self.instance(parent_commit_ref)
         resultingChanges, exception = graph.update(parsedQuery)
+        if exception:
+            # TODO need to revert or invalidate the graph at this point.
+            pass
         oid = self.commit(graph, resultingChanges, 'New Commit from QuitStore', parent_commit_ref,
                           target_ref, query=query, default_graph=default_graph,
                           named_graph=named_graph)
+        if exception:
+            raise exception
+
 
     def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
                default_graph=[], named_graph=[], **kwargs):

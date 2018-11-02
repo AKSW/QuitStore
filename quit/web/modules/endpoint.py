@@ -95,18 +95,21 @@ def sparql(parent_commit_ref):
     commitid = None  # TODO remove when restructuring mimetypes
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
-        commit = quit.repository.revision(parent_commit_ref)
+        if parent_commit_ref:
+            commit_id = quit.repository.revision(parent_commit_ref).id
+        else:
+            commit_id = None
 
         parent_commit_id = request.values.get('parent_commit_id', None) or None
-        if parent_commit_id and parent_commit_id != commit.id:
+        if parent_commit_id and parent_commit_id != commit_id:
             resolution_method = request.values.get('resolution_method', None) or None
             if resolution_method == "reject":
                 logger.debug("rejecting update because {} is at {} but {} was expected".format(
-                             parent_commit_ref, commit.id, parent_commit_id))
+                             parent_commit_ref, commit_id, parent_commit_id))
                 return make_response('reject', 409)  # alternative 412
             elif resolution_method in ("merge", "branch"):
                 logger.debug("writing update to a branch of {} because it is at {} but {} was " +
-                             "expected".format(parent_commit_ref, commit.id, parent_commit_id))
+                             "expected".format(parent_commit_ref, commit_id, parent_commit_id))
                 # TODO apply update on graph, commitid
                 target_ref = "some temorary reference"
                 oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
@@ -115,7 +118,7 @@ def sparql(parent_commit_ref):
 
                 if resolution_method == "merge":
                     logger.debug("going to merge update into {} because it is at {} but {} was " +
-                                 "expected".format(parent_commit_ref, commit.id, parent_commit_id))
+                                 "expected".format(parent_commit_ref, commit_id, parent_commit_id))
                     # TODO merge graph, commitid with original graph, commitid and commit to
                     # parent_commit_ref
 
