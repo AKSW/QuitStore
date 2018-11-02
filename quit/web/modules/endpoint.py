@@ -99,6 +99,27 @@ def sparql(parent_commit_ref):
         return make_response('No branch or reference given.', 400)
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
+        parent_commit_id = request.values.get('parent_commit_id', None) or None
+        if parent_commit_id and parent_commit_id != commitid:
+            resolution_method = request.values.get('resolution_method', None) or None
+            if resolution_method = "reject":
+                logger.debug("rejecting update because {} is at {} but {} was expected".format(
+                             parent_commit_ref, commitid, parent_commit_id))
+                return make_response('reject', 409) # alternative 412
+            elif resolution_method = "merge":
+                logger.debug("going to merge update into {} because it is at {} but {} was expected".format(
+                             parent_commit_ref, commitid, parent_commit_id))
+                # TODO
+                return make_response('reject', 409) # alternative 412
+            elif resolution_method = "branch":
+                logger.debug("writing update to a branch of {} because it is at {} but {} was expected".format(
+                             parent_commit_ref, commitid, parent_commit_id))
+                # TODO
+                return make_response('reject', 409) # alternative 412
+
+
+            # TODO check resolution method
+
         res, exception = graph.update(parsedQuery)
 
         try:
