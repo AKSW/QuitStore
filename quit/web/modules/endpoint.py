@@ -92,7 +92,7 @@ def sparql(parent_commit_ref):
         except SparqlProtocolError as e:
             return make_response('Sparql Protocol Error', 400)
 
-    commitid = None # TODO remove when restructuring mimetypes
+    commitid = None  # TODO remove when restructuring mimetypes
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
         commit = quit.repository.revision(parent_commit_ref)
@@ -103,19 +103,21 @@ def sparql(parent_commit_ref):
             if resolution_method == "reject":
                 logger.debug("rejecting update because {} is at {} but {} was expected".format(
                              parent_commit_ref, commit.id, parent_commit_id))
-                return make_response('reject', 409) # alternative 412
+                return make_response('reject', 409)  # alternative 412
             elif resolution_method in ("merge", "branch"):
-                logger.debug("writing update to a branch of {} because it is at {} but {} was expected".format(
-                             parent_commit_ref, commit.id, parent_commit_id))
+                logger.debug("writing update to a branch of {} because it is at {} but {} was " +
+                             "expected".format(parent_commit_ref, commit.id, parent_commit_id))
                 # TODO apply update on graph, commitid
                 target_ref = "some temorary reference"
-                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref, query=query,
-                                              default_graph=default_graph, named_graph=named_graph)
+                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
+                                              query=query, default_graph=default_graph,
+                                              named_graph=named_graph)
 
                 if resolution_method == "merge":
-                   logger.debug("going to merge update into {} because it is at {} but {} was expected".format(
-                                parent_commit_ref, commit.id, parent_commit_id))
-                    #TODO merge graph, commitid with original graph, commitid and commit to parent_commit_ref
+                    logger.debug("going to merge update into {} because it is at {} but {} was " +
+                                 "expected".format(parent_commit_ref, commit.id, parent_commit_id))
+                    # TODO merge graph, commitid with original graph, commitid and commit to
+                    # parent_commit_ref
 
                     return make_response('branched', 200)
 
@@ -127,7 +129,8 @@ def sparql(parent_commit_ref):
             target_ref = request.values.get('target_ref', None) or default_branch
             target_ref = 'refs/heads/{}'.format(target_ref)
             try:
-                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_ref, target_ref, query=query, default_graph=default_graph,
+                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_ref, target_ref,
+                                              query=query, default_graph=default_graph,
                                               named_graph=named_graph)
                 response = make_response('', 200)
                 response.headers["X-CurrentBranch"] = target_ref
