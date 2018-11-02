@@ -212,7 +212,7 @@ class Quit(object):
             g.add((role_committer_uri, is_a, PROV['Role']))
 
         # Create the commit
-        i1 = self.instance(commit.id, True)
+        i1, commitid = self.instance(commit.id, True)
 
         commit_uri = QUIT['commit-' + commit.id]
 
@@ -281,7 +281,7 @@ class Quit(object):
             # Diff
             parent = next(iter(commit.parents or []), None)
 
-            i2 = self.instance(parent.id, True) if parent else None
+            i2, commitid = self.instance(parent.id, True) if parent else None
 
             delta = graphdiff(i2.store if i2 else None, i1.store)
 
