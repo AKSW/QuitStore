@@ -425,7 +425,6 @@ class Quit(object):
         if exception:
             raise exception
 
-
     def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
                default_graph=[], named_graph=[], **kwargs):
         """Commit changes after applying deltas to the blobs.
