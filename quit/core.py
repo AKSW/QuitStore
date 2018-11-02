@@ -411,8 +411,8 @@ class Quit(object):
             return quitWorkingData
         return self._blobs.get(blob)
 
-    def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None, default_graph=[],
-               named_graph=[], **kwargs):
+    def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
+               default_graph=[], named_graph=[], **kwargs):
         """Commit changes after applying deltas to the blobs.
 
         This methods analyzes the delta and applies the changes to the blobs of the repository.
