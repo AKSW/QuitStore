@@ -92,54 +92,58 @@ def sparql(parent_commit_ref):
         except SparqlProtocolError as e:
             return make_response('Sparql Protocol Error', 400)
 
-    try:
-        graph, commitid = quit.instance(parent_commit_ref)
-    except Exception as e:
-        logger.exception(e)
-        return make_response('No branch or reference given.', 400)
+    commitid = None # TODO remove when restructuring mimetypes
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
+        commit = quit.repository.revision(parent_commit_ref)
+
         parent_commit_id = request.values.get('parent_commit_id', None) or None
-        if parent_commit_id and parent_commit_id != commitid:
+        if parent_commit_id and parent_commit_id != commit.id:
             resolution_method = request.values.get('resolution_method', None) or None
-            if resolution_method = "reject":
+            if resolution_method == "reject":
                 logger.debug("rejecting update because {} is at {} but {} was expected".format(
-                             parent_commit_ref, commitid, parent_commit_id))
+                             parent_commit_ref, commit.id, parent_commit_id))
                 return make_response('reject', 409) # alternative 412
-            elif resolution_method = "merge":
-                logger.debug("going to merge update into {} because it is at {} but {} was expected".format(
-                             parent_commit_ref, commitid, parent_commit_id))
-                # TODO
-                return make_response('reject', 409) # alternative 412
-            elif resolution_method = "branch":
+            elif resolution_method in ("merge", "branch"):
                 logger.debug("writing update to a branch of {} because it is at {} but {} was expected".format(
-                             parent_commit_ref, commitid, parent_commit_id))
-                # TODO
-                return make_response('reject', 409) # alternative 412
+                             parent_commit_ref, commit.id, parent_commit_id))
+                # TODO apply update on graph, commitid
+                target_ref = "some temorary reference"
+                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref, query=query,
+                                              default_graph=default_graph, named_graph=named_graph)
 
+                if resolution_method == "merge":
+                   logger.debug("going to merge update into {} because it is at {} but {} was expected".format(
+                                parent_commit_ref, commit.id, parent_commit_id))
+                    #TODO merge graph, commitid with original graph, commitid and commit to parent_commit_ref
 
-            # TODO check resolution method
+                    return make_response('branched', 200)
 
-        res, exception = graph.update(parsedQuery)
+                return make_response('branched', 200)
+                # Add info about temporary branch
+        else:
+            graph, commitid = quit.instance(parent_commit_id)
 
-        try:
             target_ref = request.values.get('target_ref', None) or default_branch
             target_ref = 'refs/heads/{}'.format(target_ref)
-            oid = quit.commit(graph, res, 'New Commit from QuitStore', parent_commit_ref,
-                              target_ref, query=query, default_graph=default_graph,
-                              named_graph=named_graph)
-            if exception is not None:
-                logger.exception(exception)
-                return 'Update query not executed (completely), (detected USING NAMED)', 400
-            response = make_response('', 200)
-            response.headers["X-CurrentBranch"] = target_ref
-            response.headers["X-CurrentCommit"] = oid
-            return response
-        except Exception as e:
-            # query ok, but unsupported query type or other problem during commit
-            logger.exception(e)
-            return make_response('Error after executing the update query.', 400)
+            try:
+                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_ref, target_ref, query=query, default_graph=default_graph,
+                                              named_graph=named_graph)
+                response = make_response('', 200)
+                response.headers["X-CurrentBranch"] = target_ref
+                response.headers["X-CurrentCommit"] = oid
+                return response
+            except Exception as e:
+                # query ok, but unsupported query type or other problem during commit
+                logger.exception(e)
+                return make_response('Error after executing the update query.', 400)
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
+        try:
+            graph, commitid = quit.instance(parent_commit_ref)
+        except Exception as e:
+            logger.exception(e)
+            return make_response('No branch or reference given.', 400)
+
         try:
             res = graph.query(parsedQuery)
         except FromNamedError as e:
