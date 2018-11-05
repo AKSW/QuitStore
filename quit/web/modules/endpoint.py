@@ -124,8 +124,9 @@ def sparql(parent_commit_ref):
                                               named_graph=named_graph)
 
                 if resolution_method == "merge":
-                    logger.debug("going to merge update into {} because it is at {} but {} was " +
-                                 "expected".format(parent_commit_ref, commit_id, parent_commit_id))
+                    logger.debug(("going to merge update into {} because it is at {} but {} was "
+                                 "expected").format(parent_commit_ref, commit_id,
+                                                    parent_commit_id))
                     # TODO merge graph, commitid with original graph, commitid and commit to
                     # parent_commit_ref
                     try:

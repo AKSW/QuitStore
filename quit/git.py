@@ -342,7 +342,7 @@ class Repository(object):
         """
 
         if reference is None:
-            reference = "master"
+            reference = self.current_head
         if target is None:
             target = "HEAD"
         if branch is None:
@@ -356,8 +356,9 @@ class Repository(object):
             branch_id = branch
         merge_result, _ = self._repository.merge_analysis(branch_id)
 
-        if reference != "master":
-            raise Exception("We first have to implement switching branches")
+        if reference != self.current_head:
+            raise Exception(("Try to merge into {} currently on {}. We first have to implement to "
+                             "switch branches").format(reference, self.current_head))
 
         if target != "HEAD":
             raise Exception("We currently are only able to merge into the HEAD of a branch")
@@ -368,19 +369,19 @@ class Repository(object):
 
         # We can just fastforward
         elif merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
-            self._repository.checkout_tree(self._repository.get(branch))
+            self._repository.checkout_tree(self._repository.get(branch_id))
             try:
                 master_ref = self._repository.lookup_reference(
                     'refs/heads/{}'.format(reference))
-                master_ref.set_target(branch)
+                master_ref.set_target(branch_id)
             except KeyError:
                 self._repository.create_branch(
-                    reference, self._repository.get(branch))
-            self._repository.head.set_target(branch)
+                    reference, self._repository.get(branch_id))
+            self._repository.head.set_target(branch_id)
             return
 
         elif merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
-            self._repository.merge(branch)
+            self._repository.merge(branch_id)
 
             if self._repository.index.conflicts is not None:
                 for conflict in self._repository.index.conflicts:
@@ -391,7 +392,7 @@ class Repository(object):
             tree = self._repository.index.write_tree()
             self._repository.create_commit(
                 'HEAD', user, user, 'Merge!', tree,
-                [self._repository.head.target, branch]
+                [self._repository.head.target, branch_id]
             )
             # We need to do this or git CLI will think we are still merging.
             self._repository.state_cleanup()
