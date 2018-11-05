@@ -378,13 +378,13 @@ class Repository(object):
 
         # We can just fastforward
         if merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
-            # TODO I think we have to do something for unborn
             logger.debug("merge {} into {} we are doing a FFW".format(branch, target))
             try:
                 if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
                     target_ref = target_ref.resolve()
                 target_ref.set_target(self.lookup(branch))
             except KeyError as e:
+                # If HEAD is unborn
                 if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
                     target = target_ref.target
                 target_ref = self._repository.create_reference(target, self.lookup(branch))
