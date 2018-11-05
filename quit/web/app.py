@@ -1,4 +1,3 @@
-import sys
 import os
 import urllib
 import hashlib
@@ -8,14 +7,14 @@ import logging
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import request, url_for, redirect, make_response
+from flask import url_for, redirect, session, request
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
-from quit.git import Repository
+from quit.git import Repository, QuitRemoteCallbacks
 import quit.utils as utils
 
 from quit.namespace import QUIT
@@ -79,31 +78,19 @@ def feature_required(feature):
     return wrapper
 
 
-def create_app(config, enable_profiler=False, profiler_quiet=False):
+def create_app(config):
     """Create a Flask app."""
 
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
+    app.secret_key = os.urandom(24)
     register_app(app, config)
     register_hook(app)
-    register_blueprints(app)
+    register_blueprints(app, config)
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
-
-    if enable_profiler:
-        from werkzeug.contrib.profiler import ProfilerMiddleware, MergeStream
-
-        f = open('profiler.log', 'w')
-
-        if profiler_quiet:
-            app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, f, profile_dir="c:/tmp")
-        else:
-            stream = MergeStream(sys.stdout, f)
-            app.wsgi_app = ProfilerMiddleware(
-                app.wsgi_app, stream, profile_dir="c:/tmp")
 
     return app
 
@@ -114,7 +101,8 @@ def register_app(app, config):
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
 
-    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection)
+    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection,
+                            callback=QuitRemoteCallbacks(session=session))
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))
@@ -122,9 +110,6 @@ def register_app(app, config):
 
     content = quit.store.store.serialize(format='trig').decode()
     logger.debug("Initialize store with following content: {}".format(content))
-    logger.debug("Initialize store with following graphs: {}".format(
-        quit.config.getgraphurifilemap())
-    )
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
@@ -138,14 +123,15 @@ def register_extensions(app):
     cors.init_app(app)
 
 
-def register_blueprints(app):
+def register_blueprints(app, config):
     """Register blueprints in views."""
 
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
+    from quit.web.modules.application import application
 
-    for bp in [debug, endpoint, git]:
+    for bp in [debug, endpoint, git, application]:
         app.register_blueprint(bp)
 
     @app.route("/")
@@ -171,19 +157,6 @@ def register_errorhandlers(app):
     @app.errorhandler(404)
     def page_not_found(error):
         return render_template("404.html"), 404
-
-    from flask import request
-
-    def shutdown_server():
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
-        func()
-
-    @app.route('/shutdown', methods=['GET'])
-    def shutdown():
-        shutdown_server()
-        return 'Server shutting down...'
 
 
 def register_template_helpers(app):

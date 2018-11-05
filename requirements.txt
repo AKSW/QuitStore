@@ -3,5 +3,8 @@ pyyaml
 rdflib>=4.2.2
 rfc3987
 flask-cors
-pygit2==0.25.0
+pygit2==0.27.2
 sortedcontainers
+uwsgi
+uritools
+pyinstaller>=3.4

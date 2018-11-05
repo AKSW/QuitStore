@@ -84,6 +84,21 @@ class UnSupportedQueryType(UnSupportedQuery):
     pass
 
 
+class SparqlProtocolError(Error):
+    pass
+
+
+class FromNamedError(Error):
+    pass
+
+
+class NonAbsoluteBaseError(Error):
+    """
+    Thrown when a query/update contains a non absolute BASE URI
+    """
+    pass
+
+
 class UnknownConfigurationError(Error):
     pass
 
