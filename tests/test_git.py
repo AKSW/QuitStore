@@ -523,7 +523,7 @@ class GitRepositoryTests(unittest.TestCase):
 
                 self.assertEqual(quitRepo.revision('HEAD').id, str(commitid))
 
-    def testPullRepoClonedAndPullWithMerge(self):
+    def testPullRepoClonedAndPullWithThreeWayGitMerge(self):
         """Test clone, commit on remote and pull with merge, which resolves without conflicts."""
         graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
@@ -538,7 +538,7 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
                 index = quitRepo.index(remoteHead)
-                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example.org/> .\n"
+                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example2.org/> .\n"
                 index.add("graph2.nq", graph2Content)
                 index.add("graph2.nq.graph", "http://example2.org/")
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
@@ -557,7 +557,7 @@ class GitRepositoryTests(unittest.TestCase):
                 remoteCommitid = index.commit("from remote", author.name, author.email)
                 remoteQuitRepo._repository.checkout_tree(remoteQuitRepo._repository.get(remoteCommitid))
 
-                quitRepo.pull()
+                quitRepo.pull(method="three-way-git")
 
                 self.assertNotEqual(quitRepo.revision('HEAD').id, str(localCommitid))
                 self.assertNotEqual(quitRepo.revision('HEAD').id, str(remoteCommitid))
@@ -615,7 +615,7 @@ class GitRepositoryTests(unittest.TestCase):
                 remoteQuitRepo = quit.git.Repository(remote.workdir)
 
                 with self.assertRaises(QuitMergeConflict):
-                    quitRepo.pull()
+                    quitRepo.pull(method="context")
 
                 self.assertEqual(quitRepo.revision('HEAD').id, str(localCommitid))
                 self.assertEqual(remoteQuitRepo.revision('HEAD').id, str(remoteCommitid))

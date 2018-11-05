@@ -265,7 +265,7 @@ class Repository(object):
                 return self._repository.lookup_reference(remote_ref).target
         raise RemoteNotFound("There is no remote \"{}\".".format(remote_name))
 
-    def pull(self, remote_name=None, refspec=None):
+    def pull(self, remote_name=None, refspec=None, **kwargs):
         """Pull (fetch and merge) changes from a remote repository.
 
         Keyword arguments:
@@ -288,7 +288,7 @@ class Repository(object):
                                                                       local_branch))
         remote_master_id = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
         if remote_master_id is not None:
-            self.merge(target=local_branch, branch=remote_master_id)
+            self.merge(target=local_branch, branch=remote_master_id, **kwargs)
 
     def push(self, remote_name=None, refspec=None):
         """Push changes on a local repository to a remote repository.
@@ -380,7 +380,15 @@ class Repository(object):
         if merge_result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
             # TODO I think we have to do something for unborn
             logger.debug("merge {} into {} we are doing a FFW".format(branch, target))
-            target_ref.set_target(self.lookup(branch))
+            try:
+                if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
+                    target_ref = target_ref.resolve()
+                target_ref.set_target(self.lookup(branch))
+            except KeyError as e:
+                if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
+                    target = target_ref.target
+                target_ref = self._repository.create_reference(target, self.lookup(branch))
+
             return pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD
 
         if merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:

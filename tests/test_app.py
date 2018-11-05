@@ -2260,7 +2260,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2288,7 +2288,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-vv'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
