@@ -4,23 +4,23 @@
 {%- block html %}
 <head>
 {%- block head %}
-<title>{% block title %}{{title|default}}{% endblock title %}</title>
-<meta charset="utf-8" />
+  <title>{% block title %}{{title|default}}{% endblock title %}</title>
+  <meta charset="utf-8">
 
 {%- block metas %}
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {%- endblock metas %}
 
 {%- block styles %}
 <!-- Bootstrap -->
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/font-awesome.min.css') }}" />
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='octicons/octicons.css') }}" />
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/quit.css') }}" />
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/font-awesome.min.css') }}" />
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='octicons/octicons.css') }}" />
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/quit.css') }}" />
 {%- endblock styles %}
-<script type="text/javascript">
-var inline_functions = [];
-</script>
+  <script type="text/javascript">
+    var inline_functions = [];
+  </script>
 {%- endblock head %}
 </head>
 <body{% block body_attribs %}{% endblock body_attribs %}>

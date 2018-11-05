@@ -3,6 +3,7 @@ import pygit2
 import re
 import logging
 
+from _pygit2 import GitError
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitGitRefNotFound, QuitGitRepoError, QuitGitPushError
@@ -30,7 +31,7 @@ class Repository(object):
     - There is no possibility to set remotes on a Quit Repository object.
     """
 
-    def __init__(self, path, origin=None, create=False, garbageCollection=False):
+    def __init__(self, path, origin=None, create=False, garbageCollection=False, callback=None):
         """Initialize a quit repo at a given location of the filesystem.
 
         Keyword arguments:
@@ -41,12 +42,16 @@ class Repository(object):
                   (default: False)
         garbageCollection -- boolean whether to activate the garbage collection on the git
                   repository (default: False)
+        callback -- an instance of pygit2.RemoteCallbacks to handle cedentials and
+                  push_update_reference (default: None)
         """
-        self.callback = QuitRemoteCallbacks()
+        if not callback:
+            callback = QuitRemoteCallbacks()
+        self.callback = callback
 
         try:
             self._repository = pygit2.Repository(path)
-        except KeyError:
+        except (KeyError, GitError):
             if not create:
                 raise RepositoryNotFound(
                     'Repository "%s" does not exist' % path)
@@ -252,7 +257,7 @@ class Repository(object):
             if remote.name == remote_name:
                 if remote_branch is not None:
                     remote_branch = [remote_branch]
-                remote.fetch(remote_branch)
+                remote.fetch(remote_branch, callbacks=self.callback)
 
                 if remote_branch is None:
                     return None
@@ -728,6 +733,9 @@ class IndexTree(object):
 class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
     """Set a pygit callback for user authentication when acting with remotes."""
 
+    def __init__(self, session=None):
+        self.session = session
+
     def credentials(self, url, username_from_url, allowed_types):
         """
         The callback to return a suitable authentication method.
@@ -759,7 +767,9 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
                         "your ~/.ssh/"
                     )
         elif pygit2.credentials.GIT_CREDTYPE_USERPASS_PLAINTEXT & allowed_types:
-            if "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
+            if self.session and "OAUTH_TOKEN" in self.session:
+                return pygit2.UserPass(self.session["OAUTH_TOKEN"], 'x-oauth-basic')
+            elif "GIT_USERNAME" in os.environ and "GIT_PASSWORD" in os.environ:
                 return pygit2.UserPass(os.environ["GIT_USERNAME"], os.environ["GIT_PASSWORD"])
             else:
                 raise Exception(

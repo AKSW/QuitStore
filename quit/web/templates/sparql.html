@@ -10,12 +10,12 @@
 
 {% block scripts %}
 {{super()}}
-<script src="{{ url_for('static', filename='js/codemirror.js') }}"></script>
 <script src="{{ url_for('static', filename='js/yasqe.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/yasr.min.js') }}"></script>
 <script>
     var yasqe = YASQE(document.getElementById("yasqe"), {
-    	createShareLink: null,
+        createShareLink: null,
+        value: 'SELECT * WHERE {\n GRAPH ?graph {\n   ?sub ?pred ?obj .\n }\n} \nLIMIT 10',
 		sparql: {
 			showQueryButton: true,
 			endpoint: '{{ request.url }}'

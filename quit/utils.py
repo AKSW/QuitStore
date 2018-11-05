@@ -6,6 +6,9 @@ import signal
 import sys
 from datetime import tzinfo, timedelta, datetime
 from quit.graphs import InMemoryAggregatedGraph
+from collections import OrderedDict
+from urllib.parse import quote_plus, urlparse
+
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -37,6 +40,14 @@ def git_timestamp(ts, offset):
         tzname = 'UTC%+03d:%02d' % ((hours, -hours)[offset < 0], rem)
         tz = tzinfo.TZ(offset, tzname)
     return datetime.fromtimestamp(ts, tz)
+
+
+def iri_to_name(iri):
+    parsedIri = urlparse(iri)
+    nameParts = [parsedIri.netloc]
+    if parsedIri.path.strip("/"):
+        nameParts += parsedIri.path.strip("/").split("/")
+    return quote_plus("_".join(nameParts))
 
 
 def sparqlresponse(result, format):
@@ -79,7 +90,7 @@ def graphdiff(first, second):
     """
     from rdflib.compare import to_isomorphic, graph_diff
 
-    diffs = {}
+    diffs = OrderedDict()
     iris = set()
 
     if first is not None and isinstance(first, InMemoryAggregatedGraph):
@@ -89,7 +100,7 @@ def graphdiff(first, second):
         second_identifiers = list((g.identifier for g in second.graphs()))
         iris = iris.union(second_identifiers)
 
-    for iri in iris:
+    for iri in sorted(list(iris)):
         changes = diffs.get(iri, [])
 
         if (

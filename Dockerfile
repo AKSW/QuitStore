@@ -12,7 +12,7 @@ RUN apt-get update && apt-get -y install \
     libssh2-1-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 --branch v0.25.1 https://github.com/libgit2/libgit2.git \
+RUN git clone --depth 1 --branch v0.27.5 https://github.com/libgit2/libgit2.git \
     && cd libgit2 \
     && mkdir build && cd build \
     && cmake .. \
@@ -20,29 +20,32 @@ RUN git clone --depth 1 --branch v0.25.1 https://github.com/libgit2/libgit2.git 
     && ldconfig \
     && cd ../.. && rm -r libgit2
 
-RUN mkdir -p /usr/src/app
+RUN useradd -md /usr/src/app quit
+USER quit
 WORKDIR /usr/src/app
 
 COPY quit/ /usr/src/app/quit
 COPY requirements.txt /usr/src/app/
+
+USER root
 RUN pip install --no-cache-dir -r requirements.txt \
-    && ln -s /usr/src/app/quit/quit.py /usr/local/bin/quit
+    && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
 COPY docker/config.ttl /etc/quit/
 
-ENV QUIT_PORT 80
-ENV QUIT_CONFIGFILE /etc/quit/config.ttl
+ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
+ENV QUIT_LOGFILE="/var/log/quit.log"
 
-RUN mkdir /data
+RUN mkdir /data && chown quit /data
+RUN touch $QUIT_LOGFILE && chown quit $QUIT_LOGFILE
+
+USER quit
 
 VOLUME /data
 VOLUME /etc/quit
-EXPOSE 80
-
-# Quit writes its log file to the current directory
-WORKDIR /var/log
+EXPOSE 8080
 
 # Set default git user
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
-CMD quit --configfile ${QUIT_CONFIGFILE} --port ${QUIT_PORT}
+CMD uwsgi --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
