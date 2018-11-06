@@ -573,6 +573,56 @@ class GitRepositoryTests(unittest.TestCase):
                 with open(path.join(localDirectory, "graph2.nq")) as f:
                     self.assertEqual("".join(f.readlines()), graph2Content)
 
+    def testPullRepoClonedAndPullWithThreeWayMerge(self):
+        """Test clone, commit on remote and pull with merge, which resolves without conflicts."""
+        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
+            with TemporaryDirectory() as localDirectory:
+                quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(quitRepo.is_empty)
+
+                remoteHead = remote.revparse_single('HEAD').hex
+
+                self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
+
+                index = quitRepo.index(remoteHead)
+                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example2.org/> .\n"
+                index.add("graph2.nq", graph2Content)
+                index.add("graph2.nq.graph", "http://example2.org/")
+                author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
+                localCommitid = index.commit("from local", author.name, author.email)
+                quitRepo._repository.checkout_tree(quitRepo._repository.get(localCommitid))
+
+                self.assertEqual(quitRepo.revision('HEAD').id, str(localCommitid))
+
+                self.assertFalse(remote.is_empty)
+                self.assertFalse(quitRepo.is_empty)
+
+                remoteQuitRepo = quit.git.Repository(remote.workdir)
+                index = remoteQuitRepo.index(remoteHead)
+                graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n"
+                index.add("graph.nq", graphContent)
+                remoteCommitid = index.commit("from remote", author.name, author.email)
+                remoteQuitRepo._repository.checkout_tree(remoteQuitRepo._repository.get(remoteCommitid))
+
+                quitRepo.pull(method="three-way")
+
+                self.assertNotEqual(quitRepo.revision('HEAD').id, str(localCommitid))
+                self.assertNotEqual(quitRepo.revision('HEAD').id, str(remoteCommitid))
+
+                # check if head has local and remote commit id as ancestor
+                self.assertListEqual([parent.id for parent in quitRepo.revision('HEAD').parents],
+                                     [str(localCommitid), str(remoteCommitid)])
+
+                # check if the merged commit contains all file contents
+                with open(path.join(localDirectory, "graph.nq")) as f:
+                    self.assertEqual("".join(f.readlines()), graphContent)
+
+                with open(path.join(localDirectory, "graph2.nq")) as f:
+                    self.assertEqual("".join(f.readlines()), graph2Content)
+
     def testPullRepoClonedAndPullWithConflict(self):
         """Test clone, commit on remote and pull with conflict."""
         graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
