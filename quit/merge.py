@@ -109,7 +109,7 @@ class Merger(object):
                 if p.delta.old_file.path in baseTree:
                     baseOid = baseTree[p.delta.old_file.path].id
                 else:
-                    baseOid = None
+                    baseOid = pygit2.Oid(hex=pygit2.GIT_OID_HEX_ZERO)
                 try:
                     mergedBlob = self._merge_graph_blobs(p.delta.old_file.id, p.delta.new_file.id,
                                                          baseOid, favour=favour)
@@ -123,14 +123,17 @@ class Merger(object):
         if conflicts:
             raise QuitMergeConflict("Unfortunately, we've experienced a merge conflict!", conflicts)
 
-        mergedTree = mergedTreeBuilder.write()
+        mergedTreeOid = mergedTreeBuilder.write()
+        mergedTree = self._repository.get(mergedTreeOid)
+        self._repository.checkout_tree(mergedTree)
 
         # Create commit with our resulting tree
         user = self._repository.default_signature
         commitId = self._repository.create_commit(
-            target, user, user, 'Merge graphs with {}!'.format(favour), mergedTree,
+            target, user, user, 'Merge graphs with {}!'.format(favour), mergedTreeOid,
             [targetOid, branchOid]
         )
+
         logger.debug("Created commit {} and forwarded {}".format(commitId, target))
         # We need to do this or git CLI will think we are still merging.
         self._repository.state_cleanup()
@@ -141,7 +144,7 @@ class Merger(object):
         Returns:
         blob
         """
-        logger.debug("{} {} {}".format(graphAOid, graphBOid, graphBaseOid))
+        logger.debug("blobs to merge: {} {} {}".format(graphAOid, graphBOid, graphBaseOid))
         if graphAOid == graphBaseOid:
             return graphBOid
         if graphBOid == graphBaseOid:
@@ -157,17 +160,17 @@ class Merger(object):
             a = set()
         else:
             graphAblob = self._repository[graphAOid].data
-            a = set(graphAblob.decode("utf-8").split("\n"))
+            a = set(graphAblob.decode("utf-8").strip().split("\n"))
 
         if str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
             b = set()
         else:
             graphBblob = self._repository[graphBOid].data
-            b = set(graphBblob.decode("utf-8").split("\n"))
+            b = set(graphBblob.decode("utf-8").strip().split("\n"))
 
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
-            base = set(graphBaseblob.decode("utf-8").split("\n"))
+            base = set(graphBaseblob.decode("utf-8").strip().split("\n"))
             addA = a - base
             addB = b - base
             intersect = a.intersection(b)
@@ -176,7 +179,7 @@ class Merger(object):
             merged = a.union(b)
         print("\n".join(merged))
 
-        blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
+        blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
         return blob
 
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):

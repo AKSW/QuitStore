@@ -12,7 +12,6 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 import subprocess
 from helpers import createCommit, TemporaryRepository, TemporaryRepositoryFactory
 
-
 class GitRevisionTests(unittest.TestCase):
 
     def setUp(self):
@@ -590,7 +589,7 @@ class GitRepositoryTests(unittest.TestCase):
                 index = quitRepo.index(remoteHead)
                 graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example2.org/> .\n"
                 index.add("graph2.nq", graph2Content)
-                index.add("graph2.nq.graph", "http://example2.org/")
+                index.add("graph2.nq.graph", "http://example2.org/\n")
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
                 localCommitid = index.commit("from local", author.name, author.email)
                 quitRepo._repository.checkout_tree(quitRepo._repository.get(localCommitid))
