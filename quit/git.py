@@ -144,8 +144,6 @@ class Repository(object):
                     yield Revision(self, commit)
 
         def iter_commits(name, seen):
-            logger.debug(name)
-            logger.debug(seen)
             commits = []
 
             if not name:
@@ -154,9 +152,6 @@ class Repository(object):
                     commits += traverse(ref, seen)
             else:
                 oid = self.lookup(name)
-                logger.debug(oid)
-                # logger.debug(ref.name)
-                # logger.debug(ref.target)
                 commits += traverse(oid, seen)
             return commits
 
