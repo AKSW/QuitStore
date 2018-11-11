@@ -124,8 +124,10 @@ class Merger(object):
             raise QuitMergeConflict("Unfortunately, we've experienced a merge conflict!", conflicts)
 
         mergedTreeOid = mergedTreeBuilder.write()
-        mergedTree = self._repository.get(mergedTreeOid)
-        self._repository.checkout_tree(mergedTree)
+        if target == "HEAD" or self._repository.head.name == target:
+            print(target)
+            mergedTree = self._repository.get(mergedTreeOid)
+            self._repository.checkout_tree(mergedTree)
 
         # Create commit with our resulting tree
         user = self._repository.default_signature
