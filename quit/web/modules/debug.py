@@ -19,7 +19,7 @@ def blame(branch_or_ref):
     quit = current_app.config['quit']
 
     if not branch_or_ref and not quit.repository.is_empty:
-        branch_or_ref =  quit.getDefaultBranch()
+        branch_or_ref = quit.getDefaultBranch()
 
     blame = current_app.config['blame']
 
