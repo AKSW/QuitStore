@@ -112,7 +112,10 @@ def sparql(parent_commit_ref):
                 return 'Update query not executed (completely), (detected USING NAMED)', 400
             response = make_response('', 200)
             response.headers["X-CurrentBranch"] = target_ref
-            response.headers["X-CurrentCommit"] = oid
+            if oid is not None:
+                response.headers["X-CurrentCommit"] = oid
+            else:
+                response.headers["X-CurrentCommit"] = commitid
             return response
         except Exception as e:
             # query ok, but unsupported query type or other problem during commit
