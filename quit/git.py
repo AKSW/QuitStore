@@ -388,10 +388,8 @@ class Repository(object):
 
         if merge_result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
 
-            if (
-                (target == "HEAD" or target == self._repository.head.name)
-                and method == "three-way-git"
-               ):
+            if ((target == "HEAD" or target == self._repository.head.name) and
+                    method == "three-way-git"):
                 logger.debug("merge {} into {} three-way-git with HEAD".format(branch, target))
                 merger.merge_three_way_head(branch)
                 return merge_result
