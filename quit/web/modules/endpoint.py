@@ -71,7 +71,7 @@ def sparql(branch_or_ref):
 
     if query is None:
         if mimetype == 'text/html':
-            return render_template('sparql.html', current_ref=branch_or_ref)
+            return render_template('sparql.html', current_ref=branch_or_ref or default_branch)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
@@ -102,7 +102,7 @@ def sparql(branch_or_ref):
         res, exception = graph.update(parsedQuery)
 
         try:
-            target_head = request.values.get('target_head', branch_or_ref)
+            target_head = request.values.get('target_head', branch_or_ref) or default_branch
             target_ref = 'refs/heads/{}'.format(target_head)
 
             oid = quit.commit(graph, res, 'New Commit from QuitStore', branch_or_ref,
