@@ -93,7 +93,7 @@ def sparql(branch_or_ref):
             return make_response('Sparql Protocol Error', 400)
 
     try:
-        graph = quit.instance(branch_or_ref)
+        graph, commitid = quit.instance(branch_or_ref)
     except Exception as e:
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
@@ -102,15 +102,21 @@ def sparql(branch_or_ref):
         res, exception = graph.update(parsedQuery)
 
         try:
-            ref = request.values.get('ref', None) or default_branch
-            ref = 'refs/heads/{}'.format(ref)
-            quit.commit(
-                graph, res, 'New Commit from QuitStore', branch_or_ref, ref, query=query,
-                default_graph=default_graph, named_graph=named_graph)
+            target_ref = request.values.get('target_ref', None) or default_branch
+            target_ref = 'refs/heads/{}'.format(target_ref)
+            oid = quit.commit(graph, res, 'New Commit from QuitStore', branch_or_ref,
+                              target_ref, query=query, default_graph=default_graph,
+                              named_graph=named_graph)
             if exception is not None:
                 logger.exception(exception)
                 return 'Update query not executed (completely), (detected USING NAMED)', 400
-            return '', 200
+            response = make_response('', 200)
+            response.headers["X-CurrentBranch"] = target_ref
+            if oid is not None:
+                response.headers["X-CurrentCommit"] = oid
+            else:
+                response.headers["X-CurrentCommit"] = commitid
+            return response
         except Exception as e:
             # query ok, but unsupported query type or other problem during commit
             logger.exception(e)
@@ -128,11 +134,14 @@ def sparql(branch_or_ref):
 
     try:
         if queryType == 'SelectQuery':
-            return create_result_response(res, resultSetMimetypes[mimetype])
+            response = create_result_response(res, resultSetMimetypes[mimetype])
         elif queryType == 'AskQuery':
-            return create_result_response(res, askMimetypes[mimetype])
+            response = create_result_response(res, askMimetypes[mimetype])
         elif queryType in ['ConstructQuery', 'DescribeQuery']:
-            return create_result_response(res, rdfMimetypes[mimetype])
+            response = create_result_response(res, rdfMimetypes[mimetype])
+        if commitid:
+            response.headers["X-CurrentCommit"] = commitid
+        return response
     except KeyError as e:
         return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
@@ -320,6 +329,7 @@ def statements(branch_or_ref):
     else:
         mimetype = 'application/sparql-results+json'
 
+    graph, commitid = quit.instance(branch_or_ref)
     result = edit_store(
         quit=quit,
         branch_or_ref=branch_or_ref,
@@ -329,11 +339,13 @@ def statements(branch_or_ref):
         body=body,
         mimetype=mimetype,
         accept_header=request.headers.get("Accept"),
-        graph=quit.instance(branch_or_ref)
+        graph=graph
     )
     code, headers, body = result
 
     response = make_response(body or '', code)
     for k, v in headers.items():
         response.headers[k] = v
+    if commitid:
+        response.headers["X-CurrentCommit"] = commitid
     return response

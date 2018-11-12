@@ -44,7 +44,7 @@ class Blame(object):
         """
 
         commit = self.quit.repository.revision(branch_or_ref)
-        g = self.quit.instance(branch_or_ref)
+        g, commitid = self.quit.instance(branch_or_ref)
 
         quads = [x for x in g.store.quads((None, None, None))]
 
