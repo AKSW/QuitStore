@@ -47,7 +47,8 @@ class Merger(object):
         return pygit2.GIT_MERGE_ANALYSIS_NORMAL
 
     def merge_three_way_head(self, branch):
-        self._repository.merge(branch)
+        commitid = self.quitRepository.lookup(branch)
+        self._repository.merge(commitid)
 
         if self._repository.index.conflicts is not None:
             for conflict in self._repository.index.conflicts:
@@ -58,7 +59,7 @@ class Merger(object):
         tree = self._repository.index.write_tree()
         self._repository.create_commit(
             'HEAD', user, user, 'Merge!', tree,
-            [self._repository.head.target, branch]
+            [self._repository.head.target, commitid]
         )
         # We need to do this or git CLI will think we are still merging.
         self._repository.state_cleanup()
