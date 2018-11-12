@@ -28,10 +28,9 @@ def commits(branch_or_ref):
     HTTP Response 406: Unsupported Mimetype requested
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
 
     if not branch_or_ref and not quit.repository.is_empty:
-        branch_or_ref = default_branch
+        branch_or_ref = quit.getDefaultBranch()
 
     try:
         results = quit.repository.revisions(
@@ -45,6 +44,7 @@ def commits(branch_or_ref):
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             data = generate_graph_data(CommitGraph.gets(results))
             response = make_response(render_template('commits.html', results=results, data=data,
+                                                     current_ref=branch_or_ref,
                                                      isLoggedIn=isLoggedIn,
                                                      githubEnabled=githubEnabled))
             response.headers['Content-Type'] = 'text/html'
