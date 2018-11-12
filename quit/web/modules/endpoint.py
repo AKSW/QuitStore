@@ -102,8 +102,9 @@ def sparql(branch_or_ref):
         res, exception = graph.update(parsedQuery)
 
         try:
-            target_ref = request.values.get('target_ref', None) or default_branch
-            target_ref = 'refs/heads/{}'.format(target_ref)
+            target_head = request.values.get('target_head', branch_or_ref)
+            target_ref = 'refs/heads/{}'.format(target_head)
+
             oid = quit.commit(graph, res, 'New Commit from QuitStore', branch_or_ref,
                               target_ref, query=query, default_graph=default_graph,
                               named_graph=named_graph)
