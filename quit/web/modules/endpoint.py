@@ -49,9 +49,9 @@ rdfMimetypes = {
 }
 
 
-@endpoint.route("/sparql", defaults={'parent_commit_ref': None}, methods=['POST', 'GET'])
-@endpoint.route("/sparql/<path:parent_commit_ref>", methods=['POST', 'GET'])
-def sparql(parent_commit_ref):
+@endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
+@endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET'])
+def sparql(branch_or_ref):
     """Process a SPARQL query (Select or Update).
 
     Returns:
@@ -62,8 +62,8 @@ def sparql(parent_commit_ref):
     quit = current_app.config['quit']
     default_branch = quit.config.getDefaultBranch()
 
-    if not parent_commit_ref and not quit.repository.is_empty:
-        parent_commit_ref = default_branch
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
 
     logger.debug("Request method: {}".format(request.method))
 
@@ -71,7 +71,7 @@ def sparql(parent_commit_ref):
 
     if query is None:
         if mimetype == 'text/html':
-            return render_template('sparql.html', current_ref=parent_commit_ref)
+            return render_template('sparql.html', current_ref=branch_or_ref)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
@@ -93,7 +93,7 @@ def sparql(parent_commit_ref):
             return make_response('Sparql Protocol Error', 400)
 
     try:
-        graph, commitid = quit.instance(parent_commit_ref)
+        graph, commitid = quit.instance(branch_or_ref)
     except Exception as e:
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
@@ -104,7 +104,7 @@ def sparql(parent_commit_ref):
         try:
             target_ref = request.values.get('target_ref', None) or default_branch
             target_ref = 'refs/heads/{}'.format(target_ref)
-            oid = quit.commit(graph, res, 'New Commit from QuitStore', parent_commit_ref,
+            oid = quit.commit(graph, res, 'New Commit from QuitStore', branch_or_ref,
                               target_ref, query=query, default_graph=default_graph,
                               named_graph=named_graph)
             if exception is not None:
