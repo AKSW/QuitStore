@@ -126,8 +126,6 @@ def sparql(branch_or_ref):
                 if resolution_method == "merge":
                     logger.debug(("going to merge update into {} because it is at {} but {} was "
                                  "expected").format(branch_or_ref, commit_id, parent_commit_id))
-                    # TODO merge graph, commitid with original graph, commitid and commit to
-                    # branch_or_ref
                     try:
                         quit.repository.merge(reference=branch_or_ref, branch=target_ref)
                         response = make_response('success', 200)
