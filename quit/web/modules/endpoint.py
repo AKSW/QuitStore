@@ -127,7 +127,7 @@ def sparql(branch_or_ref):
                     logger.debug(("going to merge update into {} because it is at {} but {} was "
                                  "expected").format(branch_or_ref, commit_id, parent_commit_id))
                     try:
-                        quit.repository.merge(reference=branch_or_ref, branch=target_ref)
+                        quit.repository.merge(target=branch_or_ref, branch=target_ref)
                         response = make_response('success', 200)
                         target_ref = branch_or_ref
                     except QuitMergeConflict as e:
@@ -184,6 +184,7 @@ def sparql(branch_or_ref):
         elif queryType in ['ConstructQuery', 'DescribeQuery']:
             response = create_result_response(res, rdfMimetypes[mimetype])
         if commitid:
+            response.headers["X-CurrentBranch"] = branch_or_ref
             response.headers["X-CurrentCommit"] = commitid
         return response
     except KeyError as e:
