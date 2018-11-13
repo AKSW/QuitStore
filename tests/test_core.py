@@ -8,12 +8,14 @@ import unittest
 from context import quit
 import quit.core
 import quit.git
+import quit.conf
 from quit.graphs import InMemoryAggregatedGraph
 from os import path, environ
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from rdflib import Graph, URIRef
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+from helpers import TemporaryRepositoryFactory
 
 
 class QueryableTests(unittest.TestCase):
@@ -106,6 +108,14 @@ class QuitTests(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+    def testDefaultGraph(self):
+        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = quit.conf.QuitStoreConfiguration(configfile=os.path.join(repo.workdir, 'config.ttl'), namespace='http://quit.instance/')
+            quitInstance = quit.core.Quit(conf, quit.git.Repository(repo.path), None)
+            self.assertEqual(quitInstance.getDefaultBranch(), "master")
 
 
 class SeveralOldTest(unittest.TestCase):

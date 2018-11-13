@@ -127,7 +127,7 @@ class QuitStoreConfiguration():
         return [(row['prefix'], row['namespace']) for row in result]
 
     def getDefaultBranch(self):
-        """Get the default branch on the Git repository from configuration.
+        """Get the default branch for the Git repository from configuration.
 
         Returns:
             A string containing the branch name.
@@ -135,7 +135,7 @@ class QuitStoreConfiguration():
         for s, p, o in self.sysconf.triples((None, self.quit.defaultBranch, None)):
             return str(o)
 
-        return "master"
+        return None
 
     def getRepoPath(self):
         """Get the path of Git repository from configuration.
