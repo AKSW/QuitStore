@@ -30,13 +30,15 @@ def commits(branch_or_ref):
     """
     quit = current_app.config['quit']
 
-    if not branch_or_ref and not quit.repository.is_empty:
+    if not branch_or_ref:
         branch_or_ref = quit.getDefaultBranch()
 
     try:
         current_app.logger.debug(branch_or_ref)
-        results = quit.repository.revisions(
-            branch_or_ref, order=pygit2.GIT_SORT_TIME) if branch_or_ref else []
+        if not quit.repository.is_empty:
+            results = quit.repository.revisions(branch_or_ref, order=pygit2.GIT_SORT_TIME)
+        else:
+            results = []
 
         if 'Accept' in request.headers:
             mimetype = parse_accept_header(request.headers['Accept']).best
