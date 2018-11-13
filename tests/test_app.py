@@ -2252,6 +2252,62 @@ class QuitAppTestCase(unittest.TestCase):
 
             self.assertFalse(os.path.isfile(logFile))
 
+    def testThreeWayMerge(self):
+        """Test merging two commits."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            app.post('/sparql', data={"query": update})
+
+            app = create_app(config).test_client()
+            # start new app to syncAll()
+            # Otherwise the next update query would have created unassigend.nq
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            app.post('/sparql/develop?ref=develop', data={"query": update})
+
+            app.post("/merge", data={"target": "master", "branch": "develop", "method": "three-way"})
+
+    def testContextMerge(self):
+        """Test merging two commits."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            app.post('/sparql', data={"query": update})
+
+            app = create_app(config).test_client()
+            # start new app to syncAll()
+            # Otherwise the next update query would have created unassigend.nq
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            app.post('/sparql/develop?ref=develop', data={"query": update})
+
+            app.post("/merge", data={"target": "master", "branch": "develop", "method": "context"})
+
     def testPull(self):
         """Test /pull API request."""
         graphContent = """
@@ -3462,6 +3518,37 @@ class FileHandlingTests(unittest.TestCase):
                     self.assertEqual(content, f.read())
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
                     self.assertEqual(graph_iri, f.read().strip())
+
+    def testDeleteWithWhitespaceFile(self):
+        """Test deleting data from a nq-file with additional whitespace in serialization.
+
+        1. Prepare a git repository with one graph
+        2. Start Quit
+        3. compare File content
+        4. execute DELETE DATA query
+        5. compare File content
+        """
+        # Prepate a git Repository
+        graphContent = "<urn:x>  <urn:y>   <urn:z>   <http://example.org/> . "
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual(graphContent, f.read())
+
+            # execute DELETE query
+            update = "DELETE DATA {graph <http://example.org/> {<urn:x> <urn:y> <urn:z> .}};"
+            app.post('/sparql',
+                     content_type="application/sparql-update",
+                     data=update)
+
+            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+                self.assertEqual('\n', f.read())
 
 
 if __name__ == '__main__':

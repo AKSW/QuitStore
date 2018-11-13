@@ -1,0 +1,70 @@
+{% extends "default.html" %}
+
+{% block headline %}<div class="lead">Branch</div>{% endblock %}
+
+{% block quit_content %}
+<form class="form-inline" style="display: inline" id="branch" role="navigation">
+
+<div class="row">
+
+<div class="form-group">
+<label class="control-label" for="oldbranch">
+    <i class="fa fa-code-fork" aria-hidden="true"></i> Old Branch:</span>
+</label>
+<select name="oldbranch" class="form-control branch-select">
+    {% for branch in available_branches %}
+        <option value="{{ branch }}">{{ branch }}</option>
+    {% endfor %}
+</select>
+</div>
+
+<div class="form-group">
+<label class="control-label" for="newbranch">
+    <i class="fa fa-code-fork" aria-hidden="true"></i> New Branch:</span>
+</label>
+<input type="text" name="newbranch" class="form-control branch-select" />
+</div>
+</div>
+
+<div class="row">
+
+<button type="submit" class="btn btn-default btn-lg">
+    <img class="octicon" src="{{ url_for('static', filename='octicons/svg/git-branch.svg') }}" />
+    Branch
+</button>
+</div>
+<div class="alert" role="alert" style="display: none"></div>
+</form>
+
+<h2>Available Branches</h2>
+
+{% if available_branches|length > 0 %}
+<div class="commit-group">
+    <div class="commit-item" style="width: 100%">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Branch Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for branch in available_branches %}
+                <tr class="commit-row">
+                    <td>{{ branch }}</td>
+                    <td>
+                        <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-code" aria-hidden="true"></i></a>
+                        <a href="{{ url_for('debug.blame', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a>
+                        <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+No Branches
+{% endif %}
+
+{% endblock %}

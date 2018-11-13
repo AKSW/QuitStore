@@ -52,9 +52,9 @@ rdfMimetypes = {
 }
 
 
-@endpoint.route("/sparql", defaults={'parent_commit_ref': None}, methods=['POST', 'GET'])
-@endpoint.route("/sparql/<path:parent_commit_ref>", methods=['POST', 'GET'])
-def sparql(parent_commit_ref):
+@endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
+@endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET'])
+def sparql(branch_or_ref):
     """Process a SPARQL query (Select or Update).
 
     Returns:
@@ -63,10 +63,10 @@ def sparql(parent_commit_ref):
         HTTP Response 406: If accept header is not acceptable.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
+    default_branch = quit.getDefaultBranch()
 
-    if not parent_commit_ref and not quit.repository.is_empty:
-        parent_commit_ref = default_branch
+    if not branch_or_ref and not quit.repository.is_empty:
+        branch_or_ref = default_branch
 
     logger.debug("Request method: {}".format(request.method))
 
@@ -74,7 +74,7 @@ def sparql(parent_commit_ref):
 
     if query is None:
         if mimetype == 'text/html':
-            return render_template('sparql.html', current_ref=parent_commit_ref)
+            return render_template('sparql.html', current_ref=branch_or_ref or default_branch)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
@@ -98,8 +98,8 @@ def sparql(parent_commit_ref):
     commitid = None  # TODO remove when restructuring mimetypes
 
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
-        if parent_commit_ref:
-            commit_id = quit.repository.revision(parent_commit_ref).id
+        if branch_or_ref:
+            commit_id = quit.repository.revision(branch_or_ref).id
         else:
             commit_id = None
 
@@ -108,11 +108,11 @@ def sparql(parent_commit_ref):
             resolution_method = request.values.get('resolution_method', None) or None
             if resolution_method == "reject":
                 logger.debug("rejecting update because {} is at {} but {} was expected".format(
-                             parent_commit_ref, commit_id, parent_commit_id))
+                             branch_or_ref, commit_id, parent_commit_id))
                 return make_response('reject', 409)  # alternative 412
             elif resolution_method in ("merge", "branch"):
                 logger.debug(("writing update to a branch of {} because it is at {} but {} was "
-                             "expected").format(parent_commit_ref, commit_id, parent_commit_id))
+                             "expected").format(branch_or_ref, commit_id, parent_commit_id))
                 time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
                 shortUUID = (base64.urlsafe_b64encode(uuid.uuid1().bytes).decode("utf-8")
                              ).rstrip('=\n').replace('/', '_')
@@ -125,14 +125,13 @@ def sparql(parent_commit_ref):
 
                 if resolution_method == "merge":
                     logger.debug(("going to merge update into {} because it is at {} but {} was "
-                                 "expected").format(parent_commit_ref, commit_id,
-                                                    parent_commit_id))
+                                 "expected").format(branch_or_ref, commit_id, parent_commit_id))
                     # TODO merge graph, commitid with original graph, commitid and commit to
-                    # parent_commit_ref
+                    # branch_or_ref
                     try:
-                        quit.repository.merge(reference=parent_commit_ref, branch=target_ref)
+                        quit.repository.merge(reference=branch_or_ref, branch=target_ref)
                         response = make_response('success', 200)
-                        target_ref = parent_commit_ref
+                        target_ref = branch_or_ref
                     except QuitMergeConflict as e:
                         response = make_response('merge failed', 400)
                 else:
@@ -145,15 +144,18 @@ def sparql(parent_commit_ref):
         else:
             graph, commitid = quit.instance(parent_commit_id)
 
-            target_ref = request.values.get('target_ref', None) or default_branch
-            target_ref = 'refs/heads/{}'.format(target_ref)
+            target_head = request.values.get('target_head', branch_or_ref) or default_branch
+            target_ref = 'refs/heads/{}'.format(target_head)
             try:
-                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_ref, target_ref,
+                oid = quit.applyQueryOnCommit(parsedQuery, branch_or_ref, target_ref,
                                               query=query, default_graph=default_graph,
                                               named_graph=named_graph)
                 response = make_response('', 200)
                 response.headers["X-CurrentBranch"] = target_ref
-                response.headers["X-CurrentCommit"] = oid
+                if oid is not None:
+                    response.headers["X-CurrentCommit"] = oid
+                else:
+                    response.headers["X-CurrentCommit"] = commitid
                 return response
             except Exception as e:
                 # query ok, but unsupported query type or other problem during commit
@@ -161,7 +163,7 @@ def sparql(parent_commit_ref):
                 return make_response('Error after executing the update query.', 400)
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
         try:
-            graph, commitid = quit.instance(parent_commit_ref)
+            graph, commitid = quit.instance(branch_or_ref)
         except Exception as e:
             logger.exception(e)
             return make_response('No branch or reference given.', 400)

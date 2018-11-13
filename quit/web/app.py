@@ -214,14 +214,12 @@ def render_template(template_name_or_list, **kwargs):
 
     quit = current_app.config['quit']
 
-    current_head = quit.repository.current_head
     available_branches = quit.repository.branches
     available_tags = quit.repository.tags
     available_remotes = quit.repository.remotes
     available_refs = quit.repository.references
 
     context = {
-        'current_ref': current_head,
         'available_refs': available_refs,
         'available_branches': available_branches,
         'available_tags': available_tags,

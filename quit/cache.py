@@ -63,7 +63,10 @@ class FileReference:
         """
 
         if isinstance(content, str):
-            content = content.splitlines() or []
+            new = []
+            for line in content.splitlines():
+                new.append(' '.join(line.split()))
+            content = new
 
         self._path = path
         self._content = SortedSet(content)
