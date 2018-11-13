@@ -60,7 +60,7 @@ def sparql(branch_or_ref):
         HTTP Response 406: If accept header is not acceptable.
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
+    default_branch = quit.getDefaultBranch()
 
     if not branch_or_ref and not quit.repository.is_empty:
         branch_or_ref = default_branch

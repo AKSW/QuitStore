@@ -109,6 +109,23 @@ class Quit(object):
             return True
         return False
 
+    def getDefaultBranch(self):
+        """Get the default branch for the Git repository which should be used in the application.
+
+        This will be the default branch as configured, if it is configured or the current HEAD of
+        the repository if the HEAD is born. Will default to "master"
+
+        Returns:
+            A string containing the branch name.
+        """
+        config_default_branch = self.config.getDefaultBranch()
+        if config_default_branch:
+            return config_default_branch
+        repository_current_head = self.repository.current_head
+        if repository_current_head:
+            return repository_current_head
+        return "master"
+
     def rebuild(self):
         for context in self.store.contexts():
             self.store.remove((None, None, None), context)
