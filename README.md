@@ -9,6 +9,11 @@ This project runs a SPARQL endpoint for Update and Select Queries and enables ve
 
 ## Preparation of the Store repository
 
+Configure your name and email for Git. This information will be stored in each commit you are creating with Git and the QuitStore on your system. It is relevant so people know which contribution is comming from whome. Execute the following command if you havn't done that before.
+
+    $ git config --global user.name="Your Name"
+    $ git config --global user.email=you@e-mail-provider.org
+
 1. Create a directory, which will contain your RDF data
 2. Run `git init` in this directory
 3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
