@@ -1,16 +1,17 @@
-import sys
 import traceback
-import re
 import pygit2
 
-from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response
+from flask import Blueprint, request, current_app, make_response
 from werkzeug.http import parse_accept_header
 from quit.web.app import render_template
 from quit.web.extras.commits_graph import CommitGraph, generate_graph_data
+from quit.exceptions import QuitMergeConflict
 from quit.utils import git_timestamp
 from quit.web.modules.application import isLoggedIn, githubEnabled
 import json
+import logging
 
+logger = logging.getLogger('quit.web.modules.git')
 __all__ = ('git')
 
 git = Blueprint('git', __name__)
@@ -28,14 +29,16 @@ def commits(branch_or_ref):
     HTTP Response 406: Unsupported Mimetype requested
     """
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch()
 
-    if not branch_or_ref and not quit.repository.is_empty:
-        branch_or_ref = default_branch
+    if not branch_or_ref:
+        branch_or_ref = quit.getDefaultBranch()
 
     try:
-        results = quit.repository.revisions(
-            branch_or_ref, order=pygit2.GIT_SORT_TIME) if branch_or_ref else []
+        current_app.logger.debug(branch_or_ref)
+        if not quit.repository.is_empty:
+            results = quit.repository.revisions(branch_or_ref, order=pygit2.GIT_SORT_TIME)
+        else:
+            results = []
 
         if 'Accept' in request.headers:
             mimetype = parse_accept_header(request.headers['Accept']).best
@@ -45,6 +48,7 @@ def commits(branch_or_ref):
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             data = generate_graph_data(CommitGraph.gets(results))
             response = make_response(render_template('commits.html', results=results, data=data,
+                                                     current_ref=branch_or_ref,
                                                      isLoggedIn=isLoggedIn,
                                                      githubEnabled=githubEnabled))
             response.headers['Content-Type'] = 'text/html'
@@ -173,10 +177,97 @@ def push(remote, refspec):
         return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 
-@git.route("/merge", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
-@git.route("/merge/<path:branch_or_ref>", methods=['GET', 'POST'])
-def merge(branch_or_ref):
-    """Merge two commits and set the result to branch_or_ref.
+@git.route("/merge", defaults={'refspec': None}, methods=['GET', 'POST'])
+@git.route("/merge/<path:refspec>", methods=['GET', 'POST'])
+def merge(refspec):
+    """Merge branch into target (refspec=<branch>:<target>).
+
+    Merge 'branch' into 'target' and set 'target' to the resulting commit.
+
+    Returns:
+    HTTP Response 200: If merge was possible
+    HTTP Response 201: If merge was possible and a merge commit was created
+    HTTP Response 202: If merge was possible and a fast-forward happened
+    HTTP Response 400: If merge did not work
+    HTTP Response 409: If merge produces a conflict
+    """
+    quit = current_app.config['quit']
+
+    try:
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
+
+        if mimetype in ['text/html', 'application/xhtml_xml']:
+            response = make_response(render_template('merge.html'))
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        elif mimetype in ['application/json', '*/*']:
+            # Actual Merge
+            if refspec is None:
+                refspec = request.values.get('refspec', None)
+
+            if refspec:
+                try:
+                    branch, target = refspec.split(":")
+                except ValueError:
+                    branch = refspec
+                    target = None
+            else:
+                branch = request.values.get('branch', None)
+                target = request.values.get('target', None)
+            method = request.values.get('method', None)
+            try:
+                result = quit.repository.merge(target=target, branch=branch, method=method)
+            except QuitMergeConflict as mergeconflict:
+                response = make_response(json.dumps(mergeconflict.getObject()), 409)
+                response.headers['Content-Type'] = 'application/json'
+                return response
+
+            resultMessage = ""
+            resultCode = 200
+
+            if (result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD and result &
+                    pygit2.GIT_MERGE_ANALYSIS_UNBORN):
+                resultMessage = "{target} was unborn and is now set to {branch}".format(
+                    target=target, branch=branch)
+                resultCode = 202
+            elif result & pygit2.GIT_MERGE_ANALYSIS_FASTFORWARD:
+                resultMessage = "{target} could be fast-forwarded to {branch}".format(
+                    target=target, branch=branch)
+                resultCode = 202
+            elif result & pygit2.GIT_MERGE_ANALYSIS_UP_TO_DATE:
+                resultMessage = "{target} is already up-to-date with {branch}".format(
+                    target=target, branch=branch)
+                resultCode = 200
+            elif result & pygit2.GIT_MERGE_ANALYSIS_NORMAL:
+                resultMessage = "{branch} was merged into {target}, merge commit created".format(
+                    target=target, branch=branch)
+                resultCode = 201
+            else:
+                resultMessage = "don't know what happened to {target} and {branch}".format(
+                    target=target, branch=branch)
+
+            result_object = {"status": result, "result_message": resultMessage}
+
+            quit.syncAll()
+            response = make_response(json.dumps(result_object), resultCode)
+            response.headers['Content-Type'] = 'application/json'
+            return response
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
+
+    except Exception as e:
+        logger.error(e)
+        logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
+
+
+@git.route("/branch", defaults={'refspec': None}, methods=['GET', 'POST'])
+@git.route("/branch/<path:refspec>", methods=['GET', 'POST'])
+def branch(refspec):
+    """Branch two commits and set the result to branch_or_ref.
 
     merge branch into target and set branch_or_ref to the resulting commit
     - if only branch_or_ref is given, do nothing
@@ -186,19 +277,38 @@ def merge(branch_or_ref):
         to the resulting commit
 
     Returns:
-    HTTP Response 200: If merge was possible
-    HTTP Response 201: If merge was possible and a merge commit was created*
-    HTTP Response 400: If merge did not work
-    HTTP Response 409: If merge produces a conflict*
-    (* not yet implemented)
+    HTTP Response 200: If requesting the HTML interface
+    HTTP Response 201: If branch was possible
+    HTTP Response 400: If branching did not work or unsupported mimetype
     """
-    try:
+    quit = current_app.config['quit']
 
-        branch = request.values.get('branch', None) or None
-        target = request.values.get('target', None) or branch_or_ref
-        current_app.config['quit'].repository.merge(branch_or_ref, target, branch)
-        current_app.config['quit'].syncAll()
-        return '', 200
+    try:
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
+
+        status = 200
+
+        if refspec:
+            oldbranch, newbranch = refspec.split(":")
+            quit.repository.branch(oldbranch, newbranch)
+        else:
+            oldbranch = request.values.get('oldbranch')
+            newbranch = request.values.get('newbranch')
+            if newbranch:
+                quit.repository.branch(oldbranch, newbranch)
+                quit.syncAll()
+                status = 201
+
+        if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+            response = make_response(render_template('branch.html'))
+            response.headers['Content-Type'] = 'text/html'
+            return response, status
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 400
+
     except Exception as e:
         current_app.logger.error(e)
         current_app.logger.error(traceback.format_exc())

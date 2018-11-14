@@ -17,10 +17,9 @@ debug = Blueprint('debug', __name__)
 def blame(branch_or_ref):
 
     quit = current_app.config['quit']
-    default_branch = quit.config.getDefaultBranch() or 'master'
 
     if not branch_or_ref and not quit.repository.is_empty:
-        branch_or_ref = default_branch
+        branch_or_ref = quit.getDefaultBranch()
 
     blame = current_app.config['blame']
 

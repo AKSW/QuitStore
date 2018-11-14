@@ -109,6 +109,23 @@ class Quit(object):
             return True
         return False
 
+    def getDefaultBranch(self):
+        """Get the default branch for the Git repository which should be used in the application.
+
+        This will be the default branch as configured, if it is configured or the current HEAD of
+        the repository if the HEAD is born. Will default to "master"
+
+        Returns:
+            A string containing the branch name.
+        """
+        config_default_branch = self.config.getDefaultBranch()
+        if config_default_branch:
+            return config_default_branch
+        repository_current_head = self.repository.current_head
+        if repository_current_head:
+            return repository_current_head
+        return "master"
+
     def rebuild(self):
         for context in self.store.contexts():
             self.store.remove((None, None, None), context)
@@ -153,19 +170,21 @@ class Quit(object):
         if not self._exists(commit.id):
             self.changeset(commit)
 
-    def instance(self, commit_id=None, force=False):
+    def instance(self, reference, force=False):
         """Create and return dataset for a given commit id.
 
         Args:
-            id: commit id of the commit to retrieve
+            reference: commit id or reference of the commit to retrieve
             force: force to get the dataset from the git repository instead of the internal cache
         Returns:
             Instance of VirtualGraph representing the respective dataset
         """
         default_graphs = []
+        commitid = None
 
-        if commit_id:
-            commit = self.repository.revision(commit_id)
+        if reference:
+            commit = self.repository.revision(reference)
+            commitid = commit.id
 
             for blob in self.getFilesForCommit(commit):
                 try:
@@ -188,7 +207,7 @@ class Quit(object):
         instance = InMemoryAggregatedGraph(
             graphs=default_graphs, identifier='default')
 
-        return VirtualGraph(instance)
+        return VirtualGraph(instance), commitid
 
     def changeset(self, commit):
 
@@ -209,7 +228,7 @@ class Quit(object):
             g.add((role_committer_uri, is_a, PROV['Role']))
 
         # Create the commit
-        i1 = self.instance(commit.id, True)
+        i1, commitid = self.instance(commit.id, True)
 
         commit_uri = QUIT['commit-' + commit.id]
 
@@ -278,7 +297,7 @@ class Quit(object):
             # Diff
             parent = next(iter(commit.parents or []), None)
 
-            i2 = self.instance(parent.id, True) if parent else None
+            i2, commitid = self.instance(parent.id, True) if parent else (None, None)
 
             delta = graphdiff(i2.store if i2 else None, i1.store)
 
@@ -397,8 +416,8 @@ class Quit(object):
             return quitWorkingData
         return self._blobs.get(blob)
 
-    def commit(self, graph, delta, message, parent_commit_ref, ref, query=None, default_graph=[],
-               named_graph=[], **kwargs):
+    def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
+               default_graph=[], named_graph=[], **kwargs):
         """Commit changes after applying deltas to the blobs.
 
         This methods analyzes the delta and applies the changes to the blobs of the repository.
@@ -411,10 +430,12 @@ class Quit(object):
             delta: delta that will be applied
             message: commit message
             parent_commit_ref: the commit-id of preceeding commit
-            ref: a ref/branch were the commit will be applied to
+            target_ref: a ref/branch were the commit will be applied to
             query: the query that lead to the commit
             default_graph: using-graph-uri values from SPARQL protocol
             named_graph: using-named-graph-uri values from SPARQL protocol
+        Returns:
+            The newly created commits id
         """
         def build_message(message, kwargs):
             out = list()
@@ -525,7 +546,7 @@ class Quit(object):
         message = build_message(message, kwargs)
         author = self.repository._repository.default_signature
 
-        oid = index.commit(message, author.name, author.email, ref=ref)
+        oid = index.commit(message, author.name, author.email, ref=target_ref)
 
         if self.config.hasFeature(Feature.GarbageCollection):
             self.garbagecollection()
@@ -535,8 +556,10 @@ class Quit(object):
             commit = self.repository.revision(oid.hex)
             if not self.repository.is_bare:
                 self.repository._repository.checkout(
-                    ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
+                    target_ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.syncSingle(commit)
+
+        return oid.hex
 
     def garbagecollection(self):
         """Start garbage collection.

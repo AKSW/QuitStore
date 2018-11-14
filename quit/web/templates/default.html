@@ -13,6 +13,16 @@
                 </div>
                 <ul class="nav navbar-nav">
                     <li{% if request.url_rule.endpoint == 'git.commits' %} class="active"{% endif %}><a href="{{ url_for('git.commits') }}"><i class="fa fa-history" aria-hidden="true"></i> Commits</a></li>
+
+                    <li{% if request.url_rule.endpoint == 'git.merge' %} class="active"{% endif %}><a href="{{ url_for('git.merge') }}">
+                        <img class="octicon" style="color: white" src="{{ url_for('static', filename='octicons/svg/git-merge-white.svg') }}" />
+                        Merge</a>
+                    </li>
+
+                    <li{% if request.url_rule.endpoint == 'git.branch' %} class="active"{% endif %}><a href="{{ url_for('git.branch') }}">
+                        <i class="fa fa-code-fork" aria-hidden="true"></i> Branch</a>
+                    </li>
+
                     <li {% if request.url_rule.endpoint in ['endpoint.sparql', 'endpoint.provenance'] %} class="dropdown active"{% else %} class="dropdown"{% endif %}>
                         <a class="dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-database" aria-hidden="true"></i> Data <span class="caret"></span></a>
                         <ul class="dropdown-menu">
