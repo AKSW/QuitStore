@@ -11,14 +11,14 @@ This project runs a SPARQL endpoint for Update and Select Queries and enables ve
 
 1. Create a directory, which will contain your RDF data
 2. Run `git init` in this directory
-3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
+3. Put your RDF data formated as [N-Triples](https://www.w3.org/TR/n-triples/) into this directory (an empty file should work as well)
 4. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
 5. Create a configuration file named `config.ttl` (an example is contained in this directory)
 
 ## Configuaration of config.ttl
 
 Adjust the `config.ttl`.
-Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nq"`).
+Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nt"`).
 
 ```
 conf:store a <YourQuitStore> ;
@@ -29,10 +29,8 @@ conf:store a <YourQuitStore> ;
 conf:example a <Graph> ; # Define a Graph resource for a named graph
     <graphUri> <http://example.org/> ; # Set the URI of named graph
     <isVersioned> 1 ; # Defaults to True, future work
-    <graphFile> "example.nq" . # Set the filename
+    <graphFile> "example.nt" . # Set the filename
 ```
-
-The `config.ttl` could as well be put under version control for collaboration, but this is not necessary.
 
 ## Run from command line
 
@@ -56,9 +54,8 @@ quit/run.py
 Quit-Store can be started in three different modes.
 These modes differ in how the store choses the named graphs and the corresponding files that will be part of the store.
 
-1. `localconfig` - Use the graphs specified in a local config file (e.g. `config.ttl`).
-2. `repoconfig` - Search for a `config.ttl` file in the specified repository.
-3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)), furthermore found N-Quads files are analyzed to get the URI of named graphs from the used context.
+2. `configfile` - Search for a `config.ttl` file in the repository.
+3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)).
 
 `-b`, `--basepath`
 
@@ -144,12 +141,6 @@ The provenance interface is available under the following two URIs:
 ```
 http://your.host/git/log
 ```
-
-## Tips and Tricks
-
-If you want to convert an N-Triples file to N-Quads where all data is in the same graph, the following line might help.
-
-    sed "s/.$/<http:\/\/example.org\/> ./g" data.nt > data.nq
 
 ## Docker
 
