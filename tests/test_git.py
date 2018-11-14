@@ -524,7 +524,7 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPullRepoClonedAndPullWithThreeWayGitMerge(self):
         """Test clone, commit on remote and pull with merge, which resolves without conflicts."""
-        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
+        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .\n"
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
@@ -537,7 +537,7 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
                 index = quitRepo.index(remoteHead)
-                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example2.org/> .\n"
+                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> .\n"
                 index.add("graph2.nt", graph2Content)
                 index.add("graph2.nt.graph", "http://example2.org/")
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
@@ -551,7 +551,7 @@ class GitRepositoryTests(unittest.TestCase):
 
                 remoteQuitRepo = quit.git.Repository(remote.workdir)
                 index = remoteQuitRepo.index(remoteHead)
-                graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n"
+                graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> .\n"
                 index.add("graph.nt", graphContent)
                 remoteCommitid = index.commit("from remote", author.name, author.email)
                 remoteQuitRepo._repository.checkout_tree(remoteQuitRepo._repository.get(remoteCommitid))
@@ -566,15 +566,15 @@ class GitRepositoryTests(unittest.TestCase):
                                      [str(localCommitid), str(remoteCommitid)])
 
                 # check if the merged commit contains all file contents
-                with open(path.join(localDirectory, "graph.nq")) as f:
+                with open(path.join(localDirectory, "graph.nt")) as f:
                     self.assertEqual("".join(f.readlines()), graphContent)
 
-                with open(path.join(localDirectory, "graph2.nq")) as f:
+                with open(path.join(localDirectory, "graph2.nt")) as f:
                     self.assertEqual("".join(f.readlines()), graph2Content)
 
     def testPullRepoClonedAndPullWithThreeWayMerge(self):
         """Test clone, commit on remote and pull with merge, which resolves without conflicts."""
-        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
+        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .\n"
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
@@ -587,9 +587,9 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
                 index = quitRepo.index(remoteHead)
-                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example2.org/> .\n"
-                index.add("graph2.nq", graph2Content)
-                index.add("graph2.nq.graph", "http://example2.org/\n")
+                graph2Content = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> .\n"
+                index.add("graph2.nt", graph2Content)
+                index.add("graph2.nt.graph", "http://example2.org/\n")
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
                 localCommitid = index.commit("from local", author.name, author.email)
                 quitRepo._repository.checkout_tree(quitRepo._repository.get(localCommitid))
@@ -601,8 +601,8 @@ class GitRepositoryTests(unittest.TestCase):
 
                 remoteQuitRepo = quit.git.Repository(remote.workdir)
                 index = remoteQuitRepo.index(remoteHead)
-                graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n"
-                index.add("graph.nq", graphContent)
+                graphContent += "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> .\n"
+                index.add("graph.nt", graphContent)
                 remoteCommitid = index.commit("from remote", author.name, author.email)
                 remoteQuitRepo._repository.checkout_tree(remoteQuitRepo._repository.get(remoteCommitid))
 
