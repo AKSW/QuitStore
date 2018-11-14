@@ -35,7 +35,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -72,7 +72,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -111,7 +111,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -149,7 +149,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -188,7 +188,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -234,7 +234,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -284,7 +284,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -336,7 +336,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -400,7 +400,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -472,7 +472,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -504,7 +504,7 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -530,7 +530,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -567,7 +567,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -606,7 +606,7 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -664,7 +664,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             ns = 'http://example.org/newNS/'
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-n', ns])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-n', ns])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -698,7 +698,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -732,7 +732,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -767,7 +767,7 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -819,7 +819,7 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -858,7 +858,7 @@ class QuitAppTestCase(unittest.TestCase):
         """Test /commits API request."""
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -902,7 +902,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -978,7 +978,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1055,7 +1055,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1161,7 +1161,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1176,7 +1176,7 @@ class QuitAppTestCase(unittest.TestCase):
             changesets_1 = json.loads(prov_1.data.decode("utf-8"))
 
             # re-start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1205,7 +1205,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1276,7 +1276,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1347,7 +1347,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1410,7 +1410,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1466,7 +1466,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1518,7 +1518,7 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1546,7 +1546,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1575,7 +1575,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1611,7 +1611,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1648,7 +1648,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1684,7 +1684,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1719,7 +1719,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1756,7 +1756,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1790,7 +1790,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1827,7 +1827,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1866,7 +1866,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1917,7 +1917,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1966,7 +1966,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2029,7 +2029,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2103,7 +2103,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2177,7 +2177,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2231,7 +2231,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-l', logFile])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-l', logFile])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2245,7 +2245,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2260,7 +2260,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2288,7 +2288,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2322,7 +2322,7 @@ class QuitAppTestCase(unittest.TestCase):
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2372,7 +2372,7 @@ class QuitAppTestCase(unittest.TestCase):
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2413,7 +2413,7 @@ class QuitAppTestCase(unittest.TestCase):
             with TemporaryRepository() as local:
                 local.remotes.create("origin", remote.path)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2455,7 +2455,7 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2465,7 +2465,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # reload the store
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             newApp = create_app(config).test_client()
@@ -2498,7 +2498,7 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = "<urn:x> <urn:y> <urn:z> ."
         with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2522,7 +2522,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph('urn:graph') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2547,7 +2547,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2586,7 +2586,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("urn:graph", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2617,7 +2617,7 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2645,7 +2645,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2716,7 +2716,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2794,7 +2794,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2868,7 +2868,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2939,7 +2939,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3006,7 +3006,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3082,7 +3082,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3157,7 +3157,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3236,7 +3236,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3299,7 +3299,7 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3335,7 +3335,7 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3400,7 +3400,7 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3475,7 +3475,7 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3532,7 +3532,7 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
