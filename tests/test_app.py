@@ -3528,7 +3528,7 @@ class FileHandlingTests(unittest.TestCase):
         5. compare File content
         """
         # Prepate a git Repository
-        graphContent = "<urn:x>  <urn:y>   <urn:z>   <http://example.org/> . "
+        graphContent = "<urn:x>  <urn:y>   <urn:z>   . "
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
@@ -3537,7 +3537,7 @@ class FileHandlingTests(unittest.TestCase):
             config = objects['config']
             app = create_app(config).test_client()
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(graphContent, f.read())
 
             # execute DELETE query
@@ -3546,7 +3546,7 @@ class FileHandlingTests(unittest.TestCase):
                      content_type="application/sparql-update",
                      data=update)
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
 
