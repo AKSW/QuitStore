@@ -47,9 +47,9 @@ class Cache:
 
 
 class FileReference:
-    """A class that manages n-quad files.
-    This class stores inforamtation about the location of a n-quad file and is
-    able to add and delete triples/quads to that file.
+    """A class that manages n-triple files.
+    This class stores inforamtation about the location of a n-triple file and is
+    able to add and delete triples to that file.
     """
 
     def __init__(self, path, content):
@@ -63,7 +63,10 @@ class FileReference:
         """
 
         if isinstance(content, str):
-            content = content.splitlines() or []
+            new = []
+            for line in content.splitlines():
+                new.append(' '.join(line.split()))
+            content = new
 
         self._path = path
         self._content = SortedSet(content)
@@ -78,15 +81,15 @@ class FileReference:
         return "\n".join(self._content) + "\n"
 
     def add(self, data):
-        """Add a quad to the file content."""
+        """Add a triple to the file content."""
         self._content.add(data)
 
     def extend(self, data):
-        """Add quads to the file content."""
+        """Add triples to the file content."""
         self._content.extend(data)
 
     def remove(self, data):
-        """Remove quad from the file content."""
+        """Remove trple from the file content."""
         try:
             self._content.remove(data)
         except KeyError:

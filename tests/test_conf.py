@@ -91,14 +91,8 @@ class TestConfiguration(unittest.TestCase):
                     rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
                 })
 
-            self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_0.nt')],
-                ['http://aksw.org/']
-            )
-            self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_1.nt')],
-                ['http://example.org/']
-            )
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://example.org/>')
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
             self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
@@ -129,13 +123,8 @@ class TestConfiguration(unittest.TestCase):
                     rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
                 })
 
-            self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_0.nt')],
-                ['http://aksw.org/']
-            )
-            self.assertEqual(
-                [str(x) for x in conf.getgraphuriforfile('graph_1.nt')], ['http://example.org/']
-            )
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://example.org/>')
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
             self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
@@ -153,7 +142,7 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getgraphurifilemap(), {
                     rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), None)
-            self.assertEqual(conf.getgraphuriforfile('graph_0.nt'), [])
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt'), None)
             self.assertEqual(conf.getserializationoffile('graph_0.nt'), None)
 
             conf.addgraph('http://aksw.org/', 'new_file.nt', 'nt')
@@ -162,7 +151,7 @@ class TestConfiguration(unittest.TestCase):
                     rdflib.term.URIRef('http://aksw.org/'): 'new_file.nt',
                     rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nt')
-            self.assertEqual(conf.getgraphuriforfile('new_file.nt'), ['http://aksw.org/'])
+            self.assertEqual(conf.getgraphuriforfile('new_file.nt').n3(), '<http://aksw.org/>')
             self.assertEqual(conf.getserializationoffile('new_file.nt'), 'nt')
 
     def testGraphConfigurationFailing(self):

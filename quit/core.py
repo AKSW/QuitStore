@@ -9,7 +9,7 @@ from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 
-from rdflib import Graph, ConjunctiveGraph, BNode, Literal
+from rdflib import Graph, ConjunctiveGraph, BNode, Literal, URIRef
 import re
 
 from quit.conf import Feature, QuitGraphConfiguration
@@ -170,19 +170,18 @@ class Quit(object):
             for blob in self.getFilesForCommit(commit):
                 try:
                     (name, oid) = blob
-                    f, contexts = self.getFileReferenceAndContext(blob, commit)
-                    for context in contexts:
-                        internal_identifier = context.identifier + '-' + str(oid)
+                    (f, context) = self.getFileReferenceAndContext(blob, commit)
+                    internal_identifier = context.identifier + '-' + str(oid)
 
-                        if force or not self.config.hasFeature(Feature.Persistence):
-                            g = context
-                        else:
-                            g = RewriteGraph(
-                                self.store.store.store,
-                                internal_identifier,
-                                context.identifier
-                            )
-                        default_graphs.append(g)
+                    if force or not self.config.hasFeature(Feature.Persistence):
+                        g = context
+                    else:
+                        g = RewriteGraph(
+                            self.store.store.store,
+                            internal_identifier,
+                            context.identifier
+                        )
+                    default_graphs.append(g)
                 except KeyError:
                     pass
 
@@ -305,58 +304,50 @@ class Quit(object):
                 if entity.name not in map.values():
                     continue
 
-                graphUris = self._graphconfigs.get(commit.id).getgraphuriforfile(entity.name)
-                graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
-
+                graphUri = self._graphconfigs.get(commit.id).getgraphuriforfile(entity.name)
                 blob = (entity.name, entity.oid)
 
                 try:
-                    f, contexts = self.getFileReferenceAndContext(blob, commit)
+                    f, context = self.getFileReferenceAndContext(blob, commit)
                 except KeyError:
-                    tmp = ConjunctiveGraph()
-                    tmp.parse(data=entity.content, format='nquads')
-
-                    # Info: currently filter graphs from file that were not defined in config
-                    # Todo: is this the wanted behaviour?
-                    contexts = set((context for context in tmp.contexts(None)
-                                    if context.identifier in map)) | graphsFromConfig
+                    tmp = Graph(identifier=graphUri)
+                    tmp.parse(data=entity.content, format='nt')
 
                     self._blobs.set(
-                        blob, (FileReference(entity.name, entity.content), contexts)
+                        blob, (FileReference(entity.name, entity.content), tmp)
                     )
 
-                for index, context in enumerate(contexts):
-                    private_uri = QUIT["graph-{}-{}".format(entity.oid, index)]
+                private_uri = QUIT["graph-{}".format(entity.oid)]
 
-                    if (
-                        self.config.hasFeature(Feature.Provenance) or
-                        self.config.hasFeature(Feature.Persistence)
-                    ):
-                        g.add((private_uri, is_a, PROV['Entity']))
-                        g.add(
-                            (private_uri, PROV['specializationOf'], context.identifier))
-                        g.add(
-                            (private_uri, PROV['wasGeneratedBy'], commit_uri))
+                if (
+                    self.config.hasFeature(Feature.Provenance) or
+                    self.config.hasFeature(Feature.Persistence)
+                ):
+                    g.add((private_uri, is_a, PROV['Entity']))
+                    g.add(
+                        (private_uri, PROV['specializationOf'], context.identifier))
+                    g.add(
+                        (private_uri, PROV['wasGeneratedBy'], commit_uri))
 
-                        q_usage = BNode()
-                        g.add((private_uri, PROV['qualifiedGeneration'], q_usage))
-                        g.add((q_usage, is_a, PROV['Generation']))
-                        g.add((q_usage, PROV['activity'], commit_uri))
+                    q_usage = BNode()
+                    g.add((private_uri, PROV['qualifiedGeneration'], q_usage))
+                    g.add((q_usage, is_a, PROV['Generation']))
+                    g.add((q_usage, PROV['activity'], commit_uri))
 
-                        prev = next(entity.history(), None)
-                        if prev:
-                            prev_uri = QUIT["graph-{}-{}".format(prev.oid, index)]
-                            g.add((private_uri, PROV['wasDerivedFrom'], prev_uri))
-                            g.add((commit_uri, PROV['used'], prev_uri))
+                    prev = next(entity.history(), None)
+                    if prev:
+                        prev_uri = QUIT["graph-{}-{}".format(prev.oid, index)]
+                        g.add((private_uri, PROV['wasDerivedFrom'], prev_uri))
+                        g.add((commit_uri, PROV['used'], prev_uri))
 
-                            q_derivation = BNode()
-                            g.add((private_uri, PROV['qualifiedDerivation'], q_derivation))
-                            g.add((q_derivation, is_a, PROV['Derivation']))
-                            g.add((q_derivation, PROV['entity'], prev_uri))
-                            g.add((q_derivation, PROV['hadActivity'], commit_uri))
-                    if self.config.hasFeature(Feature.Persistence):
-                        g.addN((s, p, o, private_uri) for s, p, o
-                               in context.triples((None, None, None)))
+                        q_derivation = BNode()
+                        g.add((private_uri, PROV['qualifiedDerivation'], q_derivation))
+                        g.add((q_derivation, is_a, PROV['Derivation']))
+                        g.add((q_derivation, PROV['entity'], prev_uri))
+                        g.add((q_derivation, PROV['hadActivity'], commit_uri))
+                if self.config.hasFeature(Feature.Persistence):
+                    g.addN((s, p, o, private_uri) for s, p, o
+                           in context.triples((None, None, None)))
 
     def getFilesForCommit(self, commit):
         """Get all entry, oid tupples for a commit.
@@ -392,19 +383,16 @@ class Quit(object):
         if commit.id not in self._graphconfigs:
             self.updateGraphConfig(commit.id)
 
-        uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
+        # uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
 
         if blob not in self._blobs:
             (name, oid) = blob
             content = commit.node(path=name).content
             # content = self.repository._repository[oid].data
-            graphUris = self._graphconfigs.get(commit.id).getgraphuriforfile(name)
-            graphsFromConfig = set((Graph(identifier=i) for i in graphUris))
-            tmp = ConjunctiveGraph()
-            tmp.parse(data=content, format='nquads')
-            contexts = set((context for context in tmp.contexts(None)
-                            if context.identifier in uriFileMap)) | graphsFromConfig
-            quitWorkingData = (FileReference(name, content), contexts)
+            graphUri = self._graphconfigs.get(commit.id).getgraphuriforfile(name)
+            tmp = Graph(identifier=URIRef(graphUri))
+            tmp.parse(data=content, format='nt')
+            quitWorkingData = (FileReference(name, content), tmp)
             self._blobs.set(blob, quitWorkingData)
             return quitWorkingData
         return self._blobs.get(blob)
@@ -448,20 +436,19 @@ class Quit(object):
             for blob in blobs:
                 (fileName, oid) = blob
                 try:
-                    file_reference, contexts = self.getFileReferenceAndContext(blob, parent_commit)
-                    for context in contexts:
-                        for entry in delta:
-                            changeset = entry.get(context.identifier, None)
+                    file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
+                    for entry in delta:
+                        changeset = entry.get(context.identifier, None)
 
-                            if changeset:
-                                applyChangeset(file_reference, changeset, context.identifier)
-                                del(entry[context.identifier])
+                        if changeset:
+                            applyChangeset(file_reference, changeset, context.identifier)
+                            del(entry[context.identifier])
 
                     index.add(file_reference.path, file_reference.content)
 
                     self._blobs.remove(blob)
                     blob = fileName, index.stash[file_reference.path][0]
-                    self._blobs.set(blob, (file_reference, contexts))
+                    self._blobs.set(blob, (file_reference, context))
                     blobs_new.add(blob)
                 except KeyError:
                     pass
@@ -475,15 +462,15 @@ class Quit(object):
                         continue  # TODO default graph use case
 
                     if identifier not in new_contexts.keys():
-                        fileName = iri_to_name(identifier) + '.nq'
+                        fileName = iri_to_name(identifier) + '.nt'
 
                         if fileName in known_blobs:
-                            reg = re.compile(re.escape(iri_to_name(identifier)) + "_([0-9]+).nq")
+                            reg = re.compile(re.escape(iri_to_name(identifier)) + "_([0-9]+).nt")
                             #  n ~ numbers (in blobname), b ~ blobname, m ~ match
                             n = [
                                 int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                             ] + [0]
-                            fileName = '{}_{}.nq'.format(iri_to_name(identifier), max(n)+1)
+                            fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
 
                         new_contexts[identifier] = FileReference(fileName, '')
 
@@ -526,13 +513,11 @@ class Quit(object):
                 index.add(fileReference.path + '.graph', identifier + "\n")
 
             # Update config
-            new_config.addgraph(identifier, fileReference.path, 'nquads')
+            new_config.addgraph(identifier, fileReference.path, 'nt')
 
             # Update Cache and add new contexts to store
             blob = fileReference.path, index.stash[fileReference.path][0]
-            context = set()
-            context.add(graph.store.get_context(identifier))
-            self._blobs.set(blob, (fileReference, context))
+            self._blobs.set(blob, (fileReference, graph.store.get_context(identifier)))
             blobs_new.add(blob)
         if graphconfig.mode == 'configuration':
             index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())

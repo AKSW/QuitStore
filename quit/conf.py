@@ -256,7 +256,7 @@ class QuitGraphConfiguration():
                 format = guess_format(filename)
             else:
                 format = str(row['format'])
-            if format not in ['nt', 'nquads']:
+            if format != 'nt':
                 break
             if filename not in known_blobs.keys():
                 break
@@ -266,7 +266,7 @@ class QuitGraphConfiguration():
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
             self.files[filename] = {
-                'serialization': format, 'graphs': [graphuri], 'oid': known_blobs[filename]}
+                'serialization': format, 'graph': graphuri, 'oid': known_blobs[filename]}
 
     def __get_uri_from_graphfile_blob(self, oid):
         """Search for a graph uri in graph file and return it.
@@ -308,9 +308,9 @@ class QuitGraphConfiguration():
 
         if format is not None:
             self.graphconf.add((self.quit[quote(graphuri)], self.quit.hasFormat, Literal(format)))
-            self.files[file] = {'serialization': format, 'graphs': [graphuri], 'oid': file}
+            self.files[file] = {'serialization': format, 'graph': graphuri_obj, 'oid': file}
         else:
-            self.files[file] = {'graphs': [graphuri_obj], 'oid': file}
+            self.files[file] = {'graph': graphuri_obj, 'oid': file}
 
     def removegraph(self, graphuri):
         self.graphconf.remove((self.quit[quote(graphuri)], None, None))
@@ -404,9 +404,7 @@ class QuitGraphConfiguration():
 
         """
         if file in self.files:
-            return self.files[file]['graphs']
-
-        return []
+            return self.files[file]['graph']
 
     def get_blobs_from_repository(self, rev):
         """Analyze all blobs of a revision.
@@ -434,7 +432,7 @@ class QuitGraphConfiguration():
                 format = guess_format(entry.name)
                 if format is None and entry.name.endswith('.graph'):
                     graph_file_blobs[entry.name] = entry.id
-                elif format is not None and format in ['nquads', 'nt']:
+                elif format is not None and format == 'nt':
                     rdf_file_blobs[entry.name] = (entry.id, format)
                 elif format is not None and entry.name == 'config.ttl':
                     config_files.append(str(entry.id))
