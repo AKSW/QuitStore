@@ -236,7 +236,7 @@ class GitRepositoryTests(unittest.TestCase):
         """Test if it is possible to push to an empty remote repository."""
         with TemporaryRepository(True) as remote:
             graphContent = """
-                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                 local.remotes.create("origin", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
@@ -257,7 +257,7 @@ class GitRepositoryTests(unittest.TestCase):
         ]:
             with TemporaryRepository(True) as remote:
                 graphContent = """
-                    <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                    <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
                 with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                     local.remotes.create("origin", remote.path)
                     quitRepo = quit.git.Repository(local.workdir)
@@ -274,7 +274,7 @@ class GitRepositoryTests(unittest.TestCase):
         """Test if the push failes if the origin remote was not defined."""
         with TemporaryRepository(True) as remote:
             graphContent = """
-                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                 local.remotes.create("upstream", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
@@ -291,7 +291,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPushRepoWithRemoteName(self):
         """Test if it is possible to push to a remote repository, which is not called orign."""
         with TemporaryRepository(True) as remote:
-            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+            graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                 local.remotes.create("upstream", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
@@ -308,7 +308,7 @@ class GitRepositoryTests(unittest.TestCase):
         """Test if the push failes if the specified remote was not defined."""
         with TemporaryRepository(is_bare=True) as remote:
             graphContent = """
-                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                 local.remotes.create("origin", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
@@ -326,7 +326,7 @@ class GitRepositoryTests(unittest.TestCase):
         """Test for an exception, if the local and remote repositories are diverged."""
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as remote:
             graphContent = """
-                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
                 local.remotes.create("origin", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
@@ -345,7 +345,7 @@ class GitRepositoryTests(unittest.TestCase):
         Unfortunately the libgit2 does not execute pre-receive hooks on local repositories.
         """
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
             local.remotes.create("origin", "ssh://git@git.docker/testing.git")
             quitRepo = quit.git.Repository(local.workdir)
@@ -358,7 +358,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testFetchRepo(self):
         """Test if it is possible to fetch from a remote repository."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(False) as local:
                 local.remotes.create("origin", remote.path)
@@ -384,7 +384,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testFetchUpstreamRepo(self):
         """Test if it is possible to from from a remote, which set as upstream."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/x> <http://ex.org/x> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/x> <http://ex.org/x> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(clone_from_repo=remote) as local:
                 quitRepo = quit.git.Repository(local.workdir)
@@ -395,7 +395,7 @@ class GitRepositoryTests(unittest.TestCase):
 
                 with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphContent = """
-                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
                     graphFile.write(graphContent)
 
                 createCommit(repository=remote)
@@ -416,7 +416,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepo(self):
         """Test if it is possible to pull from a remote repository."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(False) as local:
                 local.remotes.create("origin", remote.path)
@@ -442,7 +442,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepoWithUnbornHead(self):
         """Test if it is possible to pull from a remote repository."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(False) as local:
                 local.remotes.create("origin", remote.path)
@@ -468,7 +468,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepoClonedNoChanges(self):
         """Test pull if both repos are at the same state."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
@@ -490,7 +490,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepoClonedAndPullWithChanges(self):
         """Test clone, commit on remote and pull."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
@@ -512,7 +512,7 @@ class GitRepositoryTests(unittest.TestCase):
                 remoteQuitRepo = quit.git.Repository(remote.workdir)
                 index = remoteQuitRepo.index(remoteHead)
                 graphContent += """
-                    <http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> ."""
+                    <http://ex.org/x> <http://ex.org/z> <http://ex.org/z> ."""
                 index.add("graph.nt", graphContent)
 
                 author = Signature('QuitStoreTest', 'quit@quit.aksw.org')
@@ -624,7 +624,7 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPullRepoClonedAndPullWithConflict(self):
         """Test clone, commit on remote and pull with conflict."""
-        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n"
+        graphContent = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .\n"
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
@@ -639,7 +639,7 @@ class GitRepositoryTests(unittest.TestCase):
                 index = quitRepo._repository.index
                 with open(path.join(localDirectory, "graph.nt"), "a") as graphFile:
                     graphFile.write(
-                        "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> <http://example.org/> .\n")
+                        "<http://ex.org/x> <http://ex.org/y> <http://ex.org/y> .\n")
                 index.add("graph.nt")
                 index.write()
                 tree = index.write_tree()
@@ -654,7 +654,7 @@ class GitRepositoryTests(unittest.TestCase):
                 index = remote.index
                 with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphFile.write(
-                        "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> <http://example.org/> .\n")
+                        "<http://ex.org/x> <http://ex.org/z> <http://ex.org/z> .\n")
                 index.add("graph.nt")
                 index.write()
                 tree = index.write_tree()
@@ -672,7 +672,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepoFromNamedRemote(self):
         """Test if it is possible to pull from a remote repository, which is not called origin."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(False) as local:
                 local.remotes.create("upstream", remote.path)
@@ -698,7 +698,7 @@ class GitRepositoryTests(unittest.TestCase):
     def testPullRepoFromNotConfiguredRemote(self):
         """Test if it is possible to pull from a remote repository, which is not called origin."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(False) as local:
                 local.remotes.create("origin", remote.path)
