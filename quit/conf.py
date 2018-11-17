@@ -11,7 +11,8 @@ from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
 from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
-from urllib.parse import quote, urlparse, urlencode
+from urllib.parse import quote, urlencode
+from rdflib.term import _is_valid_uri
 from uritools import urisplit
 
 logger = logging.getLogger('quit.conf')
@@ -218,12 +219,12 @@ class QuitGraphConfiguration():
         for file, values in files.items():
             format = values[0]
             graphFileId = values[1]
-            graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
-
-            if graphuri:
+            try:
+                graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
                 self.addgraph(file=file, graphuri=graphuri, format=format)
-            else:
-                logger.warning('No *.graph file found. {} skipped'.format(file))
+            except Exception as e:
+                logger.debug(e)
+                logger.warning('No valid URI found in *.graph file for {}, skipped'.format(file))
 
     def __init_graph_conf_from_configuration(self, configfileId, known_blobs):
         """Init graphs with setting from config.ttl."""
@@ -283,18 +284,14 @@ class QuitGraphConfiguration():
         try:
             blob = self.repository.get(oid)
         except ValueError:
-            logger.debug("Object with OID { } not found in repository.".format(oid))
+            logger.debug("Object with OID {} not found in repository.".format(oid))
             return
 
         content = blob.read_raw().decode().strip()
 
-        try:
-            urlparse(content)
-        except Exception:
-            logger.debug("No graph URI found in blob with OID {}.".format(oid))
-            return
-
-        return content
+        if content and _is_valid_uri(content):
+            return content
+        raise InvalidConfigurationError("No graph URI found in blob with OID {}.".format(oid))
 
     def addgraph(self, graphuri, file, format=None):
         graphuri_obj = URIRef(graphuri)
