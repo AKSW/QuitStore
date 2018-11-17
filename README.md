@@ -1,59 +1,78 @@
-# Quit-Store
+# Quit Store
 
-Status of `master` branch:
+Build status of `master` branch:
 
 [![Build Status](https://travis-ci.org/AKSW/QuitStore.svg?branch=master)](https://travis-ci.org/AKSW/QuitStore)
 [![Coverage Status](https://coveralls.io/repos/github/AKSW/QuitStore/badge.svg?branch=master)](https://coveralls.io/github/AKSW/QuitStore)
 
-This project runs a SPARQL endpoint for Update and Select Queries and enables versioning with Git for each [Named Graph](https://en.wikipedia.org/wiki/Named_graph).
+The *Quit Store* (stands for <em>Qu</em>ads in G<em>it</em>) provides a worspace for distributed collaborative Linked Data knowledge engineering.
+You are able read and write [RDF Datasets](https://www.w3.org/TR/rdf11-concepts/#section-dataset) (aka. multiple [Named Graphs](https://en.wikipedia.org/wiki/Named_graph)) through a standard SPARQL 1.1 Query and Update interface.
+To colaborate you can create mutiple branches of the Dataset and share your repository with your collaborators as you know if form Git.
 
-## Preparation of the Store repository
+## Getting Started
+
+To get the Quit Store you have three options:
+
+- Download a binary from https://github.com/AKSW/QuitStore/releases (Currently works for amd64 Linux)
+- Clone it with Git from our repository: https://github.com/AKSW/QuitStore
+- Use Docker and see the section [“Docker”](#docker) in the README
+
+### Installation from Source
+
+Install [libgit2](https://libgit2.github.com/) including the headers (e.g. `libgit2-27` and `libgit2-dev` on ubuntu) which is needed for the pygit2 bindings.
+Find out which version of libgit2 you've got on your system and adjust the respective line in the `requirements.txt` of the Quit Store. The minor levels of the versions have to be equal (libgit2 `0.27.4` -> `pygit2==0.27.2`).
+
+Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`):
+```
+$ git clone https://github.com/AKSW/QuitStore.git
+$ cd QuitStore
+```
+If you are using virtualenvwrapper:
+```
+$ mkvirtualenv -p /usr/bin/python3.5 -r requirements.txt quit
+```
+If you are not using virtualenvwrapper:
+```
+$ pip install -r requirements.txt
+```
+
+### Git configuration
 
 Configure your name and email for Git. This information will be stored in each commit you are creating with Git and the QuitStore on your system. It is relevant so people know which contribution is comming from whome. Execute the following command if you havn't done that before.
 
     $ git config --global user.name="Your Name"
     $ git config --global user.email=you@e-mail-provider.org
 
-1. Create a directory, which will contain your RDF data
-2. Run `git init` in this directory
-3. Put your RDF data formated as [N-Triples](https://www.w3.org/TR/n-triples/) into this directory (an empty file should work as well)
+### Start with Existing Data (Optional)
+
+If you already have data which you want to use in the quit store follow these steps:
+
+1. Create a repository which will contain your RDF data: `git init /path/to/repo`
+2. Put your RDF data formated as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory
+3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respsective graph
 4. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
-5. Create a configuration file named `config.ttl` (an example is contained in this directory)
 
-## Configuaration of config.ttl
+### Start the Quit Store
 
-Adjust the `config.ttl`.
-Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nt"`).
-
+If you are using the binary:
 ```
-conf:store a <YourQuitStore> ;
-    <pathOfGitRepo> "../store" ; # Set the path to the repository that contains the files .
-    <origin> "git:github.com/your/repository.git" . # Optional a git repo that will be cloned into dir given in line above on startup.
-
-
-conf:example a <Graph> ; # Define a Graph resource for a named graph
-    <graphUri> <http://example.org/> ; # Set the URI of named graph
-    <isVersioned> 1 ; # Defaults to True, future work
-    <graphFile> "example.nt" . # Set the filename
+quit -t /path/to/repo
 ```
 
-## Run from command line
-
-Install [libgit2](https://libgit2.github.com/) needed for pygit2 bindings.
-Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html):
+If you have it installed from the sources:
 ```
-pip install virtualenv
-cd /path/to/this/repo
-mkvirtualenv -p /usr/bin/python3.5 quit
+quit/run.py -t /path/to/repo
 ```
 
-Install the required dependencies and run the store:
-```
-pip install -r requirements.txt
-quit/run.py
-```
+Open your browser and go to [`http://localhost:5000/`](http://localhost:5000/).
 
-### Command line options
+Have a lot of fun!
+
+For more command line options check out the section [“Command Line Options”](#command-line-options) in the README.
+
+
+
+## Command Line Options
 `-cm`, `--configmode`
 
 Quit-Store can be started in three different modes.
@@ -102,6 +121,26 @@ Set the loglevel for the standard output to verbose (INFO) respective extra verb
 Write the log output to the given path.
 The path is interpreted relative to the current working directory.
 The loglevel for the logfile is always extra verbose (DEBUG).
+
+## Configuaration File
+
+If you want to work with configuration files you can create a `config.ttl` file.
+This configuration file consists of two parts, the store configuration and the graph configuration.
+The store configuration manages everything related to initializing the software, the graph configuration maps graph files to their graph IRIs.
+The graph configuration in the `config.ttl` is an alternative to using `<graph>.nt.graph` files next to the graphs.
+Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nt"`).
+
+```
+conf:store a <YourQuitStore> ;
+    <pathOfGitRepo> "../store" ; # Set the path to the repository that contains the files .
+    <origin> "git:github.com/your/repository.git" . # Optional a git repo that will be cloned into dir given in line above on startup.
+
+
+conf:example a <Graph> ; # Define a Graph resource for a named graph
+    <graphUri> <http://example.org/> ; # Set the URI of named graph
+    <isVersioned> 1 ; # Defaults to True, future work
+    <graphFile> "example.nt" . # Set the filename
+```
 
 ## API
 
@@ -157,13 +196,11 @@ The default configuration is located in `/etc/quit/config.ttl`, which can also b
 Further options which can be set are:
 
 * QUIT_TARGETDIR - the target repository directory on which quit should run
-* QUIT_CONFIGFILE - the path to the config.ttl (\* /etc/quit/config.ttl)
+* QUIT_CONFIGFILE - the path to the config.ttl (default: `/etc/quit/config.ttl`)
 * QUIT_LOGFILE - the path where quit should create its logfile
 * QUIT_BASEPATH - the HTTP basepath where quit will be served
 * QUIT_OAUTH_CLIENT_ID - the GitHub OAuth client id (for oauth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
 * QUIT_OAUTH_SECRET - the GitHub OAuth secret
-
-\* defaults to
 
 To run the image execute the following command:
 
