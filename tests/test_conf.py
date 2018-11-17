@@ -96,6 +96,36 @@ class TestConfiguration(unittest.TestCase):
             self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
             self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
+    def testExistingRepoWithErroneousGraphFiles(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .\n'
+        content3 = '<urn:a> <urn:b> <urn:c> .'
+        repoContent = {'no uri': content1, 'http://aksw.org/': content2, '': content3}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
+
+            graphs = conf.getgraphs()
+            self.assertEqual(
+                sorted([str(x) for x in graphs]), ['http://aksw.org/'])
+
+            files = conf.getfiles()
+            self.assertEqual(sorted(files), ['graph_1.nt'])
+
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
+
+            gfMap = conf.getgraphurifilemap()
+
+            self.assertEqual(gfMap, {
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_1.nt',
+                })
+
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_1.nt')
+
     def testExistingRepoConfigfile(self):
         content1 = '<urn:x> <urn:y> <urn:z> .'
         content2 = '<urn:1> <urn:2> <urn:3> .\n'
