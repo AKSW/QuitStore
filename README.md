@@ -47,21 +47,32 @@ Configure your name and email for Git. This information will be stored in each c
 
 If you already have data which you want to use in the quit store follow these steps:
 
-1. Create a repository which will contain your RDF data: `git init /path/to/repo`
+1. Create a repository which will contain your RDF data
+
+```
+$ git init /path/to/repo
+```
+
 2. Put your RDF data formated as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory
 3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respsective graph
-4. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
+4. Add the data to the repository and create a commit
+
+```
+$ git add …
+$ git commit -m "init repository"
+```
 
 ### Start the Quit Store
 
 If you are using the binary:
 ```
-quit -t /path/to/repo
+$ chmod +x quit #
+$ ./quit -t /path/to/repo
 ```
 
 If you have it installed from the sources:
 ```
-quit/run.py -t /path/to/repo
+$ quit/run.py -t /path/to/repo
 ```
 
 Open your browser and go to [`http://localhost:5000/`](http://localhost:5000/).
