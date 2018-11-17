@@ -11,7 +11,8 @@ from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
 from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
-from urllib.parse import quote, urlparse, urlencode
+from urllib.parse import quote, urlencode
+from rdflib.term import _is_valid_uri
 from uritools import urisplit
 
 logger = logging.getLogger('quit.conf')
@@ -218,12 +219,12 @@ class QuitGraphConfiguration():
         for file, values in files.items():
             format = values[0]
             graphFileId = values[1]
-            graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
-
-            if graphuri:
+            try:
+                graphuri = URIRef(self.__get_uri_from_graphfile_blob(graphFileId))
                 self.addgraph(file=file, graphuri=graphuri, format=format)
-            else:
-                logger.warning('No *.graph file found. {} skipped'.format(file))
+            except Exception as e:
+                logger.debug(e)
+                logger.warning('No valid URI found in *.graph file for {}, skipped'.format(file))
 
     def __init_graph_conf_from_configuration(self, configfileId, known_blobs):
         """Init graphs with setting from config.ttl."""
@@ -256,7 +257,7 @@ class QuitGraphConfiguration():
                 format = guess_format(filename)
             else:
                 format = str(row['format'])
-            if format not in ['nt', 'nquads']:
+            if format != 'nt':
                 break
             if filename not in known_blobs.keys():
                 break
@@ -266,7 +267,7 @@ class QuitGraphConfiguration():
             # we store which named graph is serialized in which file
             self.graphs[graphuri] = filename
             self.files[filename] = {
-                'serialization': format, 'graphs': [graphuri], 'oid': known_blobs[filename]}
+                'serialization': format, 'graph': graphuri, 'oid': known_blobs[filename]}
 
     def __get_uri_from_graphfile_blob(self, oid):
         """Search for a graph uri in graph file and return it.
@@ -283,18 +284,14 @@ class QuitGraphConfiguration():
         try:
             blob = self.repository.get(oid)
         except ValueError:
-            logger.debug("Object with OID { } not found in repository.".format(oid))
+            logger.debug("Object with OID {} not found in repository.".format(oid))
             return
 
         content = blob.read_raw().decode().strip()
 
-        try:
-            urlparse(content)
-        except Exception:
-            logger.debug("No graph URI found in blob with OID {}.".format(oid))
-            return
-
-        return content
+        if content and _is_valid_uri(content):
+            return content
+        raise InvalidConfigurationError("No graph URI found in blob with OID {}.".format(oid))
 
     def addgraph(self, graphuri, file, format=None):
         graphuri_obj = URIRef(graphuri)
@@ -308,9 +305,9 @@ class QuitGraphConfiguration():
 
         if format is not None:
             self.graphconf.add((self.quit[quote(graphuri)], self.quit.hasFormat, Literal(format)))
-            self.files[file] = {'serialization': format, 'graphs': [graphuri], 'oid': file}
+            self.files[file] = {'serialization': format, 'graph': graphuri_obj, 'oid': file}
         else:
-            self.files[file] = {'graphs': [graphuri_obj], 'oid': file}
+            self.files[file] = {'graph': graphuri_obj, 'oid': file}
 
     def removegraph(self, graphuri):
         self.graphconf.remove((self.quit[quote(graphuri)], None, None))
@@ -404,9 +401,7 @@ class QuitGraphConfiguration():
 
         """
         if file in self.files:
-            return self.files[file]['graphs']
-
-        return []
+            return self.files[file]['graph']
 
     def get_blobs_from_repository(self, rev):
         """Analyze all blobs of a revision.
@@ -434,7 +429,7 @@ class QuitGraphConfiguration():
                 format = guess_format(entry.name)
                 if format is None and entry.name.endswith('.graph'):
                     graph_file_blobs[entry.name] = entry.id
-                elif format is not None and format in ['nquads', 'nt']:
+                elif format is not None and format == 'nt':
                     rdf_file_blobs[entry.name] = (entry.id, format)
                 elif format is not None and entry.name == 'config.ttl':
                     config_files.append(str(entry.id))

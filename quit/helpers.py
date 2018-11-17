@@ -7,7 +7,7 @@ from rdflib.term import URIRef
 from rdflib.plugins.sparql.parserutils import CompValue, plist
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from quit.tools.algebra import translateQuery, translateUpdate
-from rdflib.plugins.serializers.nquads import _nq_row as _nq
+from rdflib.plugins.serializers.nt import _nt_row as _nt
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 from uritools import urisplit
@@ -112,13 +112,13 @@ def applyChangeset(f, changeset, identifier):
     for (op, triples) in changeset:
         if op == 'additions':
             for triple in triples:
-                # the internal _nq serializer appends '\n'
-                line = _nq(triple, identifier).rstrip()
+                # the internal _nt serializer appends '\n'
+                line = _nt(triple).rstrip()
                 f.add(line)
         elif op == 'removals':
             for triple in triples:
-                # the internal _nq serializer appends '\n'
-                line = _nq(triple, identifier).rstrip()
+                # the internal _nt serializer appends '\n'
+                line = _nt(triple).rstrip()
                 f.remove(line)
 
 

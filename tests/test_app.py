@@ -31,11 +31,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryViaGet(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -68,11 +68,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryViaUrlEncodedPost(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -107,11 +107,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryViaPostDirectly(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -145,11 +145,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testUpdateViaUrlEncodedPost(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -184,11 +184,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testUpdateViaPostDirectly(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -226,15 +226,15 @@ class SparqlProtocolTests(unittest.TestCase):
         select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
 
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/1/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/2/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/1/': content1,
                        'http://example.org/2/': content2,
                        'urn:graph': ''}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -278,13 +278,13 @@ class SparqlProtocolTests(unittest.TestCase):
         select = "SELECT * WHERE {graph <http://example.org/test/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
 
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2, 'http://example.org/test/': ''}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -332,11 +332,11 @@ class SparqlProtocolTests(unittest.TestCase):
         update += 'INSERT DATA { GRAPH <urn:graph> { <urn:a> <urn:b> <urn:c> }}'
 
         # Prepate a git Repository
-        repoContent = {'urn:graph': '<urn:I> <urn:II> <urn:III> <urn:graph> .'}
+        repoContent = {'urn:graph': '<urn:I> <urn:II> <urn:III> .'}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -373,8 +373,8 @@ class SparqlProtocolTests(unittest.TestCase):
                 "s": {'type': 'uri', 'value': 'urn:a'},
                 "p": {'type': 'uri', 'value': 'urn:b'},
                 "o": {'type': 'uri', 'value': 'urn:c'}})
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:a> <urn:b> <urn:c> .\n', f.read())
 
     def testAbortedMultioperationalUpdate(self):
         """Execute two multioperational Update queries and test store and file content.
@@ -392,15 +392,15 @@ class SparqlProtocolTests(unittest.TestCase):
         update2 += 'INSERT DATA { GRAPH <urn:graph> { <urn:a> <urn:b> <urn:c> }}'
 
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/1/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/2/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/1/': content1,
                        'http://example.org/2/': content2,
                        'urn:graph': ''}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -436,8 +436,8 @@ class SparqlProtocolTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'urn:II'},
                 "o": {'type': 'uri', 'value': 'urn:III'}})
 
-            with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
-                self.assertEqual('<urn:I> <urn:II> <urn:III> <urn:graph> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_2.nt'), 'r') as f:
+                self.assertEqual('<urn:I> <urn:II> <urn:III> .\n', f.read())
 
             payload = {'update': update2}
 
@@ -454,8 +454,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
             obj = json.loads(select_resp.data.decode("utf-8"))
             self.assertEqual(len(obj["results"]["bindings"]), 1)
-            with open(path.join(repo.workdir, 'graph_2.nq'), 'r') as f:
-                self.assertEqual('<urn:a> <urn:b> <urn:c> <urn:graph> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_2.nt'), 'r') as f:
+                self.assertEqual('<urn:a> <urn:b> <urn:c> .\n', f.read())
             self.assertDictEqual(obj["results"]["bindings"][0], {
                 "s": {'type': 'uri', 'value': 'urn:a'},
                 "p": {'type': 'uri', 'value': 'urn:b'},
@@ -466,13 +466,13 @@ class SparqlProtocolTests(unittest.TestCase):
         select += "WHERE {?s ?p ?o . } ORDER BY ?s ?p ?o"
 
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -498,13 +498,13 @@ class SparqlProtocolTests(unittest.TestCase):
         select += "WHERE {GRAPH ?g {?s ?p ?o . }} ORDER BY ?s ?p ?o"
 
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/graph1/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://example.org/graph2/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/graph1/': content1, 'http://example.org/graph2/': content2}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -526,11 +526,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryProvenanceViaGet(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -563,11 +563,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryProvenanceViaUrlEncodedPost(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -602,11 +602,11 @@ class SparqlProtocolTests(unittest.TestCase):
 
     def testQueryProvenanceViaPostDirectly(self):
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -664,7 +664,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             ns = 'http://example.org/newNS/'
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-n', ns])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-n', ns])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -698,7 +698,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -732,7 +732,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -764,10 +764,10 @@ class QuitAppTestCase(unittest.TestCase):
            response data
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -816,10 +816,10 @@ class QuitAppTestCase(unittest.TestCase):
            response status
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -858,7 +858,7 @@ class QuitAppTestCase(unittest.TestCase):
         """Test /commits API request."""
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -879,10 +879,10 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Create graph with content and commit
             graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
-            with open(path.join(repo.workdir, "graph.nq"), "w") as graphFile:
+            with open(path.join(repo.workdir, "graph.nt"), "w") as graphFile:
                 graphFile.write(graphContent)
 
-            with open(path.join(repo.workdir, "graph.nq.graph"), "w") as graphFile:
+            with open(path.join(repo.workdir, "graph.nt.graph"), "w") as graphFile:
                 graphFile.write('http://example.org')
 
             createCommit(repository=repo)
@@ -902,7 +902,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -973,12 +973,12 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1015,9 +1015,9 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'literal', 'value': 'new'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
     def testDeleteInsertWhereProvenance(self):
@@ -1049,13 +1049,13 @@ class QuitAppTestCase(unittest.TestCase):
         update += 'WHERE {GRAPH <http://example.org/> {?a <urn:y> <urn:z> .}}'
 
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z>  .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1124,9 +1124,9 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
     def testMultioperationalUpdateProvenance(self):
@@ -1161,7 +1161,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1176,7 +1176,7 @@ class QuitAppTestCase(unittest.TestCase):
             changesets_1 = json.loads(prov_1.data.decode("utf-8"))
 
             # re-start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1199,13 +1199,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1255,10 +1255,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'http://aksw.org/'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <http://example.org/> <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <http://aksw.org/> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:1> <urn:2> <http://aksw.org/> .\n', f.read())
 
     def testDeleteInsertUsingWhere(self):
         """Test DELETE INSERT WHERE with one graph
@@ -1270,13 +1270,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content1 = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content2 = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1326,10 +1326,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:3'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:1> <urn:2> <urn:3> .\n', f.read())
 
     def testDeleteMatchWhere(self):
         """Test DELETE WHERE with two non empty graphs.
@@ -1341,13 +1341,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1389,10 +1389,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
     def testDeleteWhere(self):
         """Test DELETE WHERE with two non empty graphs.
@@ -1404,13 +1404,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = "<urn:x> <urn:2> <urn:3> <http://example.org/> .\n"
-        content_example+= "<urn:y> <urn:2> <urn:3> <http://example.org/> .\n"
+        content_example = "<urn:x> <urn:2> <urn:3> .\n"
+        content_example+= "<urn:y> <urn:2> <urn:3> .\n"
         repoContent = {'http://example.org/': content_example}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1447,7 +1447,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertEqual(len(obj["results"]["bindings"]), 0)
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
     def testDeleteUsingWhere(self):
@@ -1460,13 +1460,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1508,17 +1508,17 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
     def testFeatureProvenance(self):
         """Test if feature is active or not."""
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-f', 'provenance'])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1546,7 +1546,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1571,17 +1571,17 @@ class QuitAppTestCase(unittest.TestCase):
         3. execute SELECT query
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
 
             # execute SELECT query
-            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select = 'SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o'
             select_resp = app.post(
                 '/sparql',
                 data=dict(query=select),
@@ -1607,11 +1607,11 @@ class QuitAppTestCase(unittest.TestCase):
         """
 
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1644,11 +1644,11 @@ class QuitAppTestCase(unittest.TestCase):
         """
 
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1684,7 +1684,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1719,7 +1719,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1756,7 +1756,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1790,7 +1790,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1823,11 +1823,11 @@ class QuitAppTestCase(unittest.TestCase):
         4. execute SELECT query
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1862,11 +1862,11 @@ class QuitAppTestCase(unittest.TestCase):
         4. execute SELECT query
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1885,8 +1885,8 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n'
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .\n'
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             self.assertFalse(os.path.isfile(path.join(repo.workdir, 'unassigned')))
@@ -1913,11 +1913,11 @@ class QuitAppTestCase(unittest.TestCase):
         4. execute SELECT query
         """
         # Prepate a git Repository
-        graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -1932,8 +1932,8 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> .\n'
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            expectedFileContent = '<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .\n'
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             self.assertFalse(os.path.isfile(path.join(repo.workdir, 'unassigned')))
@@ -1961,12 +1961,12 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2008,10 +2008,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
     def testInsertWhereVariables(self):
         """Test INSERT WHERE with an empty and a non empty graph.
@@ -2023,13 +2023,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n'
-        content += '<urn:x> <urn:y> <urn:z2> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z1> .\n'
+        content += '<urn:x> <urn:y> <urn:z2> .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2081,11 +2081,11 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z2'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .\n', f.read())
+                    '<urn:x> <urn:y> <urn:z1> .\n<urn:x> <urn:y> <urn:z2> .\n', f.read())
 
     def testTwoInsertWhereVariables(self):
         """Test two INSERT WHERE (; concatenated) with an empty and a non empty graph.
@@ -2097,13 +2097,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n'
-        content += '<urn:x> <urn:y> <urn:z2> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z1> .\n'
+        content += '<urn:x> <urn:y> <urn:z2> .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2156,11 +2156,11 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z2'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:y> <urn:z1> <http://example.org/> .\n<urn:x> <urn:y> <urn:z2> <http://example.org/> .\n', f.read())
+                    '<urn:x> <urn:y> <urn:z1> .\n<urn:x> <urn:y> <urn:z2> .\n', f.read())
 
     def testInsertUsingWhere(self):
         """Test INSERT USING WHERE with an empty and a non empty graph.
@@ -2172,12 +2172,12 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content = '<urn:x> <urn:y> <urn:z> .'
         repoContent = {'http://example.org/': content, 'http://aksw.org/': ''}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2219,10 +2219,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:1> "new" <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:1> "new" .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
     def testLogfileExists(self):
         """Test if a logfile is created."""
@@ -2231,7 +2231,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles', '-l', logFile])
+            args = quitApp.parseArgs(['-t', repo.workdir, '-l', logFile])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2245,7 +2245,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2260,7 +2260,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2273,7 +2273,6 @@ class QuitAppTestCase(unittest.TestCase):
 
             app = create_app(config).test_client()
             # start new app to syncAll()
-            # Otherwise the next update query would have created unassigend.nq
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             app.post('/sparql/develop?ref=develop', data={"query": update})
@@ -2288,7 +2287,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2301,7 +2300,6 @@ class QuitAppTestCase(unittest.TestCase):
 
             app = create_app(config).test_client()
             # start new app to syncAll()
-            # Otherwise the next update query would have created unassigend.nq
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             app.post('/sparql/develop?ref=develop', data={"query": update})
@@ -2311,18 +2309,18 @@ class QuitAppTestCase(unittest.TestCase):
     def testPull(self):
         """Test /pull API request."""
         graphContent = """
-            <http://ex.org/x> <http://ex.org/x> <http://ex.org/x> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/x> <http://ex.org/x> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository(clone_from_repo=remote) as local:
 
-                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphContent = """
-                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
                     graphFile.write(graphContent)
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2365,14 +2363,14 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", "") as remote:
             with TemporaryRepository(clone_from_repo=remote) as local:
 
-                with open(path.join(remote.workdir, "graph.nq"), "a") as graphFile:
+                with open(path.join(remote.workdir, "graph.nt"), "a") as graphFile:
                     graphContent = """
-                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+                        <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
                     graphFile.write(graphContent)
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2408,12 +2406,12 @@ class QuitAppTestCase(unittest.TestCase):
         """Test /pull API request starting the store from an empty repository.
         """
         graphContent = """
-            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> <http://example.org/> ."""
+            <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryRepository() as local:
                 local.remotes.create("origin", remote.path)
 
-                args = quitApp.parseArgs(['-t', local.workdir, '-cm', 'graphfiles'])
+                args = quitApp.parseArgs(['-t', local.workdir])
                 objects = quitApp.initialize(args)
 
                 config = objects['config']
@@ -2455,7 +2453,7 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2465,7 +2463,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # reload the store
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             newApp = create_app(config).test_client()
@@ -2495,10 +2493,10 @@ class QuitAppTestCase(unittest.TestCase):
         3. check file content
         """
         # Prepate a git Repository
-        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
+        graphContent = "<urn:x> <urn:y> <urn:z> ."
         with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2508,8 +2506,8 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(commit.message, 'init')
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <urn:graph> .', f.read())
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .', f.read())
 
     def testRepoDataAfterInitWithNonEmptyGraph(self):
         """Test file content from newly created app, starting with a non empty graph/repository.
@@ -2522,7 +2520,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph('urn:graph') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2532,7 +2530,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(commit.message, 'init')
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual('', f.read())
 
     def testRepoDataAfterInsertStaringWithEmptyGraph(self):
@@ -2547,7 +2545,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2557,9 +2555,9 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<urn:x> <urn:y> <urn:z> <urn:graph> .\n'
+            expectedFileContent = '<urn:x> <urn:y> <urn:z> .\n'
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
@@ -2582,11 +2580,11 @@ class QuitAppTestCase(unittest.TestCase):
         4. check file content
         """
         # Prepate a git Repository
-        graphContent = "<urn:x> <urn:y> <urn:z> <urn:graph> ."
+        graphContent = '<urn:x> <urn:y> <urn:z> .'
         with TemporaryRepositoryFactory().withGraph("urn:graph", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2595,10 +2593,10 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # test file content
-            expectedFileContent = '<urn:x2> <urn:y2> "literal" <urn:graph> .\n'
-            expectedFileContent += '<urn:x> <urn:y> <urn:z> <urn:graph> .\n'
+            expectedFileContent = '<urn:x2> <urn:y2> "literal" .\n'
+            expectedFileContent += '<urn:x> <urn:y> <urn:z> .\n'
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
@@ -2617,7 +2615,7 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2639,13 +2637,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2695,10 +2693,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:3'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> .\n', f.read())
 
     def testWithOnDeleteAndInsertUsing(self):
         """Test WITH on DELETE and INSERT plus USING.
@@ -2710,13 +2708,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2767,11 +2765,11 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
+                    '<urn:1> <urn:2> <urn:3> .\n<urn:x> <urn:y> <urn:z> .\n',
                     f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
@@ -2788,13 +2786,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2845,11 +2843,11 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
+                    '<urn:1> <urn:2> <urn:3> .\n<urn:x> <urn:y> <urn:z> .\n',
                     f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('', f.read())
 
     def testWithOnDeleteAndInsert(self):
@@ -2862,13 +2860,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:x> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:x> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2918,10 +2916,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:3'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> .\n', f.read())
 
     def testWithOnDelete(self):
         """Test WITH on DELETE and not on INSERT.
@@ -2933,13 +2931,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
         content_aksw = ''
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -2984,11 +2982,11 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:Z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:2> <urn:3> .\n', f.read())
             # compare file content
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:Y> <urn:Z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:Y> <urn:Z> .\n', f.read())
 
     def testWithOnDeleteUsing(self):
         """Test WITH on DELETE and not on INSERT plus USING.
@@ -3000,13 +2998,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3057,12 +3055,12 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
+                    '<urn:1> <urn:2> <urn:3> .\n<urn:x> <urn:y> <urn:z> .\n',
                     f.read())
             # compare file content
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
     @unittest.skip("Skipped until rdflib properly handles FROM NAMED and USING NAMED")
@@ -3076,13 +3074,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:1> <urn:2> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3133,12 +3131,12 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n',
+                    '<urn:1> <urn:2> <urn:3> .\n<urn:x> <urn:y> <urn:z> .\n',
                     f.read())
             # compare file content
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('', f.read())
 
     def testWithOnInsert(self):
@@ -3151,13 +3149,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
-        content_aksw = '<urn:1> <urn:x> <urn:3> <http://aksw.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
+        content_aksw = '<urn:1> <urn:x> <urn:3> .'
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3212,12 +3210,12 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:3'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
             # compare file content
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual(
-                    '<urn:x> <urn:2> <urn:3> <http://example.org/> .\n<urn:x> <urn:y> <urn:z> <http://example.org/> .\n',
+                    '<urn:x> <urn:2> <urn:3> .\n<urn:x> <urn:y> <urn:z> .\n',
                     f.read())
 
     def testWithOnInsertUsing(self):
@@ -3230,13 +3228,13 @@ class QuitAppTestCase(unittest.TestCase):
         5. execute SELECT query
         """
         # Prepate a git Repository
-        content_example = '<urn:x> <urn:y> <urn:z> <http://example.org/> .'
+        content_example = '<urn:x> <urn:y> <urn:z> .'
         content_aksw = ''
         repoContent = {'http://example.org/': content_example, 'http://aksw.org/': content_aksw}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3277,10 +3275,10 @@ class QuitAppTestCase(unittest.TestCase):
                 "o": {'type': 'uri', 'value': 'urn:z'}})
 
             # compare file content
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://aksw.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
             # compare file content
-            with open(path.join(repo.workdir, 'graph_1.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
 
@@ -3291,19 +3289,19 @@ class FileHandlingTests(unittest.TestCase):
         1. Prepare a git repository with an empty and a non empty graph
         2. Start Quit
         3. execute Update query
-        4. check filesystem for new .nq and .nq.graph file with expected content
+        4. check filesystem for new .nt and .nt.graph file with expected content
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        content = '<urn:x> <urn:y> <urn:z> .\n'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
-            filename = iri_to_name('http://aksw.org/') + '.nq'
+            filename = iri_to_name('http://aksw.org/') + '.nt'
 
             self.assertFalse(path.isfile(path.join(repo.workdir, filename)))
             self.assertFalse(path.isfile(path.join(repo.workdir, filename + '.graph')))
@@ -3314,10 +3312,10 @@ class FileHandlingTests(unittest.TestCase):
                      content_type="application/sparql-update",
                      data=update)
 
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
             with open(path.join(repo.workdir, filename), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
+                self.assertEqual('<urn:1> <urn:2> <urn:3> .\n', f.read())
             with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
                 self.assertEqual('http://aksw.org/', f.read().strip())
 
@@ -3330,12 +3328,12 @@ class FileHandlingTests(unittest.TestCase):
         4. check filesystem and configfile content (before/after)
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        content = '<urn:x> <urn:y> <urn:z> .\n'
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3349,12 +3347,12 @@ class FileHandlingTests(unittest.TestCase):
                      content_type="application/sparql-update",
                      data=update)
 
-            filename = iri_to_name('http://aksw.org/') + '.nq'
+            filename = iri_to_name('http://aksw.org/') + '.nt'
 
-            with open(path.join(repo.workdir, 'graph_0.nq'), 'r') as f:
-                self.assertEqual('<urn:x> <urn:y> <urn:z> <http://example.org/> .\n', f.read())
+            with open(path.join(repo.workdir, 'graph_0.nt'), 'r') as f:
+                self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
             with open(path.join(repo.workdir, filename), 'r') as f:
-                self.assertEqual('<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n', f.read())
+                self.assertEqual('<urn:1> <urn:2> <urn:3> .\n', f.read())
             with open(path.join(repo.workdir, 'config.ttl'), 'r') as f:
                 configfile_after = f.read()
 
@@ -3363,11 +3361,11 @@ class FileHandlingTests(unittest.TestCase):
             diff = list(set(config_after) - set(config_before))
 
             self.assertFalse('ns1:graphFile "' + filename + '" ;' in config_before)
-            self.assertFalse('ns1:hasFormat "nquads" .' in config_before)
+            self.assertFalse('ns1:hasFormat "nt" .' in config_before)
             self.assertFalse('ns1:graphUri <http://aksw.org/> ;' in config_before)
 
             self.assertTrue('ns1:graphFile "' + filename + '" ;' in diff)
-            self.assertTrue('ns1:hasFormat "nquads" .' in diff)
+            self.assertTrue('ns1:hasFormat "nt" .' in diff)
             self.assertTrue('ns1:graphUri <http://aksw.org/> ;' in diff)
 
 
@@ -3381,12 +3379,12 @@ class FileHandlingTests(unittest.TestCase):
         5. check filesystem for filenames
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        content = '<urn:x> <urn:y> <urn:z> .\n'
         with TemporaryRepository() as repo:
 
             hashed_identifier = iri_to_name('http://aksw.org/')
 
-            files = {hashed_identifier + '.nq': ('http://example.org/', content)}
+            files = {hashed_identifier + '.nt': ('http://example.org/', content)}
 
             # Prepare Git Repository
             for filename, (graph_iri, content) in files.items():
@@ -3400,7 +3398,7 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3408,7 +3406,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                if entry.type == 'blob' and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3426,13 +3424,13 @@ class FileHandlingTests(unittest.TestCase):
                      data=update)
 
             #  add the new file we expext after Update Query
-            files[hashed_identifier + '_1.nq'] = (
-                'http://aksw.org/', '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n')
+            files[hashed_identifier + '_1.nt'] = (
+                'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                if entry.type == 'blob' and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3442,7 +3440,6 @@ class FileHandlingTests(unittest.TestCase):
                     self.assertEqual(content, f.read())
                 with open(path.join(repo.workdir, filename + '.graph'), 'r') as f:
                     self.assertEqual(graph_iri, f.read().strip())
-
 
     def testFileNameCollision(self):
         """Test if a new graph is added to the repository.
@@ -3454,15 +3451,15 @@ class FileHandlingTests(unittest.TestCase):
         5. check filesystem for filenames
         """
         # Prepate a git Repository
-        content = '<urn:x> <urn:y> <urn:z> <http://example.org/> .\n'
+        content = '<urn:x> <urn:y> <urn:z> .\n'
         with TemporaryRepository() as repo:
 
             hashed_identifier = iri_to_name('http://aksw.org/')
 
             files = {
-                hashed_identifier + '.nq': ('http://example.org/', content),
-                hashed_identifier + '_1.nq': ('urn:graph1', '\n'),
-                hashed_identifier + '_11.nq': ('urn:graph2', '\n')}
+                hashed_identifier + '.nt': ('http://example.org/', content),
+                hashed_identifier + '_1.nt': ('urn:graph1', '\n'),
+                hashed_identifier + '_11.nt': ('urn:graph2', '\n')}
 
             # Prepare Git Repository
             for filename, (graph_iri, content) in files.items():
@@ -3476,7 +3473,7 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
@@ -3484,7 +3481,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                if entry.type == 'blob' and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3502,13 +3499,13 @@ class FileHandlingTests(unittest.TestCase):
                      data=update)
 
             #  add the new file we expext after Update Query
-            files[hashed_identifier + '_12.nq'] = (
-                'http://aksw.org/', '<urn:1> <urn:2> <urn:3> <http://aksw.org/> .\n')
+            files[hashed_identifier + '_12.nt'] = (
+                'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nq'):
+                if entry.type == 'blob' and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3520,7 +3517,7 @@ class FileHandlingTests(unittest.TestCase):
                     self.assertEqual(graph_iri, f.read().strip())
 
     def testDeleteWithWhitespaceFile(self):
-        """Test deleting data from a nq-file with additional whitespace in serialization.
+        """Test deleting data from a nt-file with additional whitespace in serialization.
 
         1. Prepare a git repository with one graph
         2. Start Quit
@@ -3529,16 +3526,16 @@ class FileHandlingTests(unittest.TestCase):
         5. compare File content
         """
         # Prepate a git Repository
-        graphContent = "<urn:x>  <urn:y>   <urn:z>   <http://example.org/> . "
+        graphContent = "<urn:x>  <urn:y>   <urn:z>   . "
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-cm', 'graphfiles'])
+            args = quitApp.parseArgs(['-t', repo.workdir])
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(graphContent, f.read())
 
             # execute DELETE query
@@ -3547,7 +3544,7 @@ class FileHandlingTests(unittest.TestCase):
                      content_type="application/sparql-update",
                      data=update)
 
-            with open(path.join(repo.workdir, 'graph.nq'), 'r') as f:
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
 

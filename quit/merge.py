@@ -3,7 +3,7 @@ import pygit2
 import rdflib
 import logging
 from quit.exceptions import QuitMergeConflict, QuitBlobMergeConflict
-from rdflib.plugins.serializers.nquads import _nq_row as _nq
+from rdflib.plugins.serializers.nt import _nt_row as _nt
 
 logger = logging.getLogger('quit.merge')
 
@@ -238,21 +238,21 @@ class Merger(object):
         def conflictSet(graph, conflictingNodes):
             ok = set()
             conflicts = set()
-            for triple in graph.quads((None, None, None, None)):
+            for triple in graph.triples((None, None, None)):
                 if triple[0] in conflictingNodes or triple[2] in conflictingNodes:
-                    conflicts.add(_nq(triple[:3], triple[3].identifier).rstrip())
+                    conflicts.add(_nt(triple).rstrip())
                 else:
-                    ok.add(_nq(triple[:3], triple[3].identifier).rstrip())
+                    ok.add(_nt(triple).rstrip())
             return ok, conflicts
 
         graphAddA = rdflib.ConjunctiveGraph()
-        graphAddA.parse(data="\n".join(addA), format="nquads")
+        graphAddA.parse(data="\n".join(addA), format="nt")
         graphAddB = rdflib.ConjunctiveGraph()
-        graphAddB.parse(data="\n".join(addB), format="nquads")
+        graphAddB.parse(data="\n".join(addB), format="nt")
         graphDelA = rdflib.ConjunctiveGraph()
-        graphDelA.parse(data="\n".join(delA), format="nquads")
+        graphDelA.parse(data="\n".join(delA), format="nt")
         graphDelB = rdflib.ConjunctiveGraph()
-        graphDelB.parse(data="\n".join(delB), format="nquads")
+        graphDelB.parse(data="\n".join(delB), format="nt")
 
         conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection(
             (graphAddB + graphDelB).all_nodes())

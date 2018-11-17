@@ -153,25 +153,6 @@ inline_functions.push(function() {
     })
 });
 
-conflicts = {
-    "aksw.nq": {
-        "message": "Conflicts, ahhhhh!! {}",
-        "ok": "<http://aksw.org/NatanaelArndt> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <http://aksw.org/> .",
-        "conflicts": {
-            "addA": "<http://aksw.org/NatanaelArndt> <http://xmlns.com/foaf/0.1/name> \"Natanael\" <http://aksw.org/> .",
-            "addB": "<http://aksw.org/NatanaelArndt> <http://example.org/worksAt> <http://aksw.org/Group> <http://aksw.org/> .\n<http://aksw.org/NatanaelArndt> <http://xmlns.com/foaf/0.1/name> \"Peter Arndt\" <http://aksw.org/> ."
-        }
-    },
-    "graph.nq": {
-        "message": "Conflicts, ahhhhh!! {}",
-        "ok": "<http://example.org/Patrick> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <http://example.org/> .",
-        "conflicts": {
-            "addA": "<http://example.org/Patrick> <http://example.org/worksAt> <http://example.org/AppsFactory> <http://example.org/> .\n<http://example.org/Patrick> <http://xmlns.com/foaf/0.1/name> \"Patrick\" <http://example.org/> .",
-            "addB": "<http://example.org/Patrick> <http://xmlns.com/foaf/0.1/name> \"Patrick Naumann\" <http://example.org/> ."
-        }
-    }
-}
-
 function showConflicts (conflicts) {
     $("#conflict-view").show();
 
