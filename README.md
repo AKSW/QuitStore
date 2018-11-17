@@ -15,7 +15,7 @@ To get the Quit Store you have three options:
 
 - Download a binary from https://github.com/AKSW/QuitStore/releases (Currently works for amd64 Linux)
 - Clone it with Git from our repository: https://github.com/AKSW/QuitStore
-- Use Docker and see the section [“Docker”](#docker) in the README
+- Use Docker and see the section [Docker](#docker) in the README
 
 ### Installation from Source
 
@@ -68,7 +68,7 @@ Open your browser and go to [`http://localhost:5000/`](http://localhost:5000/).
 
 Have a lot of fun!
 
-For more command line options check out the section [“Command Line Options”](#command-line-options) in the README.
+For more command line options check out the section [Command Line Options](#command-line-options) in the README.
 
 
 
