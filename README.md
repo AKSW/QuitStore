@@ -22,7 +22,9 @@ To get the Quit Store you have three options:
 Install [libgit2](https://libgit2.github.com/) including the headers (e.g. `libgit2-27` and `libgit2-dev` on ubuntu) which is needed for the pygit2 bindings.
 Find out which version of libgit2 you've got on your system and adjust the respective line in the `requirements.txt` of the Quit Store. The minor levels of the versions have to be equal (libgit2 `0.27.4` -> `pygit2==0.27.2`).
 
-Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`):
+Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`).
+
+Get the Quit Store source code:
 ```
 $ git clone https://github.com/AKSW/QuitStore.git
 $ cd QuitStore
