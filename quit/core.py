@@ -329,11 +329,11 @@ class Quit(object):
                 try:
                     f, context = self.getFileReferenceAndContext(blob, commit)
                 except KeyError:
-                    tmp = Graph(identifier=graphUri)
-                    tmp.parse(data=entity.content, format='nt')
+                    graph = Graph(identifier=graphUri)
+                    graph.parse(data=entity.content, format='nt')
 
                     self._blobs.set(
-                        blob, (FileReference(entity.name, entity.content), tmp)
+                        blob, (FileReference(entity.name, entity.content), graph)
                     )
 
                 private_uri = QUIT["graph-{}".format(entity.oid)]
@@ -402,16 +402,13 @@ class Quit(object):
         if commit.id not in self._graphconfigs:
             self.updateGraphConfig(commit.id)
 
-        # uriFileMap = self._graphconfigs.get(commit.id).getgraphurifilemap()
-
         if blob not in self._blobs:
             (name, oid) = blob
             content = commit.node(path=name).content
-            # content = self.repository._repository[oid].data
             graphUri = self._graphconfigs.get(commit.id).getgraphuriforfile(name)
-            tmp = Graph(identifier=URIRef(graphUri))
-            tmp.parse(data=content, format='nt')
-            quitWorkingData = (FileReference(name, content), tmp)
+            graph = Graph(identifier=URIRef(graphUri))
+            graph.parse(data=content, format='nt')
+            quitWorkingData = (FileReference(name, content), graph)
             self._blobs.set(blob, quitWorkingData)
             return quitWorkingData
         return self._blobs.get(blob)
