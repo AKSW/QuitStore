@@ -14,22 +14,14 @@ After the merge procedure the branch <em>Destination</em> will have the result o
             <label class="control-label" for="src">
                 <i class="fa fa-code-fork" aria-hidden="true"></i> Source:</span>
             </label>
-            <select name="src" class="form-control branch-select">
-                {% for branch in available_branches %}
-                    <option value="{{ branch }}">{{ branch }}</option>
-                {% endfor %}
-            </select>
+            {{ render_branches_select_dropdown("src", available_branches, available_tags) | safe }}
         </div>
 
         <div class="form-group">
             <label class="control-label" for="dst">
                 <i class="fa fa-code-fork" aria-hidden="true"></i> Destination:</span>
             </label>
-            <select name="dst" class="form-control branch-select">
-                {% for branch in available_branches %}
-                    <option value="{{ branch }}">{{ branch }}</option>
-                {% endfor %}
-            </select>
+            {{ render_branches_select_dropdown("dst", available_branches, available_tags) | safe }}
             <input type="hidden" name="refspec" />
         </div>
     </div>
