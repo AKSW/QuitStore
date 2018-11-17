@@ -2273,7 +2273,6 @@ class QuitAppTestCase(unittest.TestCase):
 
             app = create_app(config).test_client()
             # start new app to syncAll()
-            # Otherwise the next update query would have created unassigend.nq
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             app.post('/sparql/develop?ref=develop', data={"query": update})
@@ -2301,7 +2300,6 @@ class QuitAppTestCase(unittest.TestCase):
 
             app = create_app(config).test_client()
             # start new app to syncAll()
-            # Otherwise the next update query would have created unassigend.nq
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             app.post('/sparql/develop?ref=develop', data={"query": update})
@@ -3519,7 +3517,7 @@ class FileHandlingTests(unittest.TestCase):
                     self.assertEqual(graph_iri, f.read().strip())
 
     def testDeleteWithWhitespaceFile(self):
-        """Test deleting data from a nq-file with additional whitespace in serialization.
+        """Test deleting data from a nt-file with additional whitespace in serialization.
 
         1. Prepare a git repository with one graph
         2. Start Quit
