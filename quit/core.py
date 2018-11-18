@@ -434,13 +434,15 @@ class Quit(object):
         Returns:
             The newly created commits id
         """
-        def build_message(message, kwargs):
+        def build_message(message, **kwargs):
             out = list()
             if message:
                 out.append(message)
                 out.append('')
             if query:
                 out.append('query: "{}"'.format(query.replace('"', "\\\"")))
+            if source:
+                out.append('source: "{}"'.format(source.replace('"', "\\\"")))
             if isinstance(default_graph, list) and len(default_graph) > 0:
                 out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
             if isinstance(named_graph, list) and len(named_graph) > 0:
@@ -540,7 +542,10 @@ class Quit(object):
         if graphconfig.mode == 'configuration':
             index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())
 
-        message = build_message(message, kwargs)
+        source = None
+        if delta["type_"] == "LOAD":
+            source = delta["graph"]
+        message = build_message(message, query=query, source=source, **kwargs)
         author = self.repository._repository.default_signature
 
         oid = index.commit(message, author.name, author.email, ref=target_ref)
