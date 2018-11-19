@@ -237,8 +237,9 @@ class Quit(object):
 
             if 'Source' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Import']))
-                g.add((commit_uri, QUIT['dataSource'], Literal(
-                    commit.properties['Source'].strip())))
+                sources = commit.properties['Source'].strip()
+                for source in re.findall("<.*?>", sources):
+                    g.add((commit_uri, QUIT['dataSource'], Literal(source.strip())))
             if 'Query' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Transformation']))
                 g.add((commit_uri, QUIT['query'], Literal(
@@ -434,15 +435,25 @@ class Quit(object):
         Returns:
             The newly created commits id
         """
-        def build_message(message, **kwargs):
+        def build_message(message, query, result, **kwargs):
             out = list()
             if message:
                 out.append(message)
                 out.append('')
             if query:
                 out.append('query: "{}"'.format(query.replace('"', "\\\"")))
+
+            source = []
+            operation_types = []
+            for entry in result:
+                if "type" in entry:
+                    operation_types.append(entry["type"])
+                if entry["type"] == "LOAD":
+                    source.append("<{}>".format(entry["source"]))
+            if operation_types:
+                out.append('operation_types: "{}"'.format(",".join(operation_types)))
             if source:
-                out.append('source: "{}"'.format(source.replace('"', "\\\"")))
+                out.append('source: "{}"'.format(",".join(source)))
             if isinstance(default_graph, list) and len(default_graph) > 0:
                 out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
             if isinstance(named_graph, list) and len(named_graph) > 0:
@@ -458,11 +469,11 @@ class Quit(object):
                 try:
                     file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
                     for entry in delta:
-                        changeset = entry.get(context.identifier, None)
+                        changeset = entry['delta'].get(context.identifier, None)
 
                         if changeset:
                             applyChangeset(file_reference, changeset, context.identifier)
-                            del(entry[context.identifier])
+                            del(entry['delta'][context.identifier])
 
                     index.add(file_reference.path, file_reference.content)
 
@@ -477,7 +488,7 @@ class Quit(object):
         def _applyUnknownGraphs(delta, known_blobs):
             new_contexts = {}
             for entry in delta:
-                for identifier, changeset in entry.items():
+                for identifier, changeset in entry['delta'].items():
                     if isinstance(identifier, BNode) or str(identifier) == 'default':
                         continue  # TODO default graph use case
 
@@ -498,7 +509,13 @@ class Quit(object):
                     applyChangeset(fileReference, changeset, identifier)
             return new_contexts
 
-        if not delta:
+        def _isDeltaEmpty(result):
+            for entry in result:
+                if "delta" in entry and entry["delta"]:
+                    return False
+            return True
+
+        if _isDeltaEmpty(delta):
             return
 
         parent_commit_id = None
@@ -542,10 +559,7 @@ class Quit(object):
         if graphconfig.mode == 'configuration':
             index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())
 
-        source = None
-        if delta["type_"] == "LOAD":
-            source = delta["graph"]
-        message = build_message(message, query=query, source=source, **kwargs)
+        message = build_message(message, query=query, result=delta, **kwargs)
         author = self.repository._repository.default_signature
 
         oid = index.commit(message, author.name, author.email, ref=target_ref)
