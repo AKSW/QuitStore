@@ -239,7 +239,7 @@ class Quit(object):
                 g.add((commit_uri, is_a, QUIT['Import']))
                 sources = commit.properties['Source'].strip()
                 for source in re.findall("<.*?>", sources):
-                    g.add((commit_uri, QUIT['dataSource'], Literal(source.strip())))
+                    g.add((commit_uri, QUIT['dataSource'], URIRef(source.strip("<>"))))
             if 'Query' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Transformation']))
                 g.add((commit_uri, QUIT['query'], Literal(
@@ -441,7 +441,7 @@ class Quit(object):
                 out.append(message)
                 out.append('')
             if query:
-                out.append('query: "{}"'.format(query.replace('"', "\\\"")))
+                out.append('Query: "{}"'.format(query.replace("\\", "\\\\").replace("\"", "\\\"")))
 
             source = []
             operation_types = []
@@ -451,9 +451,9 @@ class Quit(object):
                 if entry["type"] == "LOAD":
                     source.append("<{}>".format(entry["source"]))
             if operation_types:
-                out.append('operation_types: "{}"'.format(",".join(operation_types)))
+                out.append('OperationTypes: "{}"'.format(",".join(operation_types)))
             if source:
-                out.append('source: "{}"'.format(",".join(source)))
+                out.append('Source: "{}"'.format(",".join(source)))
             if isinstance(default_graph, list) and len(default_graph) > 0:
                 out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
             if isinstance(named_graph, list) and len(named_graph) > 0:
