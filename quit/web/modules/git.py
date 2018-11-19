@@ -294,14 +294,12 @@ def branch(refspec):
 
         if refspec:
             oldbranch, newbranch = refspec.split(":")
-            quit.repository.branch(oldbranch, newbranch)
         else:
             oldbranch = request.values.get('oldbranch')
             newbranch = request.values.get('newbranch')
-            if newbranch:
-                quit.repository.branch(oldbranch, newbranch)
-                quit.syncAll()
-                status = 201
+        if newbranch:
+            quit.repository.branch(oldbranch, newbranch)
+            status = 201
 
         if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
             response = make_response(render_template('branch.html'))
