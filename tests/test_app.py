@@ -2256,7 +2256,7 @@ class QuitAppTestCase(unittest.TestCase):
         """Test merging two commits."""
 
         # Prepate a git Repository
-        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
@@ -2283,7 +2283,7 @@ class QuitAppTestCase(unittest.TestCase):
         """Test merging two commits."""
 
         # Prepate a git Repository
-        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> <http://example.org/> ."
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
