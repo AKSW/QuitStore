@@ -2564,7 +2564,7 @@ class QuitAppTestCase(unittest.TestCase):
             expectedCommitMsg = set()
             expectedCommitMsg.add("New Commit from QuitStore")
             expectedCommitMsg.add("Query: \"INSERT DATA {graph <urn:graph> "
-                                     "{<urn:x> <urn:y> <urn:z> .}}\"")
+                                  "{<urn:x> <urn:y> <urn:z> .}}\"")
             expectedCommitMsg.add("OperationTypes: \"INSERT\"")
             expectedCommitMsg.add("")
 
@@ -2611,7 +2611,7 @@ class QuitAppTestCase(unittest.TestCase):
             expectedCommitMsg = set()
             expectedCommitMsg.add("New Commit from QuitStore")
             expectedCommitMsg.add("Query: \"INSERT DATA {graph <urn:graph> "
-                                     "{<urn:x2> <urn:y2> \\\"literal\\\" .}}\"")
+                                  "{<urn:x2> <urn:y2> \\\"literal\\\" .}}\"")
             expectedCommitMsg.add("OperationTypes: \"INSERT\"")
             expectedCommitMsg.add("")
 
