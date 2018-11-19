@@ -2224,6 +2224,35 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
+    def testLoadIntoGraph(self):
+        """Test LOAD <resource> INTO GRAPH <http://example.org/> ."""
+        # Prepate a git Repository
+        content = ''
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
+            select_resp_after = app.post('/sparql', data={"query": select}, headers=dict(accept="application/sparql-results+json"))
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertFalse(obj["boolean"])
+
+            # execute SELECT query before INSERT WHERE
+            load = "LOAD <http://aksw.org/Projects/Quit> INTO GRAPH <http://example.org/>"
+            resp = app.post('/sparql', data={"update": load})
+            self.assertEqual(resp.status, "200 OK")
+
+            select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
+            select_resp_after = app.post('/sparql', data={"query": select}, headers=dict(accept="application/sparql-results+json"))
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertTrue(obj["boolean"])
+
+
     def testLogfileExists(self):
         """Test if a logfile is created."""
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
