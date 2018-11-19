@@ -854,6 +854,82 @@ class QuitAppTestCase(unittest.TestCase):
             response = app.get('/blame/foobar')
             self.assertEqual(response.status, '400 BAD REQUEST')
 
+    def testBranchAndDeleteBranch(self):
+        """Test branching and deleting the branch."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            res = app.post('/sparql', data={"update": update})
+            self.assertEqual(res.status, '200 OK')
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            res = app.post('/sparql/develop', data={"update": update})
+            self.assertEqual(res.status, '200 OK')
+
+            # Currently we need to checkout master again, because the commit always checks out the latest updated branch
+            # If develop is checked out, it is the current HEAD and thus can not be deleted
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/a> <http://ex.org/b> .}}"
+            res = app.post('/sparql/master', data={"update": update})
+
+            query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            res = app.post("/sparql/develop", data={"query": query})
+            self.assertEqual(res.status, '200 OK')
+
+            query = "ASK {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            res = app.post("/sparql/master", data={"query": query})
+            self.assertEqual(res.status, '200 OK')
+
+            res = app.post("/delete/branch/develop")
+            self.assertEqual(res.status, '200 OK')
+
+            query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            res = app.post("/sparql/develop", data={"query": query}, headers={"Accept": "application/json"})
+            self.assertEqual(res.status, '400 BAD REQUEST')
+
+    def testBranchWithRefspec(self):
+        """Test branching and deleting the branch."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch/master:develop")
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            res = app.post('/sparql', data={"update": update})
+            self.assertEqual(res.status, '200 OK')
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            res = app.post('/sparql/develop', data={"update": update})
+            self.assertEqual(res.status, '200 OK')
+
+            query = "ASK {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            res = app.post("/sparql", data={"query": query})
+            self.assertEqual(res.status, '200 OK')
+
+            query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            res = app.post("/sparql/develop", data={"query": query})
+            self.assertEqual(res.status, '200 OK')
+
     def testCommits(self):
         """Test /commits API request."""
         with TemporaryRepository() as repo:
