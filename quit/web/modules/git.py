@@ -364,6 +364,7 @@ def del_branch(refspec):
         current_app.logger.error(traceback.format_exc())
         return "<pre>" + traceback.format_exc() + "</pre>", 400
 
+
 @git.route("/revert", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
 @git.route("/revert/<path:branch_or_ref>", methods=['GET', 'POST'])
 def revert(branch_or_ref):
