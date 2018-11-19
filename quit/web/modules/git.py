@@ -10,6 +10,7 @@ from quit.utils import git_timestamp
 from quit.web.modules.application import isLoggedIn, githubEnabled
 import json
 import logging
+import re
 
 logger = logging.getLogger('quit.web.modules.git')
 __all__ = ('git')
@@ -314,6 +315,54 @@ def branch(refspec):
         current_app.logger.error(traceback.format_exc())
         return "<pre>" + traceback.format_exc() + "</pre>", 400
 
+
+@git.route("/delete/branch", defaults={'refspec': None}, methods=['GET', 'POST'])
+@git.route("/delete/branch/<path:refspec>", methods=['GET', 'POST'])
+def del_branch(refspec):
+    """Branch two commits and set the result to branch_or_ref.
+
+    merge branch into target and set branch_or_ref to the resulting commit
+    - if only branch_or_ref is given, do nothing
+    - if branch_or_ref and branch is given, merge branch into branch_or_ref and set branch_or_ref to
+        the resulting commit
+    - if branch_or_ref, branch and target are given, merge branch into target and set branch_or_ref
+        to the resulting commit
+
+    Returns:
+    HTTP Response 200: If requesting the HTML interface
+    HTTP Response 201: If branch was possible
+    HTTP Response 400: If branching did not work or unsupported mimetype
+    """
+    quit = current_app.config['quit']
+
+    try:
+        if 'Accept' in request.headers:
+            mimetype = parse_accept_header(request.headers['Accept']).best
+        else:
+            mimetype = '*/*'
+
+        refspec = re.sub("^refs/heads/", "", refspec)
+
+        branch = quit.repository._repository.branches.get(refspec)
+        if branch:
+            branch.delete()
+            message = "{} deleted".format(refspec)
+            status = 200
+        else:
+            message = "{} not found".format(refspec)
+            status = 404
+
+        if mimetype in ['text/html', 'application/xhtml_xml', '*/*']:
+            response = make_response(render_template('message.html', message=message))
+            response.headers['Content-Type'] = 'text/html'
+            return response, status
+        else:
+            return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 400
+
+    except Exception as e:
+        current_app.logger.error(e)
+        current_app.logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + "</pre>", 400
 
 @git.route("/revert", defaults={'branch_or_ref': None}, methods=['GET', 'POST'])
 @git.route("/revert/<path:branch_or_ref>", methods=['GET', 'POST'])

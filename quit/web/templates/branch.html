@@ -55,7 +55,7 @@
                     <td>
                         <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-code" aria-hidden="true"></i></a>
                         <a href="{{ url_for('debug.blame', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-hand-o-right" aria-hidden="true"></i></a>
-                        <a href="{{ url_for('endpoint.sparql', branch_or_ref=branch) }}" class="btn btn-default" role="button"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                        <a href="{{ url_for('git.del_branch', refspec=branch) }}" class="btn btn-default" role="button"><i class="fa fa-trash" aria-hidden="true"></i></a>
                     </td>
                 </tr>
                 {% endfor %}
