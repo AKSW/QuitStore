@@ -445,8 +445,27 @@ class Revision(object):
         self._parsed_message = None
 
     def _extract(self, message):
-
-        print(message)
+        """Extract the key-value pairs from the commit message."""
+        def eatRest(rest):
+            escaped = False
+            quoted = True
+            value = ""
+            for char in rest:
+                if not escaped:
+                    if char == "\\":
+                        escaped = True
+                        continue
+                    elif char == "\"":
+                        quoted = False
+                        break;
+                elif escaped:
+                    if char not in ["\"", "\\"]:
+                        value += "\\"
+                    escaped = False
+                value += char
+            if quoted:
+                value += "\n"
+            return value, quoted
 
         captures = {}
         multiLine = False
@@ -463,23 +482,9 @@ class Revision(object):
                     rest = keyRest.group("rest").lstrip()
                     value = ""
                     if rest[0] == "\"":
-                        escaped = False
-                        quoted = True
-                        for char in rest[1:]:
-                            if not escaped:
-                                if char == "\\":
-                                    escaped = True
-                                    continue
-                                elif char == "\"":
-                                    quoted = False
-                                    break;
-                            elif escaped:
-                                if char not in ["\"", "\\"]:
-                                    value += "\\"
-                                escaped = False
-                            value += char
+                        digest, quoted = eatRest(rest[1:])
+                        value += digest
                         if quoted:
-                            value += "\n"
                             multiLine = True
                         else:
                             captures[key] = value
@@ -487,26 +492,11 @@ class Revision(object):
                         value = rest.strip()
                         captures[key] = value
             else:
-                escaped = False
-                quoted = True
-                for char in line:
-                    if not escaped:
-                        if char == "\\":
-                            escaped = True
-                            continue
-                        elif char == "\"":
-                            quoted = False
-                            break;
-                    elif escaped:
-                        if char not in ["\"", "\\"]:
-                            value += "\\"
-                        escaped = False
-                    value += char
+                digest, quoted = eatRest(line)
+                value += digest
                 if not quoted:
                     multiLine = False
                     captures[key] = value
-                else:
-                    value += "\n"
 
         return captures, messageText
 
