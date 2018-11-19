@@ -457,7 +457,7 @@ class Revision(object):
                         continue
                     elif char == "\"":
                         quoted = False
-                        break;
+                        break
                 elif escaped:
                     if char not in ["\"", "\\"]:
                         value += "\\"
@@ -474,7 +474,7 @@ class Revision(object):
         messageText = ""
         for line in message.split("\n"):
             if not multiLine:
-                keyRest = re.search("^(?P<key>[\w\d_]+):(?P<rest>.*)", line)
+                keyRest = re.search("^(?P<key>[\\w\\d_]+):(?P<rest>.*)", line)
                 if not keyRest:
                     messageText += line + "\n"
                 else:
