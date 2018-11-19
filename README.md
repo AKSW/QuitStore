@@ -6,8 +6,8 @@ Build status of `master` branch:
 [![Coverage Status](https://coveralls.io/repos/github/AKSW/QuitStore/badge.svg?branch=master)](https://coveralls.io/github/AKSW/QuitStore)
 
 The *Quit Store* (stands for <em>Qu</em>ads in G<em>it</em>) provides a workspace for distributed collaborative Linked Data knowledge engineering.
-You are able read and write [RDF Datasets](https://www.w3.org/TR/rdf11-concepts/#section-dataset) (aka. multiple [Named Graphs](https://en.wikipedia.org/wiki/Named_graph)) through a standard SPARQL 1.1 Query and Update interface.
-To collaborate you can create multiple branches of the Dataset and share your repository with your collaborators as you know if form Git.
+You are able to read and write [RDF Datasets](https://www.w3.org/TR/rdf11-concepts/#section-dataset) (aka. multiple [Named Graphs](https://en.wikipedia.org/wiki/Named_graph)) through a standard SPARQL 1.1 [Query](https://www.w3.org/TR/sparql11-query/) and [Update](https://www.w3.org/TR/sparql11-update/) interface.
+To collaborate you can create multiple branches of the Dataset and share your repository with your collaborators as you know it from Git.
 
 If you want to read more about the Quit Store we can recommend our paper:
 
@@ -50,7 +50,7 @@ $ pip install -r requirements.txt
 ### Git configuration
 
 Configure your name and email for Git.
-This information will be stored in each commit you are creating with Git and the QuitStore on your system.
+This information will be stored in each commit you are creating with Git and the Quit Store on your system.
 It is relevant so people know which contribution is coming from whom. Execute the following command if you haven't done that before.
 
     $ git config --global user.name="Your Name"
@@ -60,15 +60,15 @@ It is relevant so people know which contribution is coming from whom. Execute th
 
 If you already have data which you want to use in the quit store follow these steps:
 
-1. Create a repository which will contain your RDF data
+1. Create a repository which will contain your RDF data.
 
 ```
 $ git init /path/to/repo
 ```
 
-2. Put your RDF data formatted as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory
-3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respective graph
-4. Add the data to the repository and create a commit
+2. Put your RDF data formatted as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory.
+3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respective graph. (These `.graph` files are also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)).
+4. Add the data to the repository and create a commit.
 
 ```
 $ git add …
@@ -97,13 +97,6 @@ For more command line options check out the section [Command Line Options](#comm
 
 
 ## Command Line Options
-`-cm`, `--configmode`
-
-Quit-Store can be started in three different modes.
-These modes differ in how the store chooses the named graphs and the corresponding files that will be part of the store.
-
-2. `configfile` - Search for a `config.ttl` file in the repository.
-3. `graphfiles` - Graph IRIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)).
 
 `-b`, `--basepath`
 
