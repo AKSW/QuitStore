@@ -33,12 +33,14 @@ BRANCHES_DROPDOWN_TEMPLATE = """
         <span class="caret"></span>
     </button>
     <ul class="dropdown-menu">
-        <li class="dropdown-header">Branches</li>
-        {% for branch in branches %}
-            <li>
-                <a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a>
-            </li>
-        {% endfor %}
+        {% if branches %}
+            <li class="dropdown-header">Branches</li>
+            {% for branch in branches %}
+                <li>
+                    <a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a>
+                </li>
+            {% endfor %}
+        {% endif %}
         {% if tags %}
             <li class="divider"></li>
             <li class="dropdown-header">Tags</li>
@@ -48,6 +50,25 @@ BRANCHES_DROPDOWN_TEMPLATE = """
         {% endif %}
     </ul>
 </span>
+"""
+
+BRANCHES_SELECT_DROPDOWN_TEMPLATE = """
+<select name="{{ name }}" class="form-control branch-select">
+    {% if branches %}
+    <optgroup label="Branches">
+    {% for branch in branches %}
+        <option value="{{ branch }}">{{ branch }}</option>
+    {% endfor %}
+    </optgroup>
+    {% endif %}
+    {% if tags %}
+    <optgroup label="Tags">
+    {% for tag in tags %}
+        <option value="{{ tag }}">{{ tag }}</option>
+    {% endfor %}
+    </optgroup>
+    {% endif %}
+</select>
 """
 
 REMOTES_DROPDOWN_TEMPLATE = """
@@ -193,21 +214,19 @@ def register_template_helpers(app):
 
     @app.context_processor
     def context_processor():
-        def render_branches_dropdown(current_ref, available_branches, available_tags):
-            branches_prefix = 'refs/heads/'
-            branches = [x[len(branches_prefix):] if x.startswith(
-                branches_prefix) else x for x in available_branches]
-            tags_prefix = 'refs/heads/'
-            tags = [x[len(tags_prefix):] if x.startswith(
-                tags_prefix) else x for x in available_tags]
+        def render_branches_dropdown(current_ref, branches, tags):
             return rts(BRANCHES_DROPDOWN_TEMPLATE, current_ref=current_ref, branches=branches,
                        tags=tags)
+
+        def render_branches_select_dropdown(name, branches, tags):
+            return rts(BRANCHES_SELECT_DROPDOWN_TEMPLATE, name=name, branches=branches, tags=tags)
 
         def render_remotes_dropdown(available_remotes):
             return rts(REMOTES_DROPDOWN_TEMPLATE, remotes=available_remotes)
 
         return dict(render_branches_dropdown=render_branches_dropdown,
-                    render_remotes_dropdown=render_remotes_dropdown)
+                    render_remotes_dropdown=render_remotes_dropdown,
+                    render_branches_select_dropdown=render_branches_select_dropdown)
 
 
 def render_template(template_name_or_list, **kwargs):

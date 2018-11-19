@@ -166,12 +166,14 @@ class Repository(object):
     @property
     def branches(self):
         """Get a list of all branch names."""
-        return [x for x in self._repository.listall_references() if x.startswith('refs/heads/')]
+        return [x[len('refs/heads/'):] for x in self._repository.listall_references()
+                if x.startswith('refs/heads/')]
 
     @property
     def tags(self):
         """Get a list of all tag names."""
-        return [x for x in self._repository.listall_references() if x.startswith('refs/tags/')]
+        return [x[len('refs/tags/'):] for x in self._repository.listall_references()
+                if x.startswith('refs/tags/')]
 
     @property
     def references(self):
