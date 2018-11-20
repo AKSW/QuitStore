@@ -18,31 +18,32 @@ __all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
 
-# querytype: { accept type: [content type, serializer_format]}
-resultSetMimetypes = {
-    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
-    'application/json': ['application/json', 'json'],
-    'text/csv': ['text/csv', 'csv'],
-    'text/html': ['text/html', 'html'],
-    'application/xhtml+xml': ['application/xhtml+xml', 'html']
-}
-askMimetypes = {
-    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
-    'application/json': ['application/json', 'json'],
-    'text/html': ['text/html', 'html'],
-    'application/xhtml+xml': ['application/xhtml+xml', 'html']
-}
-rdfMimetypes = {
-    'text/turtle': ['text/turtle', 'turtle'],
-    'application/x-turtle': ['application/x-turtle', 'turtle'],
-    'application/rdf+xml': ['application/rdf+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/n-triples': ['application/n-triples', 'nt'],
-    'application/trig': ['application/trig', 'trig']
+resultSetMimetypesDefault = 'application/sparql-results+xml'
+askMimetypesDefault = 'application/sparql-results+xml'
+rdfMimetypesDefault = 'text/turtle'
+
+resultSetMimetypes = ['application/sparql-results+xml', 'application/xml',
+                      'application/sparql-results+json', 'application/json', 'text/csv',
+                      'text/html', 'application/xhtml+xml']
+askMimetypes = ['application/sparql-results+xml', 'application/xml',
+                'application/sparql-results+json', 'application/json', 'text/html',
+                'application/xhtml+xml']
+rdfMimetypes = ['text/turtle', 'application/x-turtle', 'application/rdf+xml', 'application/xml',
+                'application/n-triples', 'application/trig']
+
+serializations = {
+    'text/turtle': 'turtle',
+    'application/x-turtle': 'turtle',
+    'text/csv': 'csv',
+    'text/html': 'html',
+    'application/xhtml+xml': 'html',
+    'application/sparql-results+xml': 'xml',
+    'application/xml': 'xml',
+    'application/rdf+xml': 'xml',
+    'application/sparql-results+json': 'json',
+    'application/json': 'json',
+    'application/n-triples': 'nt',
+    'application/trig': 'trig'
 }
 
 
@@ -123,25 +124,12 @@ def sparql(branch_or_ref):
         logger.debug("Unsupported Type: {}".format(queryType))
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
 
-    try:
-        if queryType == 'SelectQuery':
-            mimetype_list = list(resultSetMimetypes.keys())
-            mimetype_dict = resultSetMimetypes
-        elif queryType == 'AskQuery':
-            mimetype_list = list(askMimetypes.keys())
-            mimetype_dict = askMimetypes
-        elif queryType in ['ConstructQuery', 'DescribeQuery']:
-            mimetype_list = list(rdfMimetypes.keys())
-            mimetype_dict = rdfMimetypes
+    mimetype = _getBestMatchingMimeType(request, queryType)
 
-        if 'Accept' in request.headers:
-            mimetype = request.accept_mimetypes.best_match(mimetype_list)
-        else:
-            mimetype = mimetype_list[0]
-
-        return create_result_response(res, mimetype_dict[mimetype])
-    except KeyError:
+    if not mimetype:
         return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+    return create_result_response(res, mimetype, serializations[mimetype])
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
@@ -179,37 +167,43 @@ def provenance():
 
         res = graph.query(query)
 
-        try:
-            if queryType == 'SelectQuery':
-                mimetype_list = list(resultSetMimetypes.keys())
-                mimetype_dict = resultSetMimetypes
-            elif queryType == 'AskQuery':
-                mimetype_list = list(askMimetypes.keys())
-                mimetype_dict = askMimetypes
-            elif queryType in ['ConstructQuery', 'DescribeQuery']:
-                mimetype_list = list(rdfMimetypes.keys())
-                mimetype_dict = rdfMimetypes
+        mimetype = _getBestMatchingMimeType(request, queryType)
 
-            if 'Accept' in request.headers:
-                mimetype = request.accept_mimetypes.best_match(mimetype_list)
-            else:
-                mimetype = mimetype_list[0]
-
-            return create_result_response(res, mimetype_dict[mimetype])
-        except KeyError:
+        if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+        return create_result_response(res, mimetype, serializations[mimetype])
     else:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
             return render_template('provenance.html')
 
 
-def create_result_response(res, mimetype):
+def _getBestMatchingMimeType(request, queryType):
+    if queryType == 'SelectQuery':
+        mimetype_default = resultSetMimetypesDefault
+        mimetype_list = resultSetMimetypes
+    elif queryType == 'AskQuery':
+        mimetype_default = askMimetypesDefault
+        mimetype_list = askMimetypes
+    elif queryType in ['ConstructQuery', 'DescribeQuery']:
+        mimetype_default = rdfMimetypesDefault
+        mimetype_list = rdfMimetypes
+
+    match_list = [mimetype_default] + mimetype_list
+    if 'Accept' in request.headers:
+        mimetype = request.accept_mimetypes.best_match(match_list, None)
+    else:
+        mimetype = mimetype_default
+
+    return mimetype
+
+def create_result_response(res, mimetype, serialization):
     """Create a response with the requested serialization."""
     response = make_response(
-        res.serialize(format=mimetype[1]),
+        res.serialize(format=serialization),
         200
     )
-    response.headers['Content-Type'] = mimetype[0]
+    response.headers['Content-Type'] = mimetype
     return response
 
 

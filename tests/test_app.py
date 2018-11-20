@@ -955,7 +955,7 @@ class QuitAppTestCase(unittest.TestCase):
                     # test default
                     resp = app.post(ep_path, data=dict(query=query_string))
                     self.assertEqual(resp.status, '200 OK')
-                    self.assertEqual(response.headers['Content-Type'], test_values[query_type][1]['*/*'])
+                    self.assertEqual(resp.headers['Content-Type'], values[1]['*/*'])
 
                     # test unsupported
                     resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})
