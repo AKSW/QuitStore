@@ -428,11 +428,6 @@ class Repository(object):
 
 class Revision(object):
 
-    PROPERTY_REGEX = r"^("
-    PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
-    PROPERTY_REGEX += r"\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\"([^\"]|\\\")*?\"|'[^']*?')))"
-    PROPERTY_REGEX += r")"
-
     def __init__(self, repository, commit):
         self.id = commit.hex
         self.short_id = self.id[:10]
@@ -445,7 +440,7 @@ class Revision(object):
         self._parsed_message = None
 
     def _extract(self, message):
-        """Extract the key-value pairs from the commit message."""
+        """Extract the value from the commit message untill the end of the quote is found."""
         def eatRest(rest):
             escaped = False
             quoted = True
@@ -458,10 +453,9 @@ class Revision(object):
                     elif char == "\"":
                         quoted = False
                         break
-                elif escaped:
-                    if char not in ["\"", "\\"]:
-                        value += "\\"
-                    escaped = False
+                if char not in ["\"", "\\"]:
+                    value += "\\"
+                escaped = False
                 value += char
             if quoted:
                 value += "\n"
