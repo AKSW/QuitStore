@@ -2,6 +2,8 @@ from tempfile import TemporaryDirectory
 from pygit2 import init_repository, clone_repository, Signature
 from os import path, walk
 from os.path import join
+from rdflib import Graph
+from urllib.parse import quote_plus
 
 
 def createCommit(repository, message=None):
@@ -72,20 +74,20 @@ class TemporaryRepositoryFactory(object):
         """Give a TemporaryRepository() initialized with a graph with the given content (and one commit)."""
         tmpRepo = TemporaryRepository()
 
-        # Add a graph.nq and a graph.nq.graph file
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq"), "w") as graphFile:
+        # Add a graph.nt and a graph.nt.graph file
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt"), "w") as graphFile:
             if graphContent:
                 graphFile.write(graphContent)
 
         # Set Graph URI to http://example.org/
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq.graph"), "w") as graphFile:
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt.graph"), "w") as graphFile:
             graphFile.write(graphUri)
 
         # Add and Commit the empty graph
         index = tmpRepo.repo.index
         index.read()
-        index.add("graph.nq")
-        index.add("graph.nq.graph")
+        index.add("graph.nt")
+        index.add("graph.nt.graph")
         index.write()
 
         # Create commit
@@ -95,27 +97,108 @@ class TemporaryRepositoryFactory(object):
 
         return tmpRepo
 
-    def withGraphs(self, graphUriContentDict):
-        """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nq)."""
+    def withBothConfigurations(self):
+        """Give a TemporaryRepository() initialized with config.ttl and graph + graphfile."""
+        tmpRepo = TemporaryRepository()
+
+        # Add a graph.nt and a graph.nt.graph file
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt"), "w") as graphFile:
+            graphFile.write('')
+
+        # Set Graph URI to http://example.org/
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt.graph"), "w") as graphFile:
+            graphFile.write('http://example.org/')
+
+        # Add config.ttl
+        with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as graphFile:
+            graphFile.write('')
+
+        # Add and Commit
+        index = tmpRepo.repo.index
+        index.read()
+        index.add("config.ttl")
+        index.add("graph.nt")
+        index.add("graph.nt.graph")
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withWrongInformationFile(self):
+        """Give a TemporaryRepository() with a config.ttl containing incorrect turtle content."""
+        tmpRepo = TemporaryRepository()
+
+        # Add config.ttl
+        with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as graphFile:
+            graphFile.write('This is not written in turtle syntax.')
+
+        # Add and Commit
+        index = tmpRepo.repo.index
+        index.read()
+        index.add("config.ttl")
+        index.write()
+
+        # Create commit
+        tree = index.write_tree()
+        message = "init"
+        tmpRepo.repo.create_commit('HEAD', self.author, self.comitter, message, tree, [])
+
+        return tmpRepo
+
+    def withNoConfigInformation(self):
+        """Give an empty TemporaryRepository()."""
+        tmpRepo = TemporaryRepository()
+
+        return tmpRepo
+
+    def withGraphs(self, graphUriContentDict, mode='graphfiles'):
+        """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nt)."""
+        uristring = ''
+        configFileContent = """@base <http://quit.aksw.org/vocab/> .
+                                @prefix conf: <http://my.quit.conf/> .
+
+                                conf:store a <QuitStore> ;
+                                  <origin> "git://github.com/aksw/QuitStore.git" ;
+                                  <pathOfGitRepo> "{}" .
+                                {}"""
+
+        graphResource = """conf:graph{} a <Graph> ;
+                            <graphUri> <{}> ;
+                            <graphFile> "{}" ."""
+
         tmpRepo = TemporaryRepository()
         index = tmpRepo.repo.index
         index.read()
 
         i = 0
         for graphUri, graphContent in sorted(graphUriContentDict.items()):
-            filename = 'graph_{}.nq'.format(i)
+            filename = 'graph_{}.nt'.format(i)
             with open(path.join(tmpRepo.repo.workdir, filename), "w") as graphFile:
                 if graphContent:
                     graphFile.write(graphContent)
 
-            # Set Graph URI to http://example.org/
-            with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
-                graphFile.write(graphUri)
+            if mode == 'graphfiles':
+                # Set Graph URI to http://example.org/
+                with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
+                    graphFile.write(graphUri)
+                index.add(filename + '.graph')
+            elif mode == 'configfile':
+                uristring += graphResource.format(i, graphUri, filename)
 
             # Add and Commit the empty graph
             index.add(filename)
-            index.add(filename + '.graph')
             i += 1
+        if mode == 'configfile':
+            graph = Graph()
+            with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as configFile:
+                rdf_content = configFileContent.format(tmpRepo.repo.workdir, uristring)
+                graph.parse(format='turtle', data=rdf_content)
+                configFile.write(graph.serialize(format='turtle').decode())
+            index.add('config.ttl')
 
         index.write()
 

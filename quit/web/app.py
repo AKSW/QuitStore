@@ -1,3 +1,4 @@
+import os
 import urllib
 import hashlib
 import rdflib
@@ -6,14 +7,14 @@ import logging
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import url_for, redirect
+from flask import url_for, redirect, session, request
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
-from quit.git import Repository
+from quit.git import Repository, QuitRemoteCallbacks
 import quit.utils as utils
 
 from quit.namespace import QUIT
@@ -32,12 +33,14 @@ BRANCHES_DROPDOWN_TEMPLATE = """
         <span class="caret"></span>
     </button>
     <ul class="dropdown-menu">
-        <li class="dropdown-header">Branches</li>
-        {% for branch in branches %}
-            <li>
-                <a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a>
-            </li>
-        {% endfor %}
+        {% if branches %}
+            <li class="dropdown-header">Branches</li>
+            {% for branch in branches %}
+                <li>
+                    <a href="{{ url_for(request.endpoint, branch_or_ref=branch) }}">{{ branch }}</a>
+                </li>
+            {% endfor %}
+        {% endif %}
         {% if tags %}
             <li class="divider"></li>
             <li class="dropdown-header">Tags</li>
@@ -47,6 +50,25 @@ BRANCHES_DROPDOWN_TEMPLATE = """
         {% endif %}
     </ul>
 </span>
+"""
+
+BRANCHES_SELECT_DROPDOWN_TEMPLATE = """
+<select name="{{ name }}" class="form-control branch-select">
+    {% if branches %}
+    <optgroup label="Branches">
+    {% for branch in branches %}
+        <option value="{{ branch }}">{{ branch }}</option>
+    {% endfor %}
+    </optgroup>
+    {% endif %}
+    {% if tags %}
+    <optgroup label="Tags">
+    {% for tag in tags %}
+        <option value="{{ tag }}">{{ tag }}</option>
+    {% endfor %}
+    </optgroup>
+    {% endif %}
+</select>
 """
 
 REMOTES_DROPDOWN_TEMPLATE = """
@@ -83,9 +105,10 @@ def create_app(config):
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
+    app.secret_key = os.urandom(24)
     register_app(app, config)
     register_hook(app)
-    register_blueprints(app)
+    register_blueprints(app, config)
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
@@ -99,7 +122,8 @@ def register_app(app, config):
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
 
-    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection)
+    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection,
+                            callback=QuitRemoteCallbacks(session=session))
     bindings = config.getBindings()
 
     quit = Quit(config, repository, MemoryStore(bindings))
@@ -107,9 +131,6 @@ def register_app(app, config):
 
     content = quit.store.store.serialize(format='trig').decode()
     logger.debug("Initialize store with following content: {}".format(content))
-    logger.debug("Initialize store with following graphs: {}".format(
-        quit.config.getgraphurifilemap())
-    )
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
@@ -123,14 +144,15 @@ def register_extensions(app):
     cors.init_app(app)
 
 
-def register_blueprints(app):
+def register_blueprints(app, config):
     """Register blueprints in views."""
 
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
+    from quit.web.modules.application import application
 
-    for bp in [debug, endpoint, git]:
+    for bp in [debug, endpoint, git, application]:
         app.register_blueprint(bp)
 
     @app.route("/")
@@ -192,35 +214,31 @@ def register_template_helpers(app):
 
     @app.context_processor
     def context_processor():
-        def render_branches_dropdown(current_ref, available_branches, available_tags):
-            branches_prefix = 'refs/heads/'
-            branches = [x[len(branches_prefix):] if x.startswith(
-                branches_prefix) else x for x in available_branches]
-            tags_prefix = 'refs/heads/'
-            tags = [x[len(tags_prefix):] if x.startswith(
-                tags_prefix) else x for x in available_tags]
+        def render_branches_dropdown(current_ref, branches, tags):
             return rts(BRANCHES_DROPDOWN_TEMPLATE, current_ref=current_ref, branches=branches,
                        tags=tags)
+
+        def render_branches_select_dropdown(name, branches, tags):
+            return rts(BRANCHES_SELECT_DROPDOWN_TEMPLATE, name=name, branches=branches, tags=tags)
 
         def render_remotes_dropdown(available_remotes):
             return rts(REMOTES_DROPDOWN_TEMPLATE, remotes=available_remotes)
 
         return dict(render_branches_dropdown=render_branches_dropdown,
-                    render_remotes_dropdown=render_remotes_dropdown)
+                    render_remotes_dropdown=render_remotes_dropdown,
+                    render_branches_select_dropdown=render_branches_select_dropdown)
 
 
 def render_template(template_name_or_list, **kwargs):
 
     quit = current_app.config['quit']
 
-    current_head = quit.repository.current_head
     available_branches = quit.repository.branches
     available_tags = quit.repository.tags
     available_remotes = quit.repository.remotes
     available_refs = quit.repository.references
 
     context = {
-        'current_ref': current_head,
         'available_refs': available_refs,
         'available_branches': available_branches,
         'available_tags': available_tags,

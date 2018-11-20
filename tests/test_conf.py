@@ -6,280 +6,200 @@ from os import remove
 from os.path import join, isdir
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
-from quit.conf import QuitConfiguration
+from quit.conf import QuitStoreConfiguration, QuitGraphConfiguration
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
 from quit.exceptions import MissingFileError
 from distutils.dir_util import copy_tree, remove_tree
+from helpers import TemporaryRepository, TemporaryRepositoryFactory
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import rdflib
 
+
 class TestConfiguration(unittest.TestCase):
-
-    def setUp(self):
-        self.ns = 'http://quit.instance/'
-        self.testData = './tests/samples/configuration_test'
-        self.local = './tests/samples/local'
-        self.remote = '.tests/samples/remote'
-        copy_tree(self.testData, self.local)
-        copy_tree(self.testData, self.remote)
-        self.localConfigFile = join(self.local, 'config.ttl')
-        self.remoteConfigFile = join(self.local, 'config.ttl')
-        tempRepoLine = '  <pathOfGitRepo>  "' + self.local + '" .'
-
-        with open(self.localConfigFile) as f:
-            content = f.readlines()
-
-        remove(self.localConfigFile)
-
-        with open(self.localConfigFile, 'w+') as f:
-            for line in content:
-                if line.startswith('  <pathOfGitRepo'):
-                    f.write(tempRepoLine)
-                else:
-                    f.write(line)
-
-    def tearDown(self):
-        def __deleteFiles(directory):
-            files = glob(join(directory, '*'))
-            for file in files:
-                remove(file)
-
-        __deleteFiles(self.local)
-        __deleteFiles(self.remote)
-
-        localGit = join(self.local, '.git')
-        remoteGit = join(self.remote, '.git')
-
-        if isdir(localGit):
-            remove_tree(localGit)
-        if isdir(remoteGit):
-            remove_tree(remoteGit)
-
-        return
+    ns = 'http://quit.instance/'
 
     def testNamespace(self):
-        init_repository(self.local, False)
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
+            bad = [None, 'file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
 
-        # missing namespace
-        self.assertRaises(InvalidConfigurationError, QuitConfiguration, 'configfile', self.localConfigFile)
+            # good base namespaces
+            for uri in good:
+                conf = QuitStoreConfiguration(targetdir=repo.workdir, namespace=uri)
+                self.assertEqual(conf.namespace, uri)
 
-        good = ['http://example.org/thing#', 'https://example.org/', 'http://example.org/things/']
-        bad = ['file:///home/quit/', 'urn:graph/', 'urn:graph', '../test']
+            # bad base namespaces
+            for uri in bad:
+                with self.assertRaises(InvalidConfigurationError):
+                    QuitStoreConfiguration(targetdir=repo.workdir, namespace=uri)
 
-        # good namespaces
-        for uri in good:
-            conf = QuitConfiguration(configfile=self.localConfigFile, namespace=uri)
-            self.assertEqual(conf.namespace, uri)
+    def testStoreConfigurationWithDir(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            conf = QuitStoreConfiguration(targetdir=repo.workdir, namespace=self.ns)
+            self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getDefaultBranch(), None)
 
-        # bad namespaces
-        for uri in bad:
-            self.assertRaises(
-                InvalidConfigurationError, QuitConfiguration, 'configfile', self.localConfigFile, 'namespace', uri)
+    def testStoreConfigurationWithConfigfile(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitStoreConfiguration(configfile=join(repo.workdir, 'config.ttl'), namespace=self.ns)
+            self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getDefaultBranch(), None)
 
-    def testInitExistingFolder(self):
-        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
-        self.assertEqual(conf.getRepoPath(), self.local)
+    def testStoreConfigurationUpstream(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        repoContent = {'http://example.org/': content1}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitStoreConfiguration(
+                configfile=join(repo.workdir, 'config.ttl'),
+                upstream='http://cool.repo.git',
+                namespace=self.ns)
+            self.assertEqual(conf.getRepoPath(), repo.workdir)
+            self.assertEqual(conf.getUpstream(), 'http://cool.repo.git')
 
-    def testInitExistingRepo(self):
-        init_repository(self.local, False)
+    def testExistingRepoGraphFiles(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .\n'
+        repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
 
-        conf = QuitConfiguration(
-            configfile=self.localConfigFile, namespace=self.ns)
+            graphs = conf.getgraphs()
+            self.assertEqual(
+                sorted([str(x) for x in graphs]), ['http://aksw.org/', 'http://example.org/'])
 
-        conf.initgraphconfig()
+            files = conf.getfiles()
+            self.assertEqual(sorted(files), ['graph_0.nt', 'graph_1.nt'])
 
-        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
+            serialization = conf.getserializationoffile('graph_0.nt')
+            self.assertEqual(serialization, 'nt')
 
-        conf = QuitConfiguration(
-            repository='assests/configuration_test',
-            configfile=self.localConfigFile,
-            configmode='repoconfig',
-            namespace=self.ns)
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
+            gfMap = conf.getgraphurifilemap()
 
-        conf.initgraphconfig()
+            self.assertEqual(gfMap, {
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
+                })
 
-        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://example.org/>')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
+            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
-        conf = QuitConfiguration(
-            configfile=self.localConfigFile,
-            configmode='localconfig',
-            namespace=self.ns)
-        conf.initgraphconfig()
+    def testExistingRepoWithErroneousGraphFiles(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .\n'
+        content3 = '<urn:a> <urn:b> <urn:c> .'
+        repoContent = {'no uri': content1, 'http://aksw.org/': content2, '': content3}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
 
-        self.assertEqual(sorted(conf.getfiles()), ['example1.nq', 'example2.nt'])
+            graphs = conf.getgraphs()
+            self.assertEqual(
+                sorted([str(x) for x in graphs]), ['http://aksw.org/'])
 
-    def testInitMissingConfiguration(self):
-        init_repository(self.local, False)
+            files = conf.getfiles()
+            self.assertEqual(sorted(files), ['graph_1.nt'])
 
-        self.assertRaises(InvalidConfigurationError, QuitConfiguration, 'configfile', 'no.config', 'namespace', self.ns)
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
 
-    def testInitWithMissingGraphFiles(self):
-        # Mode: fallback to graphfiles
-        remove(join(self.local, 'example1.nq'))
-        remove(join(self.local, 'example2.nt'))
+            gfMap = conf.getgraphurifilemap()
 
-        conf = QuitConfiguration(configfile=self.remoteConfigFile, namespace=self.ns)
-        conf.initgraphconfig()
+            self.assertEqual(gfMap, {
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_1.nt',
+                })
 
-        files = conf.getfiles()
-        # no files to use
-        self.assertEqual(sorted(files), [])
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_1.nt')
 
-        # Mode: graphfiles
-        conf = QuitConfiguration(
-            configfile=self.localConfigFile,
-            configmode='graphfiles',
-            namespace=self.ns)
-        conf.initgraphconfig()
+    def testExistingRepoConfigfile(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .'
+        repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'configuration')
 
-        files = conf.getfiles()
-        # no files to use
-        self.assertEqual(sorted(files), [])
+            graphs = conf.getgraphs()
+            self.assertEqual(sorted([str(x) for x in graphs]), ['http://aksw.org/', 'http://example.org/'])
 
-        # Mode: local config file
-        conf = QuitConfiguration(
-            configfile=self.remoteConfigFile,
-            configmode='localconfig',
-            namespace=self.ns)
-        conf.initgraphconfig()
+            files = conf.getfiles()
+            self.assertEqual(sorted(files), ['graph_0.nt', 'graph_1.nt'])
 
-        files = conf.getfiles()
-        # deleted files should be created
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+            serialization = conf.getserializationoffile('graph_0.nt')
+            self.assertEqual(serialization, 'nt')
+            serialization = conf.getserializationoffile('graph_1.nt')
+            self.assertEqual(serialization, 'nt')
 
-        # Mode: remote config file
-        remove(join(self.local, 'example1.nq'))
-        remove(join(self.local, 'example2.nt'))
+            gfMap = conf.getgraphurifilemap()
+            self.assertEqual(gfMap, {
+                    rdflib.term.URIRef('http://aksw.org/'): 'graph_0.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'
+                })
 
-        conf = QuitConfiguration(
-            repository='assests/configuration_test',
-            configfile=self.localConfigFile,
-            configmode='repoconfig',
-            namespace=self.ns)
-        conf.initgraphconfig()
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getgraphuriforfile('graph_1.nt').n3(), '<http://example.org/>')
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'graph_0.nt')
+            self.assertEqual(conf.getfileforgraphuri('http://example.org/'), 'graph_1.nt')
 
-        files = conf.getfiles()
-        # deleted files should be created
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+    def testGraphConfigurationMethods(self):
+        content1 = '<urn:x> <urn:y> <urn:z> .'
+        content2 = '<urn:1> <urn:2> <urn:3> .\n'
+        content2 += '<urn:a> <urn:b> <urn:c> .'
+        repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
+        with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
 
+            conf.removegraph('http://aksw.org/')
 
-    def testStoreConfig(self):
-        init_repository(self.local, False)
-        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
+            self.assertEqual(conf.getgraphurifilemap(), {
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), None)
+            self.assertEqual(conf.getgraphuriforfile('graph_0.nt'), None)
+            self.assertEqual(conf.getserializationoffile('graph_0.nt'), None)
 
-        self.assertEqual(conf.getRepoPath(), self.local)
-        self.assertEqual(conf.getOrigin(), 'git://github.com/aksw/QuitStore.git')
+            conf.addgraph('http://aksw.org/', 'new_file.nt', 'nt')
 
-        allFiles = conf.getgraphsfromdir()
-        self.assertEqual(sorted(allFiles), sorted(['config.ttl', 'example1.nq', 'example2.nt', 'example3.nq']))
+            self.assertEqual(conf.getgraphurifilemap(), {
+                    rdflib.term.URIRef('http://aksw.org/'): 'new_file.nt',
+                    rdflib.term.URIRef('http://example.org/'): 'graph_1.nt'})
+            self.assertEqual(conf.getfileforgraphuri('http://aksw.org/'), 'new_file.nt')
+            self.assertEqual(conf.getgraphuriforfile('new_file.nt').n3(), '<http://aksw.org/>')
+            self.assertEqual(conf.getserializationoffile('new_file.nt'), 'nt')
 
-    def testGraphConfigDefaultMode(self):
-        conf = QuitConfiguration(configfile=self.localConfigFile, namespace=self.ns)
+    def testGraphConfigurationFailing(self):
+        with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
 
-        conf.initgraphconfig()
-        graphs = conf.getgraphs()
-        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/2/', 'http://example.org/discovered/'])
+    def testWrongConfigurationFile(self):
+        with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
 
-        files = conf.getfiles()
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
+    def testNoConfigInformation(self):
+        with TemporaryRepositoryFactory().withNoConfigInformation() as repo:
+            conf = QuitGraphConfiguration(repository=repo)
+            conf.initgraphconfig('master')
+            self.assertEqual(conf.mode, 'graphfiles')
 
-        serialization = conf.getserializationoffile('example1.nq')
-        self.assertEqual(serialization, 'nquads')
-
-        gfMap = conf.getgraphurifilemap()
-        self.assertEqual(gfMap, {
-                rdflib.term.URIRef('http://example.org/discovered/'): 'example1.nq',
-                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
-            })
-
-        self.assertEqual(
-            [str(x) for x in conf.getgraphuriforfile('example1.nq')],
-            ['http://example.org/discovered/']
-        )
-        self.assertEqual(
-            [str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/']
-        )
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
-
-    def testGraphConfigLocalConfig(self):
-        conf = QuitConfiguration(
-                    configmode='localconfig', configfile=self.localConfigFile, namespace=self.ns)
-
-        conf.initgraphconfig()
-        graphs = conf.getgraphs()
-        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/1/', 'http://example.org/2/'])
-
-        files = conf.getfiles()
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
-
-        serialization = conf.getserializationoffile('example1.nq')
-        self.assertEqual(serialization, 'nquads')
-
-        gfMap = conf.getgraphurifilemap()
-        self.assertEqual(gfMap, {
-                rdflib.term.URIRef('http://example.org/1/'): 'example1.nq',
-                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
-            })
-
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/1/'])
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
-
-    def testGraphConfigRemoteConfig(self):
-        conf = QuitConfiguration(
-                    configmode='repoconfig',
-                    configfile=self.localConfigFile,
-                    namespace=self.ns)
-
-        conf.initgraphconfig()
-        graphs = conf.getgraphs()
-        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/1/', 'http://example.org/2/'])
-
-        files = conf.getfiles()
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
-
-        serialization = conf.getserializationoffile('example1.nq')
-        self.assertEqual(serialization, 'nquads')
-
-        gfMap = conf.getgraphurifilemap()
-        self.assertEqual(gfMap, {
-                rdflib.term.URIRef('http://example.org/1/'): 'example1.nq',
-                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
-            })
-
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/1/'])
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/1/'), 'example1.nq')
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
-
-    def testGraphConfigGraphFiles(self):
-        conf = QuitConfiguration(
-                    configmode='graphfiles',
-                    configfile=self.localConfigFile,
-                    namespace=self.ns)
-
-        conf.initgraphconfig()
-        graphs = conf.getgraphs()
-        self.assertEqual(sorted([str(x) for x in graphs]), ['http://example.org/2/', 'http://example.org/discovered/'])
-
-        files = conf.getfiles()
-        self.assertEqual(sorted(files), ['example1.nq', 'example2.nt'])
-
-        serialization = conf.getserializationoffile('example1.nq')
-        self.assertEqual(serialization, 'nquads')
-
-        gfMap = conf.getgraphurifilemap()
-        self.assertEqual(gfMap, {
-                rdflib.term.URIRef('http://example.org/discovered/'): 'example1.nq',
-                rdflib.term.URIRef('http://example.org/2/'): 'example2.nt'
-            })
-
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example1.nq')], ['http://example.org/discovered/'])
-        self.assertEqual([str(x) for x in conf.getgraphuriforfile('example2.nt')], ['http://example.org/2/'])
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/discovered/'), 'example1.nq')
-        self.assertEqual(conf.getfileforgraphuri('http://example.org/2/'), 'example2.nt')
 
 def main():
     unittest.main()

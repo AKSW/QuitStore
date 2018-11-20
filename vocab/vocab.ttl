@@ -31,9 +31,6 @@ quit:pathOfGitRepo a rdfs:Property ;
 quit:defaultBranch a rdfs:Property ;
   rdfs:comment "Branch used as default" .
 
-quit:globalFile a rdfs:Property ;
-  rdfs:comment "File for unassigned graphs" .
-
 quit:linkToGitRemote a rdfs:Property ;
   rdfs:comment "Link to the Git Remote" .
 

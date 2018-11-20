@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from quit.conf import Feature, QuitConfiguration
+from quit.conf import Feature, QuitStoreConfiguration
 from quit.exceptions import InvalidConfigurationError
 import rdflib.plugins.sparql
 from rdflib.plugins.sparql.algebra import SequencePath
@@ -98,32 +98,29 @@ def initialize(args):
         'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
 
     try:
-        config = QuitConfiguration(
+        config = QuitStoreConfiguration(
             configfile=args.configfile,
             targetdir=args.targetdir,
-            repository=args.repourl,
-            configmode=args.configmode,
+            upstream=args.repourl,
             features=args.features,
             namespace=args.namespace,
+            oauthclientid=args.oauth_clientid,
+            oauthclientsecret=args.oauth_clientsecret,
         )
     except InvalidConfigurationError as e:
         logger.error(e)
         sys.exit('Exiting quit')
 
     # since repo is handled, we can add graphs to config
-    config.initgraphconfig()
 
-    logger.info('QuitStore successfully running.')
-    logger.info('Known graphs: ' + str(config.getgraphs()))
-    logger.info('Known files: ' + str(config.getfiles()))
+    logger.info('QuitStore Configuration initialized.')
     logger.debug('Path of Gitrepo: ' + config.getRepoPath())
-    logger.debug('Config mode: ' + str(config.getConfigMode()))
-    logger.debug('All RDF files found in Gitepo:' + str(config.getgraphsfromdir()))
 
     return {'config': config}
 
 
 class FeaturesAction(argparse.Action):
+    """Actions that are executied for the configuration passed with the `--feature` option."""
     CHOICES = {
         'provenance': Feature.Provenance,
         'persistence': Feature.Persistence,
@@ -145,12 +142,12 @@ class FeaturesAction(argparse.Action):
 
 
 def parseArgs(args):
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Returns:
+        parsed object representing the config arguments.
+    """
     basepathhelp = "Base path (aka. application root) (WSGI only)."
-    graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
-                "localconfig" - Use the given local file for graph settings.
-                "repoconfig" - Use the configuration of the git repository for graphs settings.
-                "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     featurehelp = """This option enables additional features of the QuitStore:
                 "provenance" - Store provenance information for each revision.
                 "persistance" - Store all internal data as rdf graph."""
@@ -166,6 +163,8 @@ def parseArgs(args):
     namespace_default = 'http://quit.instance/'
     targetdir_default = None
     configfile_default = "config.ttl"
+    oauthclientid_default = None
+    oauthclientsecret_default = None
 
     if 'QUIT_PORT' in os.environ:
         port_default = os.environ['QUIT_PORT']
@@ -185,6 +184,12 @@ def parseArgs(args):
     if 'QUIT_CONFIGFILE' in os.environ:
         configfile_default = os.environ['QUIT_CONFIGFILE']
 
+    if 'QUIT_OAUTH_CLIENT_ID' in os.environ:
+        oauthclientid_default = os.environ['QUIT_OAUTH_CLIENT_ID']
+
+    if 'QUIT_OAUTH_SECRET' in os.environ:
+        oauthclientsecret_default = os.environ['QUIT_OAUTH_SECRET']
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
     parser.add_argument(
@@ -196,11 +201,6 @@ def parseArgs(args):
     parser.add_argument('-l', '--logfile', type=str, default=logfile_default, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
     parser.add_argument('-t', '--targetdir', type=str, default=targetdir_default, help=targethelp)
-    parser.add_argument('-cm', '--configmode', type=str, choices=[
-        'graphfiles',
-        'localconfig',
-        'repoconfig'
-    ], help=graphhelp)
     parser.add_argument('--flask-debug', action='store_true')
     parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
@@ -208,6 +208,8 @@ def parseArgs(args):
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
     parser.add_argument('--host', default='::', type=str)
+    parser.add_argument('--oauth-clientid', default=oauthclientid_default, type=str)
+    parser.add_argument('--oauth-clientsecret', default=oauthclientsecret_default, type=str)
 
     logger.debug("Parsing args: {}".format(args))
 
