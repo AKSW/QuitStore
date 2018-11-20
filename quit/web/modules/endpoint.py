@@ -1,9 +1,7 @@
 import traceback
-import re
 
 import logging
 from flask import Blueprint, request, current_app, make_response
-from werkzeug.http import parse_accept_header
 from rdflib import ConjunctiveGraph
 from quit.conf import Feature
 from quit import helpers as helpers
@@ -83,11 +81,11 @@ def sparql(branch_or_ref):
         try:
             queryType, parsedQuery = parse_type(
                 query, quit.config.namespace, default_graph, named_graph)
-        except UnSupportedQuery as e:
+        except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
-        except NonAbsoluteBaseError as e:
+        except NonAbsoluteBaseError:
             return make_response('Non absolute Base URI given', 400)
-        except SparqlProtocolError as e:
+        except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
     try:
@@ -123,9 +121,9 @@ def sparql(branch_or_ref):
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
         try:
             res = graph.query(parsedQuery)
-        except FromNamedError as e:
+        except FromNamedError:
             return make_response('FROM NAMED not supported, yet', 400)
-        except UnSupportedQuery as e:
+        except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
     else:
         logger.debug("Unsupported Type: {}".format(queryType))
@@ -207,12 +205,10 @@ def _getBestMatchingMimeType(request, queryType):
 
     return mimetype
 
+
 def create_result_response(res, mimetype, serialization):
     """Create a response with the requested serialization."""
-    response = make_response(
-        res.serialize(format=serialization),
-        200
-    )
+    response = make_response(res.serialize(format=serialization), 200)
     response.headers['Content-Type'] = mimetype
     return response
 
