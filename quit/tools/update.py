@@ -52,13 +52,41 @@ def evalLoad(ctx, u):
     http://www.w3.org/TR/sparql11-update/#load
     """
     res = {}
-    res["type_"] = "LOAD"
-    res["graph"] = u.iri
+    res["type"] = "LOAD"
+    res["source"] = u.iri
+    res["delta"] = {}
 
-    if u.graphiri:
-        ctx.load(u.iri, default=False, publicID=u.graphiri)
-    else:
-        ctx.load(u.iri, default=True)
+    if not u.graphiri:
+        raise UnSupportedQuery("For load queries we need a iriref for a target graph")
+
+    success = False
+    loadedGraph = Graph()
+    try:
+        loadedGraph.load(u.iri, publicID=u.graphiri)
+        success = True
+    except:
+        pass
+    if not success:
+        try:
+            return loadedGraph.load(u.iri, format='n3')
+            success = True
+        except:
+            pass
+    if not success:
+        try:
+            return loadedGraph.load(u.iri, format='nt')
+            success = True
+        except:
+            pass
+    if not success:
+        raise Exception(
+            "Could not load %s as either RDF/XML, N3, Turtle, or NTriples" % (
+            u.iri))
+
+    graph = ctx.dataset.get_context(u.graphiri)
+    graph += loadedGraph
+
+    _append(res["delta"], u.graphiri, 'additions', loadedGraph)
 
     return res
 
@@ -98,7 +126,7 @@ def evalInsertData(ctx, u):
     """
 
     res = {}
-    res["type_"] = "INSERT"
+    res["type"] = "INSERT"
     res["delta"] = {}
 
     # add triples
@@ -125,7 +153,7 @@ def evalDeleteData(ctx, u):
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
     res = {}
-    res["type_"] = "DELETE"
+    res["type"] = "DELETE"
     res["delta"] = {}
 
     # remove triples
@@ -153,7 +181,7 @@ def evalDeleteWhere(ctx, u):
     """
 
     res = {}
-    res["type_"] = "DELETEWHERE"
+    res["type"] = "DELETEWHERE"
     res["delta"] = {}
 
     _res = evalBGP(ctx, u.triples)
@@ -181,7 +209,7 @@ def evalModify(ctx, u):
     originalctx = ctx
 
     res = {}
-    res["type_"] = "MODIFY"
+    res["type"] = "MODIFY"
     res["delta"] = {}
 
     # Using replaces the dataset for evaluating the where-clause
@@ -360,7 +388,7 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
         try:
             if u.name == 'Load':
-                result = evalLoad(ctx, u).get('delta', None)
+                result = evalLoad(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'Clear':
@@ -376,19 +404,19 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
             elif u.name == 'Copy':
                 evalCopy(ctx, u)
             elif u.name == 'InsertData':
-                result = evalInsertData(ctx, u).get('delta', None)
+                result = evalInsertData(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'DeleteData':
-                result = evalDeleteData(ctx, u).get('delta', None)
+                result = evalDeleteData(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'DeleteWhere':
-                result = evalDeleteWhere(ctx, u).get('delta', None)
+                result = evalDeleteWhere(ctx, u)
                 if result:
                     res.append(result)
             elif u.name == 'Modify':
-                result = evalModify(ctx, u).get('delta', None)
+                result = evalModify(ctx, u)
                 if result:
                     res.append(result)
             else:

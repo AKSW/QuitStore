@@ -2301,6 +2301,35 @@ class QuitAppTestCase(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('<urn:x> <urn:y> <urn:z> .\n', f.read())
 
+    def testLoadIntoGraph(self):
+        """Test LOAD <resource> INTO GRAPH <http://example.org/> ."""
+        # Prepate a git Repository
+        content = ''
+        repoContent = {'http://example.org/': content}
+        with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
+            select_resp_after = app.post('/sparql', data={"query": select}, headers=dict(accept="application/sparql-results+json"))
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertFalse(obj["boolean"])
+
+            # execute SELECT query before INSERT WHERE
+            load = "LOAD <http://aksw.org/Projects/Quit> INTO GRAPH <http://example.org/>"
+            resp = app.post('/sparql', data={"update": load})
+            self.assertEqual(resp.status, "200 OK")
+
+            select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
+            select_resp_after = app.post('/sparql', data={"query": select}, headers=dict(accept="application/sparql-results+json"))
+            obj = json.loads(select_resp_after.data.decode("utf-8"))
+            self.assertTrue(obj["boolean"])
+
+
     def testLogfileExists(self):
         """Test if a logfile is created."""
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
@@ -2638,15 +2667,23 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: "INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x> <urn:y> <urn:z> .}}"'
+            expectedCommitMsg = set()
+            expectedCommitMsg.add("New Commit from QuitStore")
+            expectedCommitMsg.add("Query: \"INSERT DATA {graph <urn:graph> "
+                                  "{<urn:x> <urn:y> <urn:z> .}}\"")
+            expectedCommitMsg.add("OperationTypes: \"INSERT\"")
+            expectedCommitMsg.add("")
 
             commits = []
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                commits.append(commit.message)
+                commits.append(commit.message.strip())
 
-            self.assertEqual(commits, [expectedCommitMsg, 'init'])
+
+            expectedCommits = [['init'], expectedCommitMsg]
+            for commit in commits:
+                expectedMessage = expectedCommits.pop()
+                self.assertEqual(sorted(set(commit.split("\n"))), sorted(expectedMessage))
 
     def testRepoDataAfterInsertStaringWithNonEmptyGraph(self):
         """Test inserting data and check the file content, starting with a non empty graph.
@@ -2677,15 +2714,22 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(expectedFileContent, f.read())
 
             # check commit messages
-            expectedCommitMsg = 'New Commit from QuitStore\n\nquery: "INSERT DATA {graph <urn:graph>'
-            expectedCommitMsg += ' {<urn:x2> <urn:y2> \\"literal\\" .}}"'
+            expectedCommitMsg = set()
+            expectedCommitMsg.add("New Commit from QuitStore")
+            expectedCommitMsg.add("Query: \"INSERT DATA {graph <urn:graph> "
+                                  "{<urn:x2> <urn:y2> \\\"literal\\\" .}}\"")
+            expectedCommitMsg.add("OperationTypes: \"INSERT\"")
+            expectedCommitMsg.add("")
 
             commits = []
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
-                commits.append(commit.message)
+                commits.append(commit.message.strip())
 
-            self.assertEqual(commits, [expectedCommitMsg, 'init'])
+            expectedCommits = [['init'], expectedCommitMsg]
+            for commit in commits:
+                expectedMessage = expectedCommits.pop()
+                self.assertEqual(sorted(set(commit.split("\n"))), sorted(expectedMessage))
 
     def testStartApp(self):
         """Test start of quit store."""

@@ -94,7 +94,7 @@ def sparql(branch_or_ref):
         logger.exception(e)
         return make_response('No branch or reference given.', 400)
 
-    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere']:
+    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Load']:
         res, exception = graph.update(parsedQuery)
 
         try:
@@ -106,7 +106,7 @@ def sparql(branch_or_ref):
                               named_graph=named_graph)
             if exception is not None:
                 logger.exception(exception)
-                return 'Update query not executed (completely), (detected USING NAMED)', 400
+                return 'Update query not executed (completely), (detected UnSupportedQuery)', 400
             response = make_response('', 200)
             response.headers["X-CurrentBranch"] = target_ref
             if oid is not None:

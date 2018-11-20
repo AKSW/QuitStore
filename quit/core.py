@@ -237,8 +237,9 @@ class Quit(object):
 
             if 'Source' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Import']))
-                g.add((commit_uri, QUIT['dataSource'], Literal(
-                    commit.properties['Source'].strip())))
+                sources = commit.properties['Source'].strip()
+                for source in re.findall("<.*?>", sources):
+                    g.add((commit_uri, QUIT['dataSource'], URIRef(source.strip("<>"))))
             if 'Query' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Transformation']))
                 g.add((commit_uri, QUIT['query'], Literal(
@@ -434,69 +435,7 @@ class Quit(object):
         Returns:
             The newly created commits id
         """
-        def build_message(message, kwargs):
-            out = list()
-            if message:
-                out.append(message)
-                out.append('')
-            if query:
-                out.append('query: "{}"'.format(query.replace('"', "\\\"")))
-            if isinstance(default_graph, list) and len(default_graph) > 0:
-                out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
-            if isinstance(named_graph, list) and len(named_graph) > 0:
-                out.append('using-named-graph-uri: {}'.format(', '.join(named_graph)))
-            for k, v in kwargs.items():
-                out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
-            return "\n".join(out)
-
-        def _applyKnownGraphs(delta, blobs):
-            blobs_new = set()
-            for blob in blobs:
-                (fileName, oid) = blob
-                try:
-                    file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
-                    for entry in delta:
-                        changeset = entry.get(context.identifier, None)
-
-                        if changeset:
-                            applyChangeset(file_reference, changeset, context.identifier)
-                            del(entry[context.identifier])
-
-                    index.add(file_reference.path, file_reference.content)
-
-                    self._blobs.remove(blob)
-                    blob = fileName, index.stash[file_reference.path][0]
-                    self._blobs.set(blob, (file_reference, context))
-                    blobs_new.add(blob)
-                except KeyError:
-                    pass
-            return blobs_new
-
-        def _applyUnknownGraphs(delta, known_blobs):
-            new_contexts = {}
-            for entry in delta:
-                for identifier, changeset in entry.items():
-                    if isinstance(identifier, BNode) or str(identifier) == 'default':
-                        continue  # TODO default graph use case
-
-                    if identifier not in new_contexts.keys():
-                        fileName = iri_to_name(identifier) + '.nt'
-
-                        if fileName in known_blobs:
-                            reg = re.compile(re.escape(iri_to_name(identifier)) + "_([0-9]+).nt")
-                            #  n ~ numbers (in blobname), b ~ blobname, m ~ match
-                            n = [
-                                int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
-                            ] + [0]
-                            fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
-
-                        new_contexts[identifier] = FileReference(fileName, '')
-
-                    fileReference = new_contexts[identifier]
-                    applyChangeset(fileReference, changeset, identifier)
-            return new_contexts
-
-        if not delta:
+        if self._isDeltaEmpty(delta):
             return
 
         parent_commit_id = None
@@ -520,8 +459,8 @@ class Quit(object):
         graphconfig = self._graphconfigs.get(parent_commit_id)
         known_files = graphconfig.getfiles().keys()
 
-        blobs_new = _applyKnownGraphs(delta, blobs)
-        new_contexts = _applyUnknownGraphs(delta, known_files)
+        blobs_new = self._applyKnownGraphs(delta, blobs, parent_commit, index)
+        new_contexts = self._applyUnknownGraphs(delta, known_files)
         new_config = copy(graphconfig)
 
         for identifier, fileReference in new_contexts.items():
@@ -540,7 +479,7 @@ class Quit(object):
         if graphconfig.mode == 'configuration':
             index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())
 
-        message = build_message(message, kwargs)
+        message = self._build_message(message, query, delta, default_graph, named_graph, **kwargs)
         author = self.repository._repository.default_signature
 
         oid = index.commit(message, author.name, author.email, ref=target_ref)
@@ -557,6 +496,86 @@ class Quit(object):
             self.syncSingle(commit)
 
         return oid.hex
+
+    def _build_message(self, message, query, result, default_graph, named_graph, **kwargs):
+        out = list()
+        if message:
+            out.append(message)
+            out.append('')
+        if query:
+            out.append('Query: "{}"'.format(query.replace("\\", "\\\\").replace("\"", "\\\"")))
+
+        source = []
+        operation_types = []
+        for entry in result:
+            if "type" in entry:
+                operation_types.append(entry["type"])
+            if entry["type"] == "LOAD":
+                source.append("<{}>".format(entry["source"]))
+        if operation_types:
+            out.append('OperationTypes: "{}"'.format(",".join(operation_types)))
+        if source:
+            out.append('Source: "{}"'.format(",".join(source)))
+        if isinstance(default_graph, list) and len(default_graph) > 0:
+            out.append('using-graph-uri: {}'.format(', '.join(default_graph)))
+        if isinstance(named_graph, list) and len(named_graph) > 0:
+            out.append('using-named-graph-uri: {}'.format(', '.join(named_graph)))
+        for k, v in kwargs.items():
+            out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
+        return "\n".join(out)
+
+    def _applyKnownGraphs(self, delta, blobs, parent_commit, index):
+        blobs_new = set()
+        for blob in blobs:
+            (fileName, oid) = blob
+            try:
+                file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
+                for entry in delta:
+                    changeset = entry['delta'].get(context.identifier, None)
+
+                    if changeset:
+                        applyChangeset(file_reference, changeset, context.identifier)
+                        del(entry['delta'][context.identifier])
+
+                index.add(file_reference.path, file_reference.content)
+
+                self._blobs.remove(blob)
+                blob = fileName, index.stash[file_reference.path][0]
+                self._blobs.set(blob, (file_reference, context))
+                blobs_new.add(blob)
+            except KeyError:
+                pass
+        return blobs_new
+
+    def _applyUnknownGraphs(self, delta, known_blobs):
+        new_contexts = {}
+        for entry in delta:
+            for identifier, changeset in entry['delta'].items():
+                if isinstance(identifier, BNode) or str(identifier) == 'default':
+                    continue  # TODO default graph use case
+
+                if identifier not in new_contexts.keys():
+                    fileName = iri_to_name(identifier) + '.nt'
+
+                    if fileName in known_blobs:
+                        reg = re.compile(re.escape(iri_to_name(identifier)) + "_([0-9]+).nt")
+                        #  n ~ numbers (in blobname), b ~ blobname, m ~ match
+                        n = [
+                            int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
+                        ] + [0]
+                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
+
+                    new_contexts[identifier] = FileReference(fileName, '')
+
+                fileReference = new_contexts[identifier]
+                applyChangeset(fileReference, changeset, identifier)
+        return new_contexts
+
+    def _isDeltaEmpty(self, result):
+        for entry in result:
+            if "delta" in entry and entry["delta"]:
+                return False
+        return True
 
     def garbagecollection(self):
         """Start garbage collection.
