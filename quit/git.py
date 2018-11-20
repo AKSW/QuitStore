@@ -453,8 +453,6 @@ class Revision(object):
                     elif char == "\"":
                         quoted = False
                         break
-                if char not in ["\"", "\\"]:
-                    value += "\\"
                 escaped = False
                 value += char
             if quoted:
