@@ -996,9 +996,8 @@ class QuitAppTestCase(unittest.TestCase):
                         'application/sparql-results+json': 'application/sparql-results+json',
                         'text/csv': 'text/csv',
                         'text/html': 'text/html',
-                        'application/xhtml+xml': 'application/xhtml+xml'
-                    }
-                ],
+                        'application/xhtml+xml': 'application/xhtml+xml',
+                        'foo/bar,application/sparql-results+xml;q=0.5': 'application/sparql-results+xml'}],
                 'ask': [ask, {
                         '*/*': 'application/sparql-results+xml',
                         'application/sparql-results+xml': 'application/sparql-results+xml',
@@ -1006,9 +1005,8 @@ class QuitAppTestCase(unittest.TestCase):
                         'application/json': 'application/json',
                         'application/sparql-results+json': 'application/sparql-results+json',
                         'text/html': 'text/html',
-                        'application/xhtml+xml': 'application/xhtml+xml'
-                    }
-                ],
+                        'application/xhtml+xml': 'application/xhtml+xml',
+                        'foo/bar,application/sparql-results+xml;q=0.5': 'application/sparql-results+xml'}],
                 'construct': [construct, {
                         '*/*': 'text/turtle',
                         'text/turtle': 'text/turtle',
@@ -1016,10 +1014,8 @@ class QuitAppTestCase(unittest.TestCase):
                         'application/rdf+xml': 'application/rdf+xml',
                         'application/xml': 'application/xml',
                         'application/n-triples': 'application/n-triples',
-                        'application/trig': 'application/trig'
-                    }
-                ]
-            }
+                        'application/trig': 'application/trig',
+                        'foo/bar,text/turtle;q=0.5': 'text/turtle'}]}
 
             for ep_path in ['/sparql', '/provenance']:
                 for query_type, values in test_values.items():
@@ -1034,6 +1030,11 @@ class QuitAppTestCase(unittest.TestCase):
                         )
                         self.assertEqual(response.status, '200 OK')
                         self.assertEqual(response.headers['Content-Type'], content_type)
+
+                    # test default
+                    resp = app.post(ep_path, data=dict(query=query_string))
+                    self.assertEqual(resp.status, '200 OK')
+                    self.assertEqual(resp.headers['Content-Type'], values[1]['*/*'])
 
                     # test unsupported
                     resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})

@@ -1,9 +1,7 @@
 import traceback
-import re
 
 import logging
 from flask import Blueprint, request, current_app, make_response
-from werkzeug.http import parse_accept_header
 from rdflib import ConjunctiveGraph
 from quit.conf import Feature
 from quit import helpers as helpers
@@ -18,34 +16,32 @@ __all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
 
-# querytype: { accept type: [content type, serializer_format]}
-resultSetMimetypes = {
-    '*/*': ['application/sparql-results+xml', 'xml'],
-    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
-    'application/json': ['application/json', 'json'],
-    'text/csv': ['text/csv', 'csv'],
-    'text/html': ['text/html', 'html'],
-    'application/xhtml+xml': ['application/xhtml+xml', 'html']
-}
-askMimetypes = {
-    '*/*': ['application/sparql-results+xml', 'xml'],
-    'application/sparql-results+xml': ['application/sparql-results+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/sparql-results+json': ['application/sparql-results+json', 'json'],
-    'application/json': ['application/json', 'json'],
-    'text/html': ['text/html', 'html'],
-    'application/xhtml+xml': ['application/xhtml+xml', 'html']
-}
-rdfMimetypes = {
-    '*/*': ['text/turtle', 'turtle'],
-    'text/turtle': ['text/turtle', 'turtle'],
-    'application/x-turtle': ['application/x-turtle', 'turtle'],
-    'application/rdf+xml': ['application/rdf+xml', 'xml'],
-    'application/xml': ['application/xml', 'xml'],
-    'application/n-triples': ['application/n-triples', 'nt11'],
-    'application/trig': ['application/trig', 'trig']
+resultSetMimetypesDefault = 'application/sparql-results+xml'
+askMimetypesDefault = 'application/sparql-results+xml'
+rdfMimetypesDefault = 'text/turtle'
+
+resultSetMimetypes = ['application/sparql-results+xml', 'application/xml',
+                      'application/sparql-results+json', 'application/json', 'text/csv',
+                      'text/html', 'application/xhtml+xml']
+askMimetypes = ['application/sparql-results+xml', 'application/xml',
+                'application/sparql-results+json', 'application/json', 'text/html',
+                'application/xhtml+xml']
+rdfMimetypes = ['text/turtle', 'application/x-turtle', 'application/rdf+xml', 'application/xml',
+                'application/n-triples', 'application/trig']
+
+serializations = {
+    'text/turtle': 'turtle',
+    'application/x-turtle': 'turtle',
+    'text/csv': 'csv',
+    'text/html': 'html',
+    'application/xhtml+xml': 'html',
+    'application/sparql-results+xml': 'xml',
+    'application/xml': 'xml',
+    'application/rdf+xml': 'xml',
+    'application/sparql-results+json': 'json',
+    'application/json': 'json',
+    'application/n-triples': 'nt',
+    'application/trig': 'trig'
 }
 
 
@@ -67,10 +63,10 @@ def sparql(branch_or_ref):
 
     logger.debug("Request method: {}".format(request.method))
 
-    query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
+    query, type, default_graph, named_graph = parse_sparql_request(request)
 
     if query is None:
-        if mimetype == 'text/html':
+        if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
             return render_template('sparql.html', current_ref=branch_or_ref or default_branch)
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
@@ -85,11 +81,11 @@ def sparql(branch_or_ref):
         try:
             queryType, parsedQuery = parse_type(
                 query, quit.config.namespace, default_graph, named_graph)
-        except UnSupportedQuery as e:
+        except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
-        except NonAbsoluteBaseError as e:
+        except NonAbsoluteBaseError:
             return make_response('Non absolute Base URI given', 400)
-        except SparqlProtocolError as e:
+        except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
     try:
@@ -125,26 +121,23 @@ def sparql(branch_or_ref):
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
         try:
             res = graph.query(parsedQuery)
-        except FromNamedError as e:
+        except FromNamedError:
             return make_response('FROM NAMED not supported, yet', 400)
-        except UnSupportedQuery as e:
+        except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
     else:
         logger.debug("Unsupported Type: {}".format(queryType))
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
 
-    try:
-        if queryType == 'SelectQuery':
-            response = create_result_response(res, resultSetMimetypes[mimetype])
-        elif queryType == 'AskQuery':
-            response = create_result_response(res, askMimetypes[mimetype])
-        elif queryType in ['ConstructQuery', 'DescribeQuery']:
-            response = create_result_response(res, rdfMimetypes[mimetype])
-        if commitid:
-            response.headers["X-CurrentCommit"] = commitid
-        return response
-    except KeyError as e:
+    mimetype = _getBestMatchingMimeType(request, queryType)
+
+    if not mimetype:
         return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+    response = create_result_response(res, mimetype, serializations[mimetype])
+    if commitid:
+        response.headers["X-CurrentCommit"] = commitid
+    return response
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
@@ -160,7 +153,7 @@ def provenance():
     """
     quit = current_app.config['quit']
 
-    query, type, mimetype, default_graph, named_graph = parse_sparql_request(request)
+    query, type, default_graph, named_graph = parse_sparql_request(request)
     logger.info('Received provenance query: {}'.format(query))
 
     if query is not None and type == 'query':
@@ -182,47 +175,45 @@ def provenance():
 
         res = graph.query(query)
 
-        try:
-            if queryType in ['SelectQuery', 'AskQuery']:
-                return create_result_response(res, resultSetMimetypes[mimetype])
-            elif queryType in ['ConstructQuery', 'DescribeQuery']:
-                return create_result_response(res, rdfMimetypes[mimetype])
-        except KeyError:
+        mimetype = _getBestMatchingMimeType(request, queryType)
+
+        if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+        return create_result_response(res, mimetype, serializations[mimetype])
     else:
-        if mimetype == 'text/html':
+        if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
             return render_template('provenance.html')
 
 
-def create_result_response(res, mimetype):
+def _getBestMatchingMimeType(request, queryType):
+    if queryType == 'SelectQuery':
+        mimetype_default = resultSetMimetypesDefault
+        mimetype_list = resultSetMimetypes
+    elif queryType == 'AskQuery':
+        mimetype_default = askMimetypesDefault
+        mimetype_list = askMimetypes
+    elif queryType in ['ConstructQuery', 'DescribeQuery']:
+        mimetype_default = rdfMimetypesDefault
+        mimetype_list = rdfMimetypes
+
+    match_list = [mimetype_default] + mimetype_list
+    if 'Accept' in request.headers:
+        mimetype = request.accept_mimetypes.best_match(match_list, None)
+    else:
+        mimetype = mimetype_default
+
+    return mimetype
+
+
+def create_result_response(res, mimetype, serialization):
     """Create a response with the requested serialization."""
-    response = make_response(
-        res.serialize(format=mimetype[1]),
-        200
-    )
-    response.headers['Content-Type'] = mimetype[0]
+    response = make_response(res.serialize(format=serialization), 200)
+    response.headers['Content-Type'] = mimetype
     return response
 
 
-def negotiate(accept_header):
-    """Get the mime type and result format for a Accept Header."""
-    formats = {
-        'application/rdf+xml': 'xml',
-        'text/turtle': 'turtle',
-        'application/n-triples': 'nt',
-        'application/n-quads': 'nquads'
-    }
-    best = request.accept_mimetypes.best_match(
-        ['application/n-triples', 'application/rdf+xml', 'text/turtle', 'application/n-quads']
-    )
-    # Return json as default, if no mime type is matching
-    if best is None:
-        best = 'text/turtle'
-
-    return (best, formats[best])
-
-
-def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_header, graph):
+def edit_store(quit, branch_or_ref, ref, method, args, body, graph):
 
     def get_where(graph, args):
         s, p, o, c = _spoc(args)
@@ -263,13 +254,8 @@ def edit_store(quit, branch_or_ref, ref, method, args, body, mimetype, accept_he
 
     try:
         if method in ['GET', 'HEAD']:
-            # format, content_type = self.negotiate(self.RESULT_GRAPH, accept_header)
-
-            content_type, format = negotiate(accept_header)
-            if content_type.startswith('text/'):
-                content_type += "; charset=utf-8"
-            headers = {"Content-type": content_type}
-            response = (200, headers, get_where(graph, args).serialize(format=format))
+            headers = {"Content-type": 'application/n-quads'}
+            response = (200, headers, get_where(graph, args).serialize(format='nquads'))
 
         elif method == 'DELETE':
             remove_where(graph, args)
@@ -321,16 +307,11 @@ def statements(branch_or_ref):
     ref = 'refs/heads/{}'.format(ref)
 
     method = request.method
-    mimetype = request.mimetype
     args = request.args
     body = request.data.decode('utf-8')
 
-    if 'Accept' in request.headers:
-        mimetype = parse_accept_header(request.headers['Accept']).best
-    else:
-        mimetype = 'application/sparql-results+json'
-
     graph, commitid = quit.instance(branch_or_ref)
+
     result = edit_store(
         quit=quit,
         branch_or_ref=branch_or_ref,
@@ -338,8 +319,6 @@ def statements(branch_or_ref):
         method=method,
         args=args,
         body=body,
-        mimetype=mimetype,
-        accept_header=request.headers.get("Accept"),
         graph=graph
     )
     code, headers, body = result
