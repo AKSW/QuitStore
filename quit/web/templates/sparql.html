@@ -1,9 +1,19 @@
 {% extends "default.html" %}
 
-{% block headline %}<div class="lead">Query</div>{% endblock %}
+{% if mode == 'query' %}
+{% set config = {'defaultQuery': 'SELECT * WHERE {\\n GRAPH ?graph {\\n  ?sub ?pred ?obj .\\n }\\n}\\nLIMIT 10', 'title': 'Query'} %}
+{% else %}
+{% if mode == 'provenance' %}
+{% set config = {'defaultQuery': 'SELECT * WHERE {\\n  ?sub ?pred ?obj .\\n}\\nLIMIT 10', 'title': 'Provenance'} %}
+{% endif %}
+{% endif %}
+
+{% block headline %}<div class="lead">{{ config["title"] }}</div>{% endblock %}
 
 {% block quit_content %}
+{% if mode == 'query' %}
 {{ render_branches_dropdown(current_ref, available_branches, available_tags)|safe }}
+{% endif %}
 <div id="yasqe"></div>
 <div id="yasr"></div>
 {% endblock %}
@@ -13,21 +23,22 @@
 <script src="{{ url_for('static', filename='js/yasqe.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/yasr.min.js') }}"></script>
 <script>
-    var yasqe = YASQE(document.getElementById("yasqe"), {
-        createShareLink: null,
-        value: 'SELECT * WHERE {\n GRAPH ?graph {\n   ?sub ?pred ?obj .\n }\n} \nLIMIT 10',
-		sparql: {
-			showQueryButton: true,
-			endpoint: '{{ request.url }}'
-		}
-	});
-	var yasr = YASR(document.getElementById("yasr"), {
-		getUsedPrefixes: yasqe.getPrefixesFromQuery,
-		outputPlugins: ["error", "boolean", "rawResponse", "table"]
-	});
+  var yasqe = YASQE(document.getElementById("yasqe"), {
+    createShareLink: null,
+    value: '{{ config["defaultQuery"] | safe }}',
+    sparql: {
+      showQueryButton: true,
+      endpoint: '{{ request.url }}'
+    }
+  });
+  var yasr = YASR(document.getElementById("yasr"), {
+    getUsedPrefixes: yasqe.getPrefixesFromQuery,
+    useGoogleCharts: false,
+    outputPlugins: ["error", "boolean", "rawResponse", "table"]
+  });
 
-	//link both together
-	yasqe.options.sparql.callbacks.complete = yasr.setResponse;
+  //link both together
+  yasqe.options.sparql.callbacks.complete = yasr.setResponse;
 </script>
 {% endblock %}
 
