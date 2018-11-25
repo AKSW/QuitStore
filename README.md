@@ -1,76 +1,114 @@
-# Quit-Store
+# Quit Store
 
-Status of `master` branch:
+Build status of `master` branch:
 
 [![Build Status](https://travis-ci.org/AKSW/QuitStore.svg?branch=master)](https://travis-ci.org/AKSW/QuitStore)
 [![Coverage Status](https://coveralls.io/repos/github/AKSW/QuitStore/badge.svg?branch=master)](https://coveralls.io/github/AKSW/QuitStore)
 
-This project runs a SPARQL endpoint for Update and Select Queries and enables versioning with Git for each [Named Graph](https://en.wikipedia.org/wiki/Named_graph).
+The *Quit Store* (stands for <em>Qu</em>ads in G<em>it</em>) provides a workspace for distributed collaborative Linked Data knowledge engineering.
+You are able to read and write [RDF Datasets](https://www.w3.org/TR/rdf11-concepts/#section-dataset) (aka. multiple [Named Graphs](https://en.wikipedia.org/wiki/Named_graph)) through a standard SPARQL 1.1 [Query](https://www.w3.org/TR/sparql11-query/) and [Update](https://www.w3.org/TR/sparql11-update/) interface.
+To collaborate you can create multiple branches of the Dataset and share your repository with your collaborators as you know it from Git.
 
-## Preparation of the Store repository
+If you want to read more about the Quit Store we can recommend our paper:
 
-1. Create a directory, which will contain your RDF data
-2. Run `git init` in this directory
-3. Put your RDF data formated as [N-Quads](https://www.w3.org/TR/2014/REC-n-quads-20140225/) into this directory (an empty file should work as well)
-4. Add the data to the repository (`git add …`) and create a commit (`git commit -m "init repository"`)
-5. Create a configuration file named `config.ttl` (an example is contained in this directory)
+[*Decentralized Collaborative Knowledge Management using Git*](https://natanael.arndt.xyz/bib/arndt-n-2018--jws)
+by Natanael Arndt, Patrick Naumann, Norman Radtke, Michael Martin, and Edgard Marx in Journal of Web Semantics, 2018
+[[@sciencedirect](https://www.sciencedirect.com/science/article/pii/S1570826818300416)] [[@arXiv](https://arxiv.org/abs/1805.03721)]
 
-## Configuaration of config.ttl
+## Getting Started
 
-Adjust the `config.ttl`.
-Make sure you put the correct path to your git repository (`"../store"`) and the URI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nq"`).
+To get the Quit Store you have three options:
 
+- Download a binary from https://github.com/AKSW/QuitStore/releases (Currently works for amd64 Linux)
+- Clone it with Git from our repository: https://github.com/AKSW/QuitStore
+- Use Docker and see the section [Docker](#docker) in the README
+
+### Installation from Source
+
+Install [libgit2](https://libgit2.github.com/) including the headers (e.g. `libgit2-27` and `libgit2-dev` on ubuntu) which is needed for the pygit2 bindings.
+Find out which version of libgit2 you've got on your system and adjust the respective line in the `requirements.txt` of the Quit Store. The minor levels of the versions have to be equal (libgit2 `0.27.4` -> `pygit2==0.27.2`).
+
+Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`).
+
+Get the Quit Store source code:
 ```
-conf:store a <YourQuitStore> ;
-    <pathOfGitRepo> "../store" ; # Set the path to the repository that contains the files .
-    <origin> "git:github.com/your/repository.git" . # Optional a git repo that will be cloned into dir given in line above on startup.
-
-
-conf:example a <Graph> ; # Define a Graph resource for a named graph
-    <graphUri> <http://example.org/> ; # Set the URI of named graph
-    <isVersioned> 1 ; # Defaults to True, future work
-    <graphFile> "example.nq" . # Set the filename
+$ git clone https://github.com/AKSW/QuitStore.git
+$ cd QuitStore
 ```
-
-The `config.ttl` could as well be put under version control for collaboration, but this is not necessary.
-
-## Run from command line
-
-Install [libgit2](https://libgit2.github.com/) needed for pygit2 bindings.
-Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html):
+If you are using virtualenvwrapper:
 ```
-pip install virtualenv
-cd /path/to/this/repo
-mkvirtualenv -p /usr/bin/python3.5 quit
+$ mkvirtualenv -p /usr/bin/python3.5 -r requirements.txt quit
+$ workon quit # this has to be executed befor you use quit store
+…
+$ deactivate # this can be used after you are done with quit and want to get back your “normal” environment
 ```
-
-Install the required dependencies and run the store:
+If you are not using virtualenvwrapper:
 ```
-pip install -r requirements.txt
-quit/run.py
+$ pip install -r requirements.txt
 ```
 
-### Command line options
-`-cm`, `--configmode`
+### Git configuration
 
-Quit-Store can be started in three different modes.
-These modes differ in how the store choses the named graphs and the corresponding files that will be part of the store.
+Configure your name and email for Git.
+This information will be stored in each commit you are creating with Git and the Quit Store on your system.
+It is relevant so people know which contribution is coming from whom. Execute the following command if you haven't done that before.
 
-1. `localconfig` - Use the graphs specified in a local config file (e.g. `config.ttl`).
-2. `repoconfig` - Search for a `config.ttl` file in the specified repository.
-3. `graphfiles` - Graph URIs are read from `*.graph` files for each RDF file (as also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)), furthermore found N-Quads files are analyzed to get the URI of named graphs from the used context.
+    $ git config --global user.name="Your Name"
+    $ git config --global user.email=you@e-mail-provider.org
+
+### Start with Existing Data (Optional)
+
+If you already have data which you want to use in the quit store follow these steps:
+
+1. Create a repository which will contain your RDF data.
+
+```
+$ git init /path/to/repo
+```
+
+2. Put your RDF data formatted as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory.
+3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respective graph. (These `.graph` files are also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)).
+4. Add the data to the repository and create a commit.
+
+```
+$ git add …
+$ git commit -m "init repository"
+```
+
+### Start the Quit Store
+
+If you are using the binary:
+```
+$ chmod +x quit #
+$ ./quit -t /path/to/repo
+```
+
+If you have it installed from the sources:
+```
+$ quit/run.py -t /path/to/repo
+```
+
+Open your browser and go to [`http://localhost:5000/`](http://localhost:5000/).
+
+Have a lot of fun!
+
+For more command line options check out the section [Command Line Options](#command-line-options) in the README.
+
+
+
+## Command Line Options
 
 `-b`, `--basepath`
 
-Specifiy a basepath/application root. This will work with WSGI and docker only.
+Specify a base path/application root. This will work with WSGI and docker only.
 
 `-t`, `--targetdir`
 
-Specifiy a target directory where the repository can be found or will be cloned (if remote is given) to.
+Specify a target directory where the repository can be found or will be cloned (if remote is given) to.
 
 `-r`, `-repourl`
 
-Specifiy a link/URI to a remote repository.
+Specify a link/URL to a remote repository.
 
 `-c`, `--configfile`
 
@@ -93,13 +131,33 @@ This option enables additional features of the store:
 
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
 
-Set the loglevel for the standard output to verbose (INFO) respective extra verbose (DEBUG).
+Set the log level for the standard output to verbose (INFO) respective extra verbose (DEBUG).
 
 `-l`, `--logfile`
 
 Write the log output to the given path.
 The path is interpreted relative to the current working directory.
-The loglevel for the logfile is always extra verbose (DEBUG).
+The log level for the logfile is always extra verbose (DEBUG).
+
+## Configuration File
+
+If you want to work with configuration files you can create a `config.ttl` file.
+This configuration file consists of two parts, the store configuration and the graph configuration.
+The store configuration manages everything related to initializing the software, the graph configuration maps graph files to their graph IRIs.
+The graph configuration in the `config.ttl` is an alternative to using `<graph>.nt.graph` files next to the graphs.
+Make sure you put the correct path to your git repository (`"../store"`) and the IRI of your graph (`<http://example.org/>`) and name of the file holding this graph (`"example.nt"`).
+
+```
+conf:store a <YourQuitStore> ;
+    <pathOfGitRepo> "../store" ; # Set the path to the repository that contains the files .
+    <origin> "git:github.com/your/repository.git" . # Optional a git repo that will be cloned into dir given in line above on startup.
+
+
+conf:example a <Graph> ; # Define a Graph resource for a named graph
+    <graphUri> <http://example.org/> ; # Set the IRI of named graph
+    <isVersioned> 1 ; # Defaults to True, future work
+    <graphFile> "example.nt" . # Set the filename
+```
 
 ## API
 
@@ -110,7 +168,7 @@ The SPARQL interface support update and select queries and is meant to adhere to
 You can find the interface to query the current `HEAD` of your repository under `http://your-quit-host/sparql`.
 To access any branch or commit on the repository you can query the endpoints under `http://your-quit-host/sparql/<branchname>` resp. `http://your-quit-host/sparql/<commitid>`.
 Since the software is still under development there might be some missing features or strange behavior.
-If you are sure that the store does not follow the W3C recommandation please [file an issue](https://github.com/AKSW/QuitStore/issues/new).
+If you are sure that the store does not follow the W3C recommendation please [file an issue](https://github.com/AKSW/QuitStore/issues/new).
 
 #### Examples
 
@@ -131,7 +189,7 @@ curl -d "insert data { graph <http://example.org/> { <urn:a> <urn:b> <urn:c> } }
 ```
 
 ### Provenance Interface
-The provenance interface is available under the following two URIs:
+The provenance interface is available under the following two URLs:
 
 - `http://your-quit-host/provenance` which is a SPARQL query interface (see above) to query the provenance graph
 - `http://your-quit-host/blame` to get a `git blame` like output per statement in the store
@@ -145,12 +203,6 @@ The provenance interface is available under the following two URIs:
 http://your.host/git/log
 ```
 
-## Tips and Tricks
-
-If you want to convert an N-Triples file to N-Quads where all data is in the same graph, the following line might help.
-
-    sed "s/.$/<http:\/\/example.org\/> ./g" data.nt > data.nq
-
 ## Docker
 
 We also provide a [Docker image for the Quit Store](https://hub.docker.com/r/aksw/quitstore/) on the public docker hub.
@@ -161,13 +213,11 @@ The default configuration is located in `/etc/quit/config.ttl`, which can also b
 Further options which can be set are:
 
 * QUIT_TARGETDIR - the target repository directory on which quit should run
-* QUIT_CONFIGFILE - the path to the config.ttl (\* /etc/quit/config.ttl)
+* QUIT_CONFIGFILE - the path to the config.ttl (default: `/etc/quit/config.ttl`)
 * QUIT_LOGFILE - the path where quit should create its logfile
-* QUIT_BASEPATH - the HTTP basepath where quit will be served
-* QUIT_OAUTH_CLIENT_ID - the GitHub OAuth client id (for oauth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
+* QUIT_BASEPATH - the HTTP base path where quit will be served
+* QUIT_OAUTH_CLIENT_ID - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
 * QUIT_OAUTH_SECRET - the GitHub OAuth secret
-
-\* defaults to
 
 To run the image execute the following command:
 
@@ -183,7 +233,7 @@ docker run --name containername -p 8080:80 -v /existing/store.repo:/data aksw/qu
 
 ## TODO:
 
-Reinit store with data from commit with id
+Re initialize the store with data from commit with id
 
 ```
 http://your.host/git/checkout?commitid=12345

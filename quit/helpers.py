@@ -7,11 +7,11 @@ from rdflib.term import URIRef
 from rdflib.plugins.sparql.parserutils import CompValue, plist
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from quit.tools.algebra import translateQuery, translateUpdate
-from rdflib.plugins.serializers.nquads import _nq_row as _nq
+from rdflib.plugins.serializers.nt import _nt_row as _nt
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
 from uritools import urisplit
-from werkzeug.http import parse_accept_header, parse_options_header
+from werkzeug.http import parse_options_header
 
 logger = logging.getLogger('quit.helpers')
 
@@ -112,13 +112,13 @@ def applyChangeset(f, changeset, identifier):
     for (op, triples) in changeset:
         if op == 'additions':
             for triple in triples:
-                # the internal _nq serializer appends '\n'
-                line = _nq(triple, identifier).rstrip()
+                # the internal _nt serializer appends '\n'
+                line = _nt(triple).rstrip()
                 f.add(line)
         elif op == 'removals':
             for triple in triples:
-                # the internal _nq serializer appends '\n'
-                line = _nq(triple, identifier).rstrip()
+                # the internal _nt serializer appends '\n'
+                line = _nt(triple).rstrip()
                 f.remove(line)
 
 
@@ -286,6 +286,7 @@ def parse_sparql_request(request):
     type = None
     default_graph = []
     named_graph = []
+    accept_header = None
 
     if request.method == "GET":
         default_graph = request.args.getlist('default-graph-uri')
@@ -317,13 +318,4 @@ def parse_sparql_request(request):
                 query = request.data.decode("utf-8")
                 type = 'update'
 
-    if 'Accept' in request.headers:
-        logger.info('Received query via {}: {} with accept header: {}'.format(
-            request.method, query, request.headers['Accept']))
-        mimetype = parse_accept_header(request.headers['Accept']).best
-    else:
-        logger.info('Received query via {}: {} with no accept header.'.format(request.method,
-                                                                              query))
-        mimetype = '*/*'
-
-    return query, type, mimetype, default_graph, named_graph
+    return query, type, default_graph, named_graph

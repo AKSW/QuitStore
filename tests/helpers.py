@@ -74,20 +74,20 @@ class TemporaryRepositoryFactory(object):
         """Give a TemporaryRepository() initialized with a graph with the given content (and one commit)."""
         tmpRepo = TemporaryRepository()
 
-        # Add a graph.nq and a graph.nq.graph file
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq"), "w") as graphFile:
+        # Add a graph.nt and a graph.nt.graph file
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt"), "w") as graphFile:
             if graphContent:
                 graphFile.write(graphContent)
 
         # Set Graph URI to http://example.org/
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq.graph"), "w") as graphFile:
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt.graph"), "w") as graphFile:
             graphFile.write(graphUri)
 
         # Add and Commit the empty graph
         index = tmpRepo.repo.index
         index.read()
-        index.add("graph.nq")
-        index.add("graph.nq.graph")
+        index.add("graph.nt")
+        index.add("graph.nt.graph")
         index.write()
 
         # Create commit
@@ -97,17 +97,16 @@ class TemporaryRepositoryFactory(object):
 
         return tmpRepo
 
-
     def withBothConfigurations(self):
         """Give a TemporaryRepository() initialized with config.ttl and graph + graphfile."""
         tmpRepo = TemporaryRepository()
 
-        # Add a graph.nq and a graph.nq.graph file
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq"), "w") as graphFile:
+        # Add a graph.nt and a graph.nt.graph file
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt"), "w") as graphFile:
             graphFile.write('')
 
         # Set Graph URI to http://example.org/
-        with open(path.join(tmpRepo.repo.workdir, "graph.nq.graph"), "w") as graphFile:
+        with open(path.join(tmpRepo.repo.workdir, "graph.nt.graph"), "w") as graphFile:
             graphFile.write('http://example.org/')
 
         # Add config.ttl
@@ -118,8 +117,8 @@ class TemporaryRepositoryFactory(object):
         index = tmpRepo.repo.index
         index.read()
         index.add("config.ttl")
-        index.add("graph.nq")
-        index.add("graph.nq.graph")
+        index.add("graph.nt")
+        index.add("graph.nt.graph")
         index.write()
 
         # Create commit
@@ -157,7 +156,7 @@ class TemporaryRepositoryFactory(object):
         return tmpRepo
 
     def withGraphs(self, graphUriContentDict, mode='graphfiles'):
-        """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nq)."""
+        """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nt)."""
         uristring = ''
         configFileContent = """@base <http://quit.aksw.org/vocab/> .
                                 @prefix conf: <http://my.quit.conf/> .
@@ -177,7 +176,7 @@ class TemporaryRepositoryFactory(object):
 
         i = 0
         for graphUri, graphContent in sorted(graphUriContentDict.items()):
-            filename = 'graph_{}.nq'.format(i)
+            filename = 'graph_{}.nt'.format(i)
             with open(path.join(tmpRepo.repo.workdir, filename), "w") as graphFile:
                 if graphContent:
                     graphFile.write(graphContent)

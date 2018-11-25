@@ -148,10 +148,6 @@ def parseArgs(args):
         parsed object representing the config arguments.
     """
     basepathhelp = "Base path (aka. application root) (WSGI only)."
-    graphhelp = """This option tells QuitStore how to map graph files and named graph URIs:
-                "localconfig" - Use the given local file for graph settings.
-                "repoconfig" - Use the configuration of the git repository for graphs settings.
-                "graphfiles" - Use *.graph-files for each RDF file to get the named graph URI."""
     featurehelp = """This option enables additional features of the QuitStore:
                 "provenance" - Store provenance information for each revision.
                 "persistance" - Store all internal data as rdf graph."""
@@ -205,11 +201,6 @@ def parseArgs(args):
     parser.add_argument('-l', '--logfile', type=str, default=logfile_default, help=loghelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
     parser.add_argument('-t', '--targetdir', type=str, default=targetdir_default, help=targethelp)
-    parser.add_argument('-cm', '--configmode', type=str, choices=[
-        'graphfiles',
-        'localconfig',
-        'repoconfig'
-    ], help=graphhelp)
     parser.add_argument('--flask-debug', action='store_true')
     parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,

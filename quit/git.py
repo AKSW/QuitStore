@@ -12,11 +12,6 @@ from quit.merge import Merger
 
 import subprocess
 
-PROPERTY_REGEX = r"^("
-PROPERTY_REGEX += r"(?P<key>([\w0-9_]+))\s*:"
-PROPERTY_REGEX += r"\s*((?P<value>([\w0-9_]+))|(?P<quoted>(\".*\"|'[^']*')))"
-PROPERTY_REGEX += r")"
-
 logger = logging.getLogger('quit.git')
 
 # roles
@@ -166,12 +161,14 @@ class Repository(object):
     @property
     def branches(self):
         """Get a list of all branch names."""
-        return [x for x in self._repository.listall_references() if x.startswith('refs/heads/')]
+        return [x[len('refs/heads/'):] for x in self._repository.listall_references()
+                if x.startswith('refs/heads/')]
 
     @property
     def tags(self):
         """Get a list of all tag names."""
-        return [x for x in self._repository.listall_references() if x.startswith('refs/tags/')]
+        return [x[len('refs/tags/'):] for x in self._repository.listall_references()
+                if x.startswith('refs/tags/')]
 
     @property
     def references(self):
@@ -445,24 +442,57 @@ class Revision(object):
         self._parsed_message = None
 
     def _extract(self, message):
+        """Extract the value from the commit message untill the end of the quote is found."""
+        def eatRest(rest):
+            escaped = False
+            quoted = True
+            value = ""
+            for char in rest:
+                if not escaped:
+                    if char == "\\":
+                        escaped = True
+                        continue
+                    elif char == "\"":
+                        quoted = False
+                        break
+                escaped = False
+                value += char
+            if quoted:
+                value += "\n"
+            return value, quoted
+
         captures = {}
+        multiLine = False
+        key = None
+        value = ""
+        messageText = ""
+        for line in message.split("\n"):
+            if not multiLine:
+                keyRest = re.search("^(?P<key>[\\w\\d_]+):(?P<rest>.*)", line)
+                if not keyRest:
+                    messageText += line + "\n"
+                else:
+                    key = keyRest.group("key")
+                    rest = keyRest.group("rest").lstrip()
+                    value = ""
+                    if rest[0] == "\"":
+                        digest, quoted = eatRest(rest[1:])
+                        value += digest
+                        if quoted:
+                            multiLine = True
+                        else:
+                            captures[key] = value
+                    else:
+                        value = rest.strip()
+                        captures[key] = value
+            else:
+                digest, quoted = eatRest(line)
+                value += digest
+                if not quoted:
+                    multiLine = False
+                    captures[key] = value
 
-        matches = re.finditer(PROPERTY_REGEX, message,
-                              re.DOTALL | re.MULTILINE)
-
-        if matches:
-            for _, match in enumerate(matches):
-                if match.group('key') and match.group('value'):
-                    key, value = match.group('key'), match.group('value')
-
-                if match.group('key') and match.group('quoted'):
-                    key, value = match.group('key'), match.group('quoted')
-                    value = value[1: len(value) - 1]  # remove quotes
-
-                captures[key] = value
-            message = re.sub(PROPERTY_REGEX, "", message, 0,
-                             re.DOTALL | re.MULTILINE).strip(" \n")
-        return captures, message
+        return captures, messageText
 
     @property
     def properties(self):
