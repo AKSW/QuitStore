@@ -490,9 +490,6 @@ class Quit(object):
         if oid:
             self._commits.set(oid.hex, blobs_new)
             commit = self.repository.revision(oid.hex)
-            if not self.repository.is_bare:
-                self.repository._repository.checkout(
-                    target_ref, strategy=pygit2.GIT_CHECKOUT_FORCE)
             self.syncSingle(commit)
 
         return oid.hex
