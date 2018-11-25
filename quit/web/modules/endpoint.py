@@ -91,8 +91,6 @@ def sparql(branch_or_ref):
         except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
-    commitid = None  # TODO remove when restructuring mimetypes
-
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Load']:
         if branch_or_ref:
             commit_id = quit.repository.revision(branch_or_ref).id
@@ -168,20 +166,21 @@ def sparql(branch_or_ref):
             return make_response('FROM NAMED not supported, yet', 400)
         except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
+
+        mimetype = _getBestMatchingMimeType(request, queryType)
+
+        if not mimetype:
+            return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+        response = create_result_response(res, mimetype, serializations[mimetype])
+        if branch_or_ref:
+            response.headers["X-CurrentBranch"] = branch_or_ref
+        if commitid:
+            response.headers["X-CurrentCommit"] = commitid
+        return response
     else:
         logger.debug("Unsupported Type: {}".format(queryType))
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
-
-    mimetype = _getBestMatchingMimeType(request, queryType)
-
-    if not mimetype:
-        return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
-
-    response = create_result_response(res, mimetype, serializations[mimetype])
-    if commitid:
-        response.headers["X-CurrentBranch"] = branch_or_ref
-        response.headers["X-CurrentCommit"] = commitid
-    return response
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
