@@ -667,6 +667,17 @@ class Index(object):
         oid = tree.write()
         self.dirty = True
 
+        branch = re.sub("refs/heads/", "", ref)
+        if not self.repository.is_bare and (branch == self.repository.current_head or
+           self.repository.current_head is None):
+            try:
+                tree = self.repository._repository.get(oid)
+                self.repository._repository.checkout_tree(tree)
+            except pygit2.GitError as e:
+                logger.info("Local changes in working directory of currently checked out branch: "
+                            "{}, {}".format(branch, e))
+                pass
+
         return self.repository._repository.create_commit(
             ref, author, commiter, message, oid, parents
         )
