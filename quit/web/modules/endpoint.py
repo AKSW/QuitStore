@@ -8,7 +8,7 @@ from quit import helpers as helpers
 from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
-from quit.exceptions import FromNamedError, QuitMergeConflict
+from quit.exceptions import FromNamedError, QuitMergeConflict, RevisionNotFound
 import datetime
 import uuid
 import base64
@@ -107,6 +107,12 @@ def sparql(branch_or_ref):
             elif resolution_method in ("merge", "branch"):
                 logger.debug(("writing update to a branch of {} because it is at {} but {} was "
                              "expected").format(branch_or_ref, commit_id, parent_commit_id))
+                try:
+                    quit.repository.lookup(parent_commit_id)
+                except RevisionNotFound:
+                    return make_response("The provided parent commit (parent_commit_id={}) "
+                                         "could not be found.".format(parent_commit_id), 400)
+
                 time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
                 shortUUID = (base64.urlsafe_b64encode(uuid.uuid1().bytes).decode("utf-8")
                              ).rstrip('=\n').replace('/', '_')
@@ -122,6 +128,9 @@ def sparql(branch_or_ref):
                                  "expected").format(branch_or_ref, commit_id, parent_commit_id))
                     try:
                         quit.repository.merge(target=branch_or_ref, branch=target_ref)
+                        # delete temporary branch
+                        tmp_branch = quit.repository._repository.branches.get(target_branch)
+                        tmp_branch.delete()
                         response = make_response('success', 200)
                         target_ref = branch_or_ref
                     except QuitMergeConflict as e:

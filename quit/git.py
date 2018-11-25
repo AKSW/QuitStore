@@ -117,7 +117,13 @@ class Repository(object):
                 except KeyError:
                     pass
         except ValueError:
-            return self._repository.get(name).id
+            pass
+        try:
+            revison = self._repository.get(name)
+            if revison:
+                return revison.id
+        except Exception as e:
+            logger.exception(e)
         raise RevisionNotFound(name)
 
     def revision(self, id='HEAD'):
