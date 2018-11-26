@@ -29,6 +29,7 @@ COPY requirements.txt /usr/src/app/
 
 USER root
 RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-use-wheel --no-cache-dir uwsgi \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
 COPY docker/config.ttl /etc/quit/
@@ -48,4 +49,4 @@ EXPOSE 8080
 # Set default git user
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
-CMD uwsgi --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
+CMD uwsgi --http 0.0.0.0:8080 --http-websockets --master -w quit.run -b 40960 --pyargv "-vv"

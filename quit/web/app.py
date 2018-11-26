@@ -101,7 +101,6 @@ def feature_required(feature):
 
 def create_app(config):
     """Create a Flask app."""
-
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
@@ -146,6 +145,7 @@ def register_extensions(app):
 
 def register_blueprints(app, config):
     """Register blueprints in views."""
+    from flask_uwsgi_websocket import GeventWebSocket
 
     from quit.web.modules.debug import debug
     from quit.web.modules.endpoint import endpoint
@@ -154,6 +154,14 @@ def register_blueprints(app, config):
 
     for bp in [debug, endpoint, git, application]:
         app.register_blueprint(bp)
+
+    websocket = GeventWebSocket(app)
+
+    @websocket.route('/echo')
+    def echo(ws):
+        while True:
+            msg = ws.receive()
+            ws.send(msg)
 
     @app.route("/")
     def index():

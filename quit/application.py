@@ -207,7 +207,7 @@ def parseArgs(args):
                         default=Feature.Unknown,
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
-    parser.add_argument('--host', default='::', type=str)
+    parser.add_argument('--host', default='', type=str)
     parser.add_argument('--oauth-clientid', default=oauthclientid_default, type=str)
     parser.add_argument('--oauth-clientsecret', default=oauthclientsecret_default, type=str)
 

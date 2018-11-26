@@ -38,6 +38,7 @@ $ cd QuitStore
 If you are using virtualenvwrapper:
 ```
 $ mkvirtualenv -p /usr/bin/python3.5 -r requirements.txt quit
+$ pip install --no-use-wheel --no-cache-dir uwsgi
 $ workon quit # this has to be executed befor you use quit store
 …
 $ deactivate # this can be used after you are done with quit and want to get back your “normal” environment
@@ -45,8 +46,10 @@ $ deactivate # this can be used after you are done with quit and want to get bac
 If you are not using virtualenvwrapper:
 ```
 $ pip install -r requirements.txt
+$ pip install --no-use-wheel --no-cache-dir uwsgi
 ```
 
+(Note: `pip install --no-use-wheel --no-cache-dir uwsgi` is required because we need ssl support for websockets https://stackoverflow.com/questions/24183053/)
 ### Git configuration
 
 Configure your name and email for Git.
