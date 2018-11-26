@@ -126,7 +126,7 @@ Enable garbage collection. With this option activated, git will check for garbag
 
 This option enables additional features of the store:
 
-- `provenance` - Store provenance information for each revision.
+- `provenance` - Enable browsing interfaces for provenance information.
 - `persistance` - Store all internal data as RDF graph.
 
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
@@ -189,7 +189,8 @@ curl -d "insert data { graph <http://example.org/> { <urn:a> <urn:b> <urn:c> } }
 ```
 
 ### Provenance Interface
-To use the provenance feature you have to enable it with the argument `--feature=provenance`.
+To use the provenance browsing feature you have to enable it with the argument `--feature=provenance`.
+The provenance browsing feature extracts provenance meta data for the revisions and makes it available through a SPARQL endpoint and the blame interface.
 The provenance interface is available under the following two URLs:
 
 - `http://your-quit-host/provenance` which is a SPARQL query interface (see above) to query the provenance graph
