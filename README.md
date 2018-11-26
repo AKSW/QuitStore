@@ -212,12 +212,12 @@ The default configuration is located in `/etc/quit/config.ttl`, which can also b
 
 Further options which can be set are:
 
-* QUIT_TARGETDIR - the target repository directory on which quit should run
-* QUIT_CONFIGFILE - the path to the config.ttl (default: `/etc/quit/config.ttl`)
-* QUIT_LOGFILE - the path where quit should create its logfile
-* QUIT_BASEPATH - the HTTP base path where quit will be served
-* QUIT_OAUTH_CLIENT_ID - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
-* QUIT_OAUTH_SECRET - the GitHub OAuth secret
+* `QUIT_TARGETDIR` - the target repository directory on which quit should run
+* `QUIT_CONFIGFILE` - the path to the config.ttl (default: `/etc/quit/config.ttl`)
+* `QUIT_LOGFILE` - the path where quit should create its logfile
+* `QUIT_BASEPATH` - the HTTP base path where quit will be served
+* `QUIT_OAUTH_CLIENT_ID` - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
+* `QUIT_OAUTH_SECRET` - the GitHub OAuth secret
 
 To run the image execute the following command:
 
@@ -225,10 +225,10 @@ To run the image execute the following command:
 docker run --name containername -v /existing/store/repo:/data aksw/quitstore
 ```
 
-The following example will map the quit store port to the host port 8080.
+The following example will map the quit store port to the host port 80.
 
 ```
-docker run --name containername -p 8080:80 -v /existing/store.repo:/data aksw/quitstore
+docker run --name containername -p 80:8080 -v /existing/store.repo:/data aksw/quitstore
 ```
 
 ## TODO:
