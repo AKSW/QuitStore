@@ -126,7 +126,7 @@ Enable garbage collection. With this option activated, git will check for garbag
 
 This option enables additional features of the store:
 
-- `provenance` - Store provenance information for each revision.
+- `provenance` - Enable browsing interfaces for provenance information.
 - `persistance` - Store all internal data as RDF graph.
 
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
@@ -189,6 +189,8 @@ curl -d "insert data { graph <http://example.org/> { <urn:a> <urn:b> <urn:c> } }
 ```
 
 ### Provenance Interface
+To use the provenance browsing feature you have to enable it with the argument `--feature=provenance`.
+The provenance browsing feature extracts provenance meta data for the revisions and makes it available through a SPARQL endpoint and the blame interface.
 The provenance interface is available under the following two URLs:
 
 - `http://your-quit-host/provenance` which is a SPARQL query interface (see above) to query the provenance graph
@@ -196,12 +198,12 @@ The provenance interface is available under the following two URLs:
 
 ### Git Management Interface
 
-- `/commits`: Get commits, messages, committer and date of commits
-- `/pull`, `/fetch`, `/push`, `/merge`, `/revert` which are parallel to the respective Git commands
+The git management interface allows access to some operations of quit in conjunction with the underlying git repository.
+You can access them with your browser at the following paths.
 
-```
-http://your.host/git/log
-```
+- `/commits`: See commits, messages, committer, and date of commits.
+- `/branch`, `/merge`: allows to manage branches and merge branches with different strategies.
+- `/pull`, `/fetch`, `/push` work similar to the respective git commands. (These operations will only works if you have configured remotes on the repository.)
 
 ## Docker
 
