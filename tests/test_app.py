@@ -1930,6 +1930,53 @@ class QuitAppTestCase(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'http://ex.org/b'},
                 "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
 
+    def testInsertDataIntoRepositoryDontOverwriteLocalFile(self):
+        """Test inserting data wile locally changing the graph file.
+
+        1. Prepare a repository
+        2. Start Quit
+        3. execute INSERT DATA query
+        4. change file in filesystem
+        """
+        # Prepate a git Repository
+        graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .\n'
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            with open(path.join(repo.workdir, "graph.nt"), "w") as graphFile:
+                graphContent += '<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .\n'
+                graphFile.write(graphContent)
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
+            app.post('/sparql', data=dict(update=update))
+
+            # execute SELECT query
+            select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
+            select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
+
+            obj = json.loads(select_resp.data.decode("utf-8"))
+
+            self.assertEqual(len(obj["results"]["bindings"]), 2)
+
+            self.assertDictEqual(obj["results"]["bindings"][0], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/a'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/b'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/c'}})
+
+            self.assertDictEqual(obj["results"]["bindings"][1], {
+                "s": {'type': 'uri', 'value': 'http://ex.org/x'},
+                "p": {'type': 'uri', 'value': 'http://ex.org/y'},
+                "o": {'type': 'uri', 'value': 'http://ex.org/z'}})
+
+            with open(path.join(repo.workdir, "graph.nt"), "r") as graphFile:
+                self.assertEqual(graphFile.read(), graphContent)
+
     def testInsertDeleteFromEmptyGraph(self):
         """Test inserting and deleting data and selecting it, starting with an empty graph.
 

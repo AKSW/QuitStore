@@ -22,6 +22,7 @@ def createCommit(repository, message=None):
     index = repository.index
     index.read()
     _addAll(index, repository.workdir)
+    index.write()
 
     # Create commit
     tree = index.write_tree()
