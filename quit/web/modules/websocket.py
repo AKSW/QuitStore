@@ -16,11 +16,13 @@ logger = logging.getLogger('quit.web.modules.websocket')
 
 websocket = Blueprint('websocket', __name__)
 
+
 @websocket.route('/echo')
 def echo(ws):
     while True:
         msg = ws.receive()
         ws.send(msg)
+
 
 @websocket.route("/commits_updates", defaults={'branch_or_ref': None}, methods=['GET'])
 @websocket.route("/commits_updates/<path:branch_or_ref>", methods=['GET'])
