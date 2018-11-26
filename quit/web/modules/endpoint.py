@@ -67,7 +67,8 @@ def sparql(branch_or_ref):
 
     if query is None:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
-            return render_template('sparql.html', current_ref=branch_or_ref or default_branch)
+            return render_template('sparql.html', current_ref=branch_or_ref or default_branch,
+                                   mode='query')
         else:
             return make_response('No Query was specified or the Content-Type is not set according' +
                                  'to the SPARQL 1.1 standard', 400)
@@ -183,7 +184,7 @@ def provenance():
         return create_result_response(res, mimetype, serializations[mimetype])
     else:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
-            return render_template('provenance.html')
+            return render_template('sparql.html', mode='provenance')
 
 
 def _getBestMatchingMimeType(request, queryType):
