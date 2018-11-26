@@ -151,17 +151,13 @@ def register_blueprints(app, config):
     from quit.web.modules.endpoint import endpoint
     from quit.web.modules.git import git
     from quit.web.modules.application import application
+    from quit.web.modules.websocket import websocket
 
     for bp in [debug, endpoint, git, application]:
         app.register_blueprint(bp)
 
-    websocket = GeventWebSocket(app)
-
-    @websocket.route('/echo')
-    def echo(ws):
-        while True:
-            msg = ws.receive()
-            ws.send(msg)
+    websocketApp = GeventWebSocket(app)
+    websocketApp.register_blueprint(websocket)
 
     @app.route("/")
     def index():
