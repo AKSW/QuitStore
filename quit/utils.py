@@ -50,40 +50,6 @@ def iri_to_name(iri):
     return quote_plus("_".join(nameParts))
 
 
-def sparqlresponse(result, format):
-    """Create a FLASK HTTP response for sparql-result+json."""
-    return Response(
-        result.serialize(format=format['format']).decode('utf-8'),
-        content_type=format['mime']
-    )
-
-
-def splitinformation(quads, GraphObject):
-    """Split quads ."""
-    data = []
-    graphsInRequest = set()
-    for quad in quads:
-        graph = quad[3].n3().strip('[]')
-        if graph.startswith('_:', 0, 2):
-            graphsInRequest.add('default')
-            data.append({
-                        'graph': 'default',
-                        'quad': quad[0].n3() + ' ' + quad[1].n3() + ' ' + quad[2].n3() + ' .\n'
-                        })
-        else:
-            graphsInRequest.add(graph.strip('<>'))
-            data.append(
-                {
-                    'graph': graph.strip('<>'),
-                    'quad': quad[0].n3() + ' ' +
-                    quad[1].n3() + ' ' +
-                    quad[2].n3() + ' ' +
-                    graph + ' .\n'
-                }
-            )
-    return {'graphs': graphsInRequest, 'data': data, 'GraphObject': GraphObject}
-
-
 def graphdiff(first, second):
     """
     Diff between graph instances, should be replaced/included in quit diff
