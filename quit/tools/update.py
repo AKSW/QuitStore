@@ -56,37 +56,34 @@ def evalLoad(ctx, u):
     res["source"] = u.iri
     res["delta"] = {}
 
+    graphiri = u.graphiri
     if not u.graphiri:
-        raise UnSupportedQuery("For load queries we need a iriref for a target graph")
+        graphiri = u.iri
 
     success = False
-    loadedGraph = Graph()
-    try:
-        loadedGraph.load(u.iri, publicID=u.graphiri)
-        success = True
-    except:
-        pass
-    if not success:
+    loadedGraph = None
+    exceptions = []
+    formats = [None, 'n3', 'nt', 'turtle']
+    for format in formats:
+        loadedGraph = Graph()
         try:
-            return loadedGraph.load(u.iri, format='n3')
+            if not format:
+                loadedGraph.load(u.iri)
+            else:
+                loadedGraph.load(u.iri, format=format)
             success = True
-        except:
-            pass
-    if not success:
-        try:
-            return loadedGraph.load(u.iri, format='nt')
-            success = True
-        except:
+            break
+        except Exception as e:
             pass
     if not success:
         raise Exception(
             "Could not load %s as either RDF/XML, N3, Turtle, or NTriples" % (
             u.iri))
 
-    graph = ctx.dataset.get_context(u.graphiri)
+    graph = ctx.dataset.get_context(graphiri)
     graph += loadedGraph
 
-    _append(res["delta"], u.graphiri, 'additions', loadedGraph)
+    _append(res["delta"], graphiri, 'additions', loadedGraph)
 
     return res
 
