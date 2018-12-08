@@ -56,9 +56,8 @@ def evalLoad(ctx, u):
     res["source"] = u.iri
     res["delta"] = {}
 
-    graphiri = u.graphiri
     if not u.graphiri:
-        graphiri = u.iri
+        raise UnSupportedQuery("For load queries we need a iriref for a target graph")
 
     success = False
     loadedGraph = None
@@ -80,10 +79,10 @@ def evalLoad(ctx, u):
             "Could not load %s as either RDF/XML, N3, Turtle, or NTriples" % (
             u.iri))
 
-    graph = ctx.dataset.get_context(graphiri)
+    graph = ctx.dataset.get_context(u.graphiri)
     graph += loadedGraph
 
-    _append(res["delta"], graphiri, 'additions', loadedGraph)
+    _append(res["delta"], u.graphiri, 'additions', loadedGraph)
 
     return res
 
