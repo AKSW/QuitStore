@@ -60,23 +60,19 @@ def evalLoad(ctx, u):
         raise UnSupportedQuery("For load queries we need a iriref for a target graph")
 
     success = False
-    loadedGraph = Graph()
-    try:
-        loadedGraph.load(u.iri, publicID=u.graphiri)
-        success = True
-    except:
-        pass
-    if not success:
+    loadedGraph = None
+    exceptions = []
+    formats = [None, 'n3', 'nt', 'turtle']
+    for format in formats:
+        loadedGraph = Graph()
         try:
-            return loadedGraph.load(u.iri, format='n3')
+            if not format:
+                loadedGraph.load(u.iri)
+            else:
+                loadedGraph.load(u.iri, format=format)
             success = True
-        except:
-            pass
-    if not success:
-        try:
-            return loadedGraph.load(u.iri, format='nt')
-            success = True
-        except:
+            break
+        except Exception as e:
             pass
     if not success:
         raise Exception(
