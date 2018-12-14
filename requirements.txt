@@ -1,6 +1,6 @@
 Flask-API>=0.6.4
 pyyaml
-rdflib>=4.2.2
+git+https://github.com/white-gecko/rdflib@merge/forQuit#egg=rdflib
 rfc3987
 flask-cors
 pygit2==0.27.2
