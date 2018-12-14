@@ -34,7 +34,6 @@ setup(
         'rdflib'
     ],
     dependency_links=[
-    
     ],
     classifiers=[
         'Environment :: Web Environment',
