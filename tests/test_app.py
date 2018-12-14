@@ -798,7 +798,7 @@ class QuitAppTestCase(unittest.TestCase):
                 self.assertEqual(
                     results['date']['datatype'], 'http://www.w3.org/2001/XMLSchema#dateTime'
                 )
-                self.assertEqual(results['date']['type'], 'typed-literal')
+                self.assertIn(results['date']['type'], ['typed-literal', 'literal'])
 
                 del results['date']
 
