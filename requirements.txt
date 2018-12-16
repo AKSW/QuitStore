@@ -7,3 +7,4 @@ uritools
 
 uwsgi
 pyinstaller>=3.4
+pylava
