@@ -26,12 +26,31 @@ setup(
     author_email='arndtn@gmail.com',
     description='Distributed Version Control for RDF Knowledge Bases',
     long_description=__doc__,
-    packages=['quit'],
+    packages=[
+        'quit',
+        'quit.plugins',
+        'quit.plugins.serializers',
+        'quit.plugins.serializers.results',
+        'quit.tools',
+        'quit.web',
+        'quit.web.extras',
+        'quit.web.modules',
+        'quit.web'
+    ],
+    package_data={
+        'quit.web': [
+            'static/css/*', 'static/fonts/*', 'static/js/*', 'static/octicons/*', 'static/octicons/svg/*', 'templates/*']
+    },
     zip_safe=False,
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'rdflib'
+        'rdflib>=4.2.2',
+        'Flask',
+        'Flask-Cors',
+        'pygit2',
+        'sortedcontainers',
+        'uritools'
     ],
     dependency_links=[
     ],
