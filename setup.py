@@ -39,7 +39,13 @@ setup(
     ],
     package_data={
         'quit.web': [
-            'static/css/*', 'static/fonts/*', 'static/js/*', 'static/octicons/*', 'static/octicons/svg/*', 'templates/*']
+            'static/css/*',
+            'static/fonts/*',
+            'static/js/*',
+            'static/octicons/*',
+            'static/octicons/svg/*',
+            'templates/*'
+        ]
     },
     zip_safe=False,
     include_package_data=True,
