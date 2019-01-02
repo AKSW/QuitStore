@@ -14,8 +14,14 @@ Git.
 from setuptools import setup
 import os
 
-with open('requirements.txt') as f:
-    required = f.read().splitlines()
+install_requires = [
+    'rdflib>=4.2.2',
+    'Flask',
+    'Flask-Cors',
+    'sortedcontainers',
+    'uritools',
+    'pygit2'
+]
 
 setup(
     name='QuitStore',
@@ -50,14 +56,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     platforms='any',
-    install_requires=[
-        'rdflib>=4.2.2',
-        'Flask',
-        'Flask-Cors',
-        'pygit2',
-        'sortedcontainers',
-        'uritools'
-    ],
+    install_requires=install_requires,
     dependency_links=[
     ],
     classifiers=[
