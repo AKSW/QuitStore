@@ -132,12 +132,12 @@ def sparql(branch_or_ref):
                         tmp_branch = quit.repository._repository.branches.get(target_branch)
                         tmp_branch.delete()
                         response = make_response('success', 200)
-                        target_ref = branch_or_ref
+                        target_branch = branch_or_ref
                     except QuitMergeConflict as e:
                         response = make_response('merge failed', 400)
                 else:
                     response = make_response('branched', 200)
-                response.headers["X-CurrentBranch"] = target_ref
+                response.headers["X-CurrentBranch"] = target_branch
                 response.headers["X-CurrentCommit"] = oid
                 return response
 
@@ -152,7 +152,7 @@ def sparql(branch_or_ref):
                                               query=query, default_graph=default_graph,
                                               named_graph=named_graph)
                 response = make_response('', 200)
-                response.headers["X-CurrentBranch"] = target_ref
+                response.headers["X-CurrentBranch"] = target_head
                 if oid is not None:
                     response.headers["X-CurrentCommit"] = oid
                 else:
