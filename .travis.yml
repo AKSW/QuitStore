@@ -66,4 +66,4 @@ deploy:
     repo: AKSW/QuitStore
 
 after_success:
-    coveralls
+    coveralls debug
