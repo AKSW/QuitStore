@@ -98,6 +98,7 @@ class EndpointTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'},
                 "o": {'type': 'uri', 'value': 'http://ex.org/Todo'}})
 
+
     def testInsertDataOverlappingWithReject(self):
         """Test inserting data from two clients (simulated) with overlapping update requests.
         """
@@ -144,7 +145,8 @@ class EndpointTests(unittest.TestCase):
             """
             response = app.post('/sparql', data=dict(update=updateB, parent_commit_id=commitB, resolution_method='reject'))
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(branchB, response.headers['X-CurrentBranch'])
+            self.assertNotEqual(commitB, response.headers['X-CurrentCommit'])
 
             # Client A: update operation
             updateA = """DELETE {
@@ -170,6 +172,8 @@ class EndpointTests(unittest.TestCase):
             select = "SELECT * WHERE {graph <http://example.org/> {?s a <http://ex.org/Todo> ; ?p ?o .}} ORDER BY ?s ?p ?o"
             select_resp = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
             self.assertEqual(select_resp.status_code, 200)
+            self.assertEqual(branchA, select_resp.headers['X-CurrentBranch'])
+            self.assertNotEqual(commitA, select_resp.headers['X-CurrentCommit'])
 
             obj = json.loads(select_resp.data.decode("utf-8"))
 
