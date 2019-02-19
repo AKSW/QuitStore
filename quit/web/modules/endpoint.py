@@ -128,6 +128,7 @@ def sparql(branch_or_ref):
                                  "expected").format(branch_or_ref, commit_id, parent_commit_id))
                     try:
                         quit.repository.merge(target=branch_or_ref, branch=target_ref)
+                        oid = quit.repository.revision(branch_or_ref).id
                         # delete temporary branch
                         tmp_branch = quit.repository._repository.branches.get(target_branch)
                         tmp_branch.delete()
