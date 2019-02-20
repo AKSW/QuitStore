@@ -65,4 +65,5 @@ deploy:
     repo: AKSW/QuitStore
 
 after_success:
-    coveralls
+    - coverage report -m
+    - coveralls
