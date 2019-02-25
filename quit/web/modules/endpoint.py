@@ -8,7 +8,10 @@ from quit import helpers as helpers
 from quit.helpers import parse_sparql_request, parse_query_type
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
-from quit.exceptions import FromNamedError
+from quit.exceptions import FromNamedError, QuitMergeConflict, RevisionNotFound
+import datetime
+import uuid
+import base64
 
 logger = logging.getLogger('quit.modules.endpoint')
 
@@ -89,56 +92,106 @@ def sparql(branch_or_ref):
         except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
-    try:
-        graph, commitid = quit.instance(branch_or_ref)
-    except Exception as e:
-        logger.exception(e)
-        return make_response('No branch or reference given.', 400)
-
     if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Load']:
-        res, exception = graph.update(parsedQuery)
+        if branch_or_ref:
+            commit_id = quit.repository.revision(branch_or_ref).id
+        else:
+            commit_id = None
 
-        try:
+        parent_commit_id = request.values.get('parent_commit_id', None) or None
+        if parent_commit_id and parent_commit_id != commit_id:
+            resolution_method = request.values.get('resolution_method', None) or None
+            if resolution_method == "reject":
+                logger.debug("rejecting update because {} is at {} but {} was expected".format(
+                             branch_or_ref, commit_id, parent_commit_id))
+                return make_response('reject', 409)  # alternative 412
+            elif resolution_method in ("merge", "branch"):
+                logger.debug(("writing update to a branch of {} because it is at {} but {} was "
+                             "expected").format(branch_or_ref, commit_id, parent_commit_id))
+                try:
+                    quit.repository.lookup(parent_commit_id)
+                except RevisionNotFound:
+                    return make_response("The provided parent commit (parent_commit_id={}) "
+                                         "could not be found.".format(parent_commit_id), 400)
+
+                time = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+                shortUUID = (base64.urlsafe_b64encode(uuid.uuid1().bytes).decode("utf-8")
+                             ).rstrip('=\n').replace('/', '_')
+                target_branch = "tmp/{}_{}".format(time, shortUUID)
+                target_ref = "refs/heads/" + target_branch
+                logger.debug("target ref is: {}".format(target_ref))
+                oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
+                                              query=query, default_graph=default_graph,
+                                              named_graph=named_graph)
+
+                if resolution_method == "merge":
+                    logger.debug(("going to merge update into {} because it is at {} but {} was "
+                                 "expected").format(branch_or_ref, commit_id, parent_commit_id))
+                    try:
+                        quit.repository.merge(target=branch_or_ref, branch=target_ref)
+                        oid = quit.repository.revision(branch_or_ref).id
+                        # delete temporary branch
+                        tmp_branch = quit.repository._repository.branches.get(target_branch)
+                        tmp_branch.delete()
+                        response = make_response('success', 200)
+                        target_branch = branch_or_ref
+                    except QuitMergeConflict as e:
+                        response = make_response('merge failed', 400)
+                else:
+                    response = make_response('branched', 200)
+                response.headers["X-CurrentBranch"] = target_branch
+                response.headers["X-CurrentCommit"] = oid
+                return response
+
+                # Add info about temporary branch
+        else:
+            graph, commitid = quit.instance(parent_commit_id)
+
             target_head = request.values.get('target_head', branch_or_ref) or default_branch
             target_ref = 'refs/heads/{}'.format(target_head)
-
-            oid = quit.commit(graph, res, 'New Commit from QuitStore', branch_or_ref,
-                              target_ref, query=query, default_graph=default_graph,
-                              named_graph=named_graph)
-            if exception is not None:
-                logger.exception(exception)
-                return 'Update query not executed (completely), (detected UnSupportedQuery)', 400
-            response = make_response('', 200)
-            response.headers["X-CurrentBranch"] = target_ref
-            if oid is not None:
-                response.headers["X-CurrentCommit"] = oid
-            else:
-                response.headers["X-CurrentCommit"] = commitid
-            return response
-        except Exception as e:
-            # query ok, but unsupported query type or other problem during commit
-            logger.exception(e)
-            return make_response('Error after executing the update query.', 400)
+            try:
+                oid = quit.applyQueryOnCommit(parsedQuery, branch_or_ref, target_ref,
+                                              query=query, default_graph=default_graph,
+                                              named_graph=named_graph)
+                response = make_response('', 200)
+                response.headers["X-CurrentBranch"] = target_head
+                if oid is not None:
+                    response.headers["X-CurrentCommit"] = oid
+                else:
+                    response.headers["X-CurrentCommit"] = commitid
+                return response
+            except Exception as e:
+                # query ok, but unsupported query type or other problem during commit
+                logger.exception(e)
+                return make_response('Error after executing the update query.', 400)
     elif queryType in ['SelectQuery', 'DescribeQuery', 'AskQuery', 'ConstructQuery']:
+        try:
+            graph, commitid = quit.instance(branch_or_ref)
+        except Exception as e:
+            logger.exception(e)
+            return make_response('No branch or reference given.', 400)
+
         try:
             res = graph.query(parsedQuery)
         except FromNamedError:
             return make_response('FROM NAMED not supported, yet', 400)
         except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
+
+        mimetype = _getBestMatchingMimeType(request, queryType)
+
+        if not mimetype:
+            return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
+
+        response = create_result_response(res, mimetype, serializations[mimetype])
+        if branch_or_ref:
+            response.headers["X-CurrentBranch"] = branch_or_ref
+        if commitid:
+            response.headers["X-CurrentCommit"] = commitid
+        return response
     else:
         logger.debug("Unsupported Type: {}".format(queryType))
         return make_response("Unsupported Query Type: {}".format(queryType), 400)
-
-    mimetype = _getBestMatchingMimeType(request, queryType)
-
-    if not mimetype:
-        return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
-
-    response = create_result_response(res, mimetype, serializations[mimetype])
-    if commitid:
-        response.headers["X-CurrentCommit"] = commitid
-    return response
 
 
 @endpoint.route("/provenance", methods=['POST', 'GET'])
