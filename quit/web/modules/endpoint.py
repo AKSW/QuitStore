@@ -18,7 +18,6 @@ logger = logging.getLogger('quit.modules.endpoint')
 __all__ = ('endpoint')
 
 endpoint = Blueprint('endpoint', __name__)
-
 resultSetMimetypesDefault = 'application/sparql-results+xml'
 askMimetypesDefault = 'application/sparql-results+xml'
 rdfMimetypesDefault = 'text/turtle'
@@ -30,9 +29,20 @@ askMimetypes = ['application/sparql-results+xml', 'application/xml',
                 'application/sparql-results+json', 'application/json', 'text/html',
                 'application/xhtml+xml']
 rdfMimetypes = ['text/turtle', 'application/x-turtle', 'application/rdf+xml', 'application/xml',
-                'application/n-triples', 'application/trig']
+                'application/n-triples', 'application/trig', 'application/json-ld',
+                'application/json']
 
-serializations = {
+result_serializations = {
+    'application/sparql-results+xml': 'xml',
+    'application/xml': 'xml',
+    'application/sparql-results+json': 'json',
+    'application/json': 'json',
+    'text/csv': 'csv',
+    'text/html': 'html',
+    'application/xhtml+xml': 'html',
+}
+
+rdf_serializations = {
     'text/turtle': 'turtle',
     'application/x-turtle': 'turtle',
     'text/csv': 'csv',
@@ -42,7 +52,8 @@ serializations = {
     'application/xml': 'xml',
     'application/rdf+xml': 'xml',
     'application/sparql-results+json': 'json',
-    'application/json': 'json',
+    'application/json': 'json-ld',
+    'application/json-ld': 'json-ld',
     'application/n-triples': 'nt',
     'application/trig': 'trig'
 }
@@ -183,7 +194,12 @@ def sparql(branch_or_ref):
         if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
-        response = create_result_response(res, mimetype, serializations[mimetype])
+        if queryType in ['SelectQuery', 'AskQuery']:
+            serializations_by_sparql_type = result_serializations
+        else:
+            serializations_by_sparql_type = rdf_serializations
+
+        response = create_result_response(res, mimetype, serializations_by_sparql_type[mimetype])
         if branch_or_ref:
             response.headers["X-CurrentBranch"] = branch_or_ref
         if commitid:
@@ -234,7 +250,12 @@ def provenance():
         if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
-        return create_result_response(res, mimetype, serializations[mimetype])
+        if queryType in ['SelectQuery', 'AskQuery']:
+            serializations_by_sparql_type = result_serializations
+        else:
+            serializations_by_sparql_type = rdf_serializations
+
+        return create_result_response(res, mimetype, serializations_by_sparql_type[mimetype])
     else:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
             return render_template('sparql.html', mode='provenance')

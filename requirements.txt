@@ -4,6 +4,7 @@ Flask-Cors
 pygit2==0.28.0
 sortedcontainers
 uritools
+rdflib-jsonld
 
 uwsgi
 pyinstaller>=3.4
