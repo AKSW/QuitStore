@@ -94,8 +94,53 @@ def initialize(args):
         'quit.tools.processor', 'SPARQLUpdateProcessor')
 
     register(
+        'application/x-turtle', Serializer,
+        'rdflib.plugins.serializers.turtle', 'TurtleSerializer')
+
+    register(
+        'application/xml', Serializer,
+        'rdflib.plugins.serializers.rdfxml', 'XMLSerializer')
+
+    register(
+        'application/json', Serializer,
+        'rdflib_jsonld.serializer', 'JsonLDSerializer')
+
+    register(
+        'application/trig', Serializer,
+        'rdflib.plugins.serializers.trig', 'TrigSerializer')
+
+    register(
+        'application/xml', ResultSerializer,
+        'rdflib.plugins.sparql.results.xmlresults', 'XMLResultSerializer')
+
+    register(
+        'application/json', ResultSerializer,
+        'rdflib.plugins.sparql.results.jsonresults', 'JSONResultSerializer')
+
+    register(
         'html', ResultSerializer,
         'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
+
+    register(
+        'text/html', ResultSerializer,
+        'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
+
+    register(
+        'application/xhtml+xml', ResultSerializer,
+        'quit.plugins.serializers.results.htmlresults', 'HTMLResultSerializer')
+
+    register(
+        'text/csv', ResultSerializer,
+        'rdflib.plugins.sparql.results.csvresults', 'CSVResultSerializer')
+
+    register(
+        'application/sparql-results+xml', ResultSerializer,
+        'rdflib.plugins.sparql.results.xmlresults', 'XMLResultSerializer')
+
+    register(
+        'application/sparql-results+json', ResultSerializer,
+        'rdflib.plugins.sparql.results.jsonresults', 'JSONResultSerializer')
+
 
     try:
         config = QuitStoreConfiguration(
