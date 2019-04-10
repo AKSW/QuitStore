@@ -194,12 +194,7 @@ def sparql(branch_or_ref):
         if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
-        if queryType in ['SelectQuery', 'AskQuery']:
-            serializations_by_sparql_type = result_serializations
-        else:
-            serializations_by_sparql_type = rdf_serializations
-
-        response = create_result_response(res, mimetype, serializations_by_sparql_type[mimetype])
+        response = create_result_response(res, mimetype, queryType)
         if branch_or_ref:
             response.headers["X-CurrentBranch"] = branch_or_ref
         if commitid:
@@ -250,12 +245,7 @@ def provenance():
         if not mimetype:
             return make_response("Mimetype: {} not acceptable".format(mimetype), 406)
 
-        if queryType in ['SelectQuery', 'AskQuery']:
-            serializations_by_sparql_type = result_serializations
-        else:
-            serializations_by_sparql_type = rdf_serializations
-
-        return create_result_response(res, mimetype, serializations_by_sparql_type[mimetype])
+        return create_result_response(res, mimetype, queryType)
     else:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
             return render_template('sparql.html', mode='provenance')
@@ -281,8 +271,13 @@ def _getBestMatchingMimeType(request, queryType):
     return mimetype
 
 
-def create_result_response(res, mimetype, serialization):
+def create_result_response(res, mimetype, queryType):
     """Create a response with the requested serialization."""
+    if queryType in ['SelectQuery', 'AskQuery']:
+        serialization = result_serializations[mimetype]
+    elif queryType in ['ConstructQuery', 'DescribeQuery']:
+        serialization = rdf_serializations[mimetype]
+
     response = make_response(res.serialize(format=serialization), 200)
     response.headers['Content-Type'] = mimetype
     return response
