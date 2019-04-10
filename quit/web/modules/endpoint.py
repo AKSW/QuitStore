@@ -29,7 +29,7 @@ askMimetypes = ['application/sparql-results+xml', 'application/xml',
                 'application/sparql-results+json', 'application/json', 'text/html',
                 'application/xhtml+xml']
 rdfMimetypes = ['text/turtle', 'application/x-turtle', 'application/rdf+xml', 'application/xml',
-                'application/n-triples', 'application/trig', 'application/json-ld',
+                'application/n-triples', 'application/trig', 'application/ld+json',
                 'application/json']
 
 result_serializations = {
@@ -45,15 +45,10 @@ result_serializations = {
 rdf_serializations = {
     'text/turtle': 'turtle',
     'application/x-turtle': 'turtle',
-    'text/csv': 'csv',
-    'text/html': 'html',
-    'application/xhtml+xml': 'html',
-    'application/sparql-results+xml': 'xml',
     'application/xml': 'xml',
     'application/rdf+xml': 'xml',
-    'application/sparql-results+json': 'json',
     'application/json': 'json-ld',
-    'application/json-ld': 'json-ld',
+    'application/ld+json': 'json-ld',
     'application/n-triples': 'nt',
     'application/trig': 'trig'
 }
