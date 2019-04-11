@@ -1,7 +1,7 @@
 git+https://github.com/white-gecko/rdflib@merge/forQuit#egg=rdflib
 Flask
 Flask-Cors
-pygit2==0.27.2
+pygit2==0.28.0
 sortedcontainers
 uritools
 
