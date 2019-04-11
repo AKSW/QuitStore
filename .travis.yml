@@ -21,12 +21,6 @@ addons:
       - libssl-dev
       - libssh2-1-dev
 
-env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
-
-# install libgit2
-before_install:
-    - "./.travis.sh"
-
 # command to install dependencies
 install:
     - pip install -U setuptools
