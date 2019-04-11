@@ -233,14 +233,6 @@ The following example will map the quit store port to the host port 80.
 docker run --name containername -p 80:8080 -v /existing/store.repo:/data aksw/quitstore
 ```
 
-## TODO:
-
-Re initialize the store with data from commit with id
-
-```
-http://your.host/git/checkout?commitid=12345
-```
-
 ## License
 
 Copyright (C) 2017 Norman Radtke <http://aksw.org/NormanRadtke> and Natanael Arndt <http://aksw.org/NatanaelArndt>
