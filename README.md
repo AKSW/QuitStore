@@ -233,12 +233,21 @@ The following example will map the quit store port to the host port 80.
 docker run --name containername -p 80:8080 -v /existing/store.repo:/data aksw/quitstore
 ```
 
-## TODO:
+## Migrate from old Versions
 
-Re initialize the store with data from commit with id
+### Update to 2018-11-20 from 2018-10-29 and older
+
+If you are migrating from an NQuads based repository, as used in older versions of the QuitStore (release 2018-10-29 and older), to an NTriples based repository (release 2018-11-20 and newer) you can use teh following commands to migrate the graphs.
+You should know that it is possible to have multiple graphs in one NQuads file, which is not possible for NTriples files.
+Thus, you should make sure to have only one graph per file.
+You may execute the steps for each NQuads file and replace `graphfile.nq` according to your filenames.
 
 ```
-http://your.host/git/checkout?commitid=12345
+sed "s/<[^<>]*> .$/./g" graphfile.nq | LC_ALL=C sort -u > graphfile.nt
+mv graphfile.nq.graph graphfile.nt.graph
+git rm graphfile.nq
+git add graphfile.nq.graph graphfile.nt graphfile.nt.graph
+git commit -m "Migrate from nq to nt"
 ```
 
 ## License
