@@ -53,8 +53,8 @@ Configure your name and email for Git.
 This information will be stored in each commit you are creating with Git and the Quit Store on your system.
 It is relevant so people know which contribution is coming from whom. Execute the following command if you haven't done that before.
 
-    $ git config --global user.name="Your Name"
-    $ git config --global user.email=you@e-mail-provider.org
+    $ git config --global user.name "Your Name"
+    $ git config --global user.email "you@e-mail-provider.org"
 
 ### Start with Existing Data (Optional)
 
