@@ -141,7 +141,6 @@ def initialize(args):
         'application/sparql-results+json', ResultSerializer,
         'rdflib.plugins.sparql.results.jsonresults', 'JSONResultSerializer')
 
-
     try:
         config = QuitStoreConfiguration(
             configfile=args.configfile,
