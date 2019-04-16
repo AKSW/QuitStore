@@ -4,7 +4,7 @@ Flask-Cors
 pygit2==0.28.0
 sortedcontainers
 uritools
-rdflib-jsonld
+git+https://github.com/RDFLib/rdflib-jsonld@master
 
 uwsgi
 pyinstaller>=3.4
