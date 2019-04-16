@@ -5,6 +5,7 @@ from context import quit
 import quit.application as quitApp
 from quit.web.app import create_app
 from tempfile import TemporaryDirectory
+from pygit2 import config as gitconfig
 import json
 
 class EndpointTests(unittest.TestCase):
@@ -27,6 +28,7 @@ class EndpointTests(unittest.TestCase):
             objects = quitApp.initialize(args)
             config = objects['config']
             app = create_app(config).test_client()
+
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -412,6 +414,55 @@ class EndpointTests(unittest.TestCase):
                 "p": {'type': 'uri', 'value': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'},
                 "o": {'type': 'uri', 'value': 'http://ex.org/Todo'}})
 
+    def testInsertDataWithNoGitConfigUser(self):
+        with TemporaryDirectory() as repo:
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+            gitGlobalConfig = gitconfig.Config.get_global_config()
+            username = gitGlobalConfig.__getitem__("user.name")
+            email = gitGlobalConfig.__getitem__("user.email")
+            try:
+                gitconfig.Config.get_global_config().__delitem__("user.name")
+                # execute INSERT DATA query
+                update = """INSERT DATA {
+                GRAPH <http://example.org/> {
+                    <http://ex.org/garbage> a <http://ex.org/Todo> ;
+                    <http://ex.org/task> "Take out the organic waste" .
+                    }}
+                    """
+                response = app.post('/sparql', data=dict(update=update))
+                message = response.get_data().decode("utf-8")
+                self.assertEqual(
+                    message,
+                    ("Unable to process query: git config value 'user.name' "
+                     "was not found.\nPlease use the following command in your"
+                     " data repo:\n\n  git config user.name <your name>"))
+                # Uncommenting the second line below and commenting the first
+                # causes the test to fail with an KeyError.
+                # "username" and username are both str s
+                # Even more, the same code line still correctly reset user.name
+                # and user.email
+                gitGlobalConfig.__setitem__("user.name", "username")
+                # gitGlob alConfig.__setitem__("user.name", username)
+                gitGlobalConfig = gitconfig.Config.get_global_config()
+                gitGlobalConfig.__delitem__("user.email")
+                response = app.post('/sparql', data=dict(update=update))
+                gitGlobalConfig.__setitem__("user.name", username)
+                gitGlobalConfig.__setitem__("user.email", email)
+                message = response.get_data().decode("utf-8")
+                self.assertEqual(
+                    message,
+                    ("Unable to process query: git config value 'user.email' "
+                     "was not found.\nPlease use the following command in your"
+                     " data repo:\n\n  git config user.email <your email>"))
+            except Exception as e:
+                gitGlobalConfig.__setitem__("user.name", username)
+                gitGlobalConfig.__setitem__("user.email", email)
+                raise e
 
 if __name__ == '__main__':
     unittest.main()

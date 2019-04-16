@@ -160,6 +160,23 @@ def sparql(branch_or_ref):
                 else:
                     response.headers["X-CurrentCommit"] = commitid
                 return response
+            except KeyError as e:
+                logger.exception(e)
+                print(e.args)
+                if "config value 'user.name' was not found" in e.args:
+                    message = ("Unable to process query: "
+                               "git config value 'user.name' was not found.\n"
+                               "Please use the following command in your data repo:"
+                               "\n\n  git config user.name <your name>")
+                    return make_response(message, 400)
+                if "config value 'user.email' was not found" in e.args:
+                    message = ("Unable to process query: "
+                               "git config value 'user.email' was not found.\n"
+                               "Please use the following command in your data repo:"
+                               "\n\n  git config user.email <your email>")
+                    return make_response(message, 400)
+                # KeyError has many sources -> it could be caused by other problems
+                return make_response('Error after executing the update query.', 400)
             except Exception as e:
                 # query ok, but unsupported query type or other problem during commit
                 logger.exception(e)

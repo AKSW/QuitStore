@@ -258,7 +258,21 @@ def merge(refspec):
             return response
         else:
             return "<pre>Unsupported Mimetype: {}</pre>".format(mimetype), 406
-
+    except KeyError as e:
+        message = "\n"
+        if "config value 'user.name' was not found" in e.args:
+            message += ("Unable to process query: "
+                        "git config value 'user.name' was not found.\n"
+                        "Please use the following command in your data repo:"
+                        "\n\n  git config user.name <your name>")
+        if "config value 'user.email' was not found" in e.args:
+            message += ("Unable to process query: "
+                        "git config value 'user.email' was not found.\n"
+                        "Please use the following command in your data repo:"
+                        "\n\n  git config user.email <your email>")
+        logger.error(e)
+        logger.error(traceback.format_exc())
+        return "<pre>" + traceback.format_exc() + message + "</pre>", 400
     except Exception as e:
         logger.error(e)
         logger.error(traceback.format_exc())
