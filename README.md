@@ -221,13 +221,19 @@ Further options which can be set are:
 To run the image execute the following command:
 
 ```
-docker run --name containername -v /existing/store/repo:/data aksw/quitstore
+docker run -it --name containername -v /existing/store/repo:/data aksw/quitstore
 ```
 
 The following example will map the quit store port to the host port 80.
 
 ```
-docker run --name containername -p 80:8080 -v /existing/store.repo:/data aksw/quitstore
+docker run -it --name containername -p 80:8080 -v /existing/store/repo:/data aksw/quitstore
+```
+
+The following example will start the quit store in the background in the detached mode.
+
+```
+docker run -d --name containername -p 80:8080 -v /existing/store/repo:/data aksw/quitstore
 ```
 
 ## Migrate from old Versions
