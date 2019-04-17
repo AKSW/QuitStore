@@ -1015,6 +1015,8 @@ class QuitAppTestCase(unittest.TestCase):
                         'application/xml': 'application/xml',
                         'application/n-triples': 'application/n-triples',
                         'application/trig': 'application/trig',
+                        'application/json': 'application/json',
+                        'application/ld+json': 'application/ld+json',
                         'foo/bar,text/turtle;q=0.5': 'text/turtle'}]}
 
             for ep_path in ['/sparql', '/provenance']:
