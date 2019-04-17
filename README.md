@@ -220,7 +220,11 @@ Further options which can be set are:
 
 You need a local directory where you want to store the git repository.
 In the example below `mkdir /store/repo`.
-Make sure the quit process in the docker container has write access to this directory by executing: `sudo chown 1000 /store/repo`
+Make sure the quit process in the docker container has write access to this directory by executing:
+```
+sudo chown 1000 /store/repo
+sudo chmod u+w /store/repo
+```
 To run the image execute the following command (maybe you have to replace `docker` with `sudo docker`):
 
 ```
@@ -232,6 +236,8 @@ The following example will start the quit store in the background in the detache
 ```
 docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitstore
 ```
+
+Now you should be able to access the quit web interface under `http://localhost:8080` and the SPARQL 1.1 interface under `http://localhost:8080/sparql`.
 
 ## Migrate from old Versions
 
