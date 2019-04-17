@@ -218,22 +218,19 @@ Further options which can be set are:
 * `QUIT_OAUTH_CLIENT_ID` - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
 * `QUIT_OAUTH_SECRET` - the GitHub OAuth secret
 
-To run the image execute the following command:
+You need a local directory where you want to store the git repository.
+In the example below `mkdir /store/repo`.
+Make sure the quit process in the docker container has write access to this directory by executing: `sudo chown 1000 /store/repo`
+To run the image execute the following command (maybe you have to replace `docker` with `sudo docker`):
 
 ```
-docker run -it --name containername -v /existing/store/repo:/data aksw/quitstore
-```
-
-The following example will map the quit store port to the host port 80.
-
-```
-docker run -it --name containername -p 80:8080 -v /existing/store/repo:/data aksw/quitstore
+docker run -it --name containername -p 8080:8080 -v /store/repo:/data aksw/quitstore
 ```
 
 The following example will start the quit store in the background in the detached mode.
 
 ```
-docker run -d --name containername -p 80:8080 -v /existing/store/repo:/data aksw/quitstore
+docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitstore
 ```
 
 ## Migrate from old Versions
