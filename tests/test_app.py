@@ -5,6 +5,7 @@ from os import path
 from urllib.parse import quote_plus
 from datetime import datetime
 from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
+from pygit2 import config as gitconfig
 import quit.application as quitApp
 from quit.web.app import create_app
 import unittest
@@ -3448,6 +3449,67 @@ class QuitAppTestCase(unittest.TestCase):
             # compare file content
             with open(path.join(repo.workdir, 'graph_1.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
+
+    def testMergeFailureByUnconfiguredAuthorName(self):
+        """Test merging two commits without a set git config user.name """
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+            gitGlobalConfig = gitconfig.Config.get_global_config()
+            username = gitGlobalConfig.__getitem__("user.name")
+            email = gitGlobalConfig.__getitem__("user.email")
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+            app.post("/branch", data={"oldbranch": "master", "newbranch": "target"})
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            app.post('/sparql/target', data={"query": update})
+
+            app = create_app(config).test_client()
+            # start new app to syncAll()
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/y> <http://ex.org/x> .}}"
+            app.post('/sparql/develop', data={"query": update})
+            try:
+                gitGlobalConfig.__delitem__("user.name")
+                # execute INSERT DATA query
+                # execute merge
+                app = create_app(config).test_client()
+                response = app.post("/merge", data={"target": "target", "branch": "develop", "method": "context"})
+                message = response.get_data().decode("utf-8")
+                self.assertEqual(
+                    message,
+                    ("Unable to process query: git config value 'user.name' "
+                     "was not found.\nPlease use the following command in your"
+                     " data repo:\n\n  git config user.name <your name>"))
+                # Uncommenting the second line below and commenting the first
+                # causes the test to fail with an KeyError.
+                # "username" and username are both str s
+                # Even more, the same code line still correctly reset user.name
+                # and user.email
+                gitGlobalConfig.__setitem__("user.name", "username")
+                # gitGlob alConfig.__setitem__("user.name", username)
+                gitGlobalConfig = gitconfig.Config.get_xdg_config()
+                gitGlobalConfig.__delitem__("user.email")
+                response = app.post("/merge", data={"target": "master", "branch": "develop", "method": "context"})
+                gitGlobalConfig.__setitem__("user.name", username)
+                gitGlobalConfig.__setitem__("user.email", email)
+                message = response.get_data().decode("utf-8")
+                self.assertEqual(
+                    message,
+                    ("Unable to process query: git config value 'user.email' "
+                     "was not found.\nPlease use the following command in your"
+                     " data repo:\n\n  git config user.email <your email>"))
+            except Exception as e:
+                gitGlobalConfig.__setitem__("user.name", username)
+                gitGlobalConfig.__setitem__("user.email", email)
+                raise e
 
 
 class FileHandlingTests(unittest.TestCase):
