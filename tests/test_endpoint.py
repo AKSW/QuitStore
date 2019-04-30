@@ -423,10 +423,10 @@ class EndpointTests(unittest.TestCase):
             config = objects['config']
             app = create_app(config).test_client()
             gitGlobalConfig = gitconfig.Config.get_global_config()
-            username = gitGlobalConfig.__getitem__("user.name")
-            email = gitGlobalConfig.__getitem__("user.email")
+            username = gitGlobalConfig["user.name"]
+            email = gitGlobalConfig["user.email"]
             try:
-                gitconfig.Config.get_global_config().__delitem__("user.name")
+                del gitGlobalConfig["user.name"]
                 # execute INSERT DATA query
                 update = """INSERT DATA {
                 GRAPH <http://example.org/> {
@@ -446,13 +446,11 @@ class EndpointTests(unittest.TestCase):
                 # "username" and username are both str s
                 # Even more, the same code line still correctly reset user.name
                 # and user.email
-                gitGlobalConfig.__setitem__("user.name", "username")
-                # gitGlob alConfig.__setitem__("user.name", username)
-                gitGlobalConfig = gitconfig.Config.get_global_config()
-                gitGlobalConfig.__delitem__("user.email")
+                gitGlobalConfig["user.name"] = username
+                del gitGlobalConfig["user.email"]
                 response = app.post('/sparql', data=dict(update=update))
-                gitGlobalConfig.__setitem__("user.name", username)
-                gitGlobalConfig.__setitem__("user.email", email)
+                gitGlobalConfig["user.name"] = username
+                gitGlobalConfig["user.email"] = email
                 message = response.get_data().decode("utf-8")
                 self.assertEqual(
                     message,
@@ -460,8 +458,8 @@ class EndpointTests(unittest.TestCase):
                      "was not found.\nPlease use the following command in your"
                      " data repo:\n\n  git config user.email <your email>"))
             except Exception as e:
-                gitGlobalConfig.__setitem__("user.name", username)
-                gitGlobalConfig.__setitem__("user.email", email)
+                gitGlobalConfig["user.name"] = username
+                gitGlobalConfig["user.email"] = email
                 raise e
 
 if __name__ == '__main__':
