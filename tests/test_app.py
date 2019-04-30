@@ -3469,19 +3469,19 @@ class QuitAppTestCase(unittest.TestCase):
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            app.post('/sparql/target', data={"query": update})
+            app.post('/sparql/target', data={"update": update})
 
             app = create_app(config).test_client()
             # start new app to syncAll()
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/y> <http://ex.org/x> .}}"
-            app.post('/sparql/develop', data={"query": update})
+            app.post('/sparql/develop', data={"update": update})
             try:
                 gitGlobalConfig.__delitem__("user.name")
                 # execute INSERT DATA query
                 # execute merge
                 app = create_app(config).test_client()
-                response = app.post("/merge", data={"target": "target", "branch": "develop", "method": "context"})
+                response = app.post("/merge", data={"target": "target", "branch": "develop"})
                 message = response.get_data().decode("utf-8")
                 self.assertEqual(
                     message,
