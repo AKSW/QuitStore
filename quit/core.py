@@ -415,14 +415,44 @@ class Quit(object):
         return self._blobs.get(blob)
 
     def applyQueryOnCommit(self, parsedQuery, parent_commit_ref, target_ref, query=None,
-                           default_graph=[], named_graph=[]):
+                           default_graph=[], named_graph=[], queryType=None, comment=None):
         """Apply an update query on the graph and the git repository."""
         graph, commitid = self.instance(parent_commit_ref)
         resultingChanges, exception = graph.update(parsedQuery)
         if exception:
             # TODO need to revert or invalidate the graph at this point.
             pass
-        oid = self.commit(graph, resultingChanges, 'New Commit from QuitStore', parent_commit_ref,
+
+        graphuri = None
+        print(resultingChanges)
+        print("comment: ")
+        print(comment)
+
+        if comment is not None:
+            queryType = comment
+        elif len(resultingChanges) > 1:
+            queryType = 'Edit resource in'
+        for entry in resultingChanges:
+            if "delta" in entry:
+                for x in entry["delta"]:
+                    graphuri = str(x)
+                    if queryType == 'Modify':
+                        ls = entry["delta"][x]
+                        if len(ls) == 1 and "removals" in ls[0]:
+                            queryType = 'Remove resource in'
+                        elif len(ls) == 1 and "additions" in ls[0]:
+                            queryType = 'Add resource in'
+
+        if queryType is not None and graphuri is not None:
+            if queryType == 'InsertData' or queryType == 'Load':
+                message = 'Insert data into Graph <' + graphuri + '>'
+            elif queryType == 'DeleteData' or queryType == 'DeleteWhere':
+                message = 'Delete data from Graph <' + graphuri + '>'
+            else:
+                message = queryType + ' Graph <' + graphuri + '>'
+        else:
+            message = 'New Commit from QuitStore'
+        oid = self.commit(graph, resultingChanges, message, parent_commit_ref,
                           target_ref, query=query, default_graph=default_graph,
                           named_graph=named_graph)
         if exception:
@@ -464,6 +494,8 @@ class Quit(object):
             parent_commit_id = parent_commit.id
             try:
                 blobs = self.getFilesForCommit(parent_commit)
+                print("blobs: ")
+                print(blobs)
             except KeyError:
                 pass
         index = self.repository.index(parent_commit_id)
@@ -473,8 +505,13 @@ class Quit(object):
 
         graphconfig = self._graphconfigs.get(parent_commit_id)
         known_files = graphconfig.getfiles().keys()
+        print("knownfiles: ")
+        print(known_files)
 
-        blobs_new = self._applyKnownGraphs(delta, blobs, parent_commit, index)
+        blobs_new = self._applyKnownGraphs(delta, blobs, parent_commit, index, graphconfig)
+        print("blobs_new: ")
+        print(blobs_new)
+        print(graphconfig.getfiles().keys())
         new_contexts = self._applyUnknownGraphs(delta, known_files)
         new_config = copy(graphconfig)
 
@@ -498,12 +535,15 @@ class Quit(object):
         author = self.repository._repository.default_signature
 
         oid = index.commit(message, author.name, author.email, ref=target_ref)
+        print("oid: ")
+        print(oid)
 
         if self.config.hasFeature(Feature.GarbageCollection):
             self.garbagecollection()
 
         if oid:
             self._commits.set(oid.hex, blobs_new)
+            print(oid.hex)
             commit = self.repository.revision(oid.hex)
             self.syncSingle(commit)
 
@@ -536,25 +576,45 @@ class Quit(object):
             out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
         return "\n".join(out)
 
-    def _applyKnownGraphs(self, delta, blobs, parent_commit, index):
+    def _applyKnownGraphs(self, delta, blobs, parent_commit, index, graphconfig):
         blobs_new = set()
         for blob in blobs:
             (fileName, oid) = blob
+            type = None
+
             try:
                 file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
+                print(file_reference)
+                print(context.identifier)
                 for entry in delta:
+
                     changeset = entry['delta'].get(context.identifier, None)
 
                     if changeset:
-                        applyChangeset(file_reference, changeset, context.identifier)
-                        del(entry['delta'][context.identifier])
-
-                index.add(file_reference.path, file_reference.content)
+                        type = entry['type']
+                        print("type: ")
+                        print(type)
+                        if type == 'DROP':
+                            index.remove(file_reference.path)
+                            index.remove(file_reference.path + '.graph')
+                            graphconfig.removegraph(context.identifier)
+                            del (entry['delta'][context.identifier])
+                        else:
+                            applyChangeset(file_reference, changeset, context.identifier)
+                            del (entry['delta'][context.identifier])
 
                 self._blobs.remove(blob)
-                blob = fileName, index.stash[file_reference.path][0]
-                self._blobs.set(blob, (file_reference, context))
-                blobs_new.add(blob)
+
+                if type == 'DROP':
+                    pass
+                else:
+                    index.add(file_reference.path, file_reference.content)
+                    blob = fileName, index.stash[file_reference.path][0]
+                    self._blobs.set(blob, (file_reference, context))
+                    print("addToNew")
+                    blobs_new.add(blob)
+                    print(blobs_new)
+
             except KeyError:
                 pass
         return blobs_new
@@ -576,8 +636,10 @@ class Quit(object):
                             int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                         ] + [0]
                         fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
+                        print("created a new file with known name")
 
                     new_contexts[identifier] = FileReference(fileName, '')
+                    print("created a new file with unknown name")
 
                 fileReference = new_contexts[identifier]
                 applyChangeset(fileReference, changeset, identifier)

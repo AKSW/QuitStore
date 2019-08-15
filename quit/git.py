@@ -658,7 +658,8 @@ class Index(object):
         commiter = pygit2.Signature(commiter_name, commiter_email)
 
         # Sort index items
-        items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
+        #items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
+        items = list(self.stash.items())
 
         # Create tree
         tree = IndexTree(self)

@@ -18,7 +18,7 @@ def login():
     else:
         state = session["state"]
     logger.debug("request url: {}".format(request.url))
-    redirect_uri = request.url
+    redirect_uri = 'http://docker.local/quitstore/login'
     authorizeEndpoint = "https://github.com/login/oauth/authorize"
     tokenEndpoint = "https://github.com/login/oauth/access_token"
 

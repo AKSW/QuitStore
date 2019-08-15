@@ -483,8 +483,8 @@ def evalQuery(graph, query, initBindings, base=None):
             # TODO re-enable original behaviour if FROM NAMED works with named graphs
             # https://github.com/AKSW/QuitStore/issues/144
             elif d.named:
-                raise FromNamedError
-            #     g = d.named
-            #     ctx.load(g, default=False)
+            #    raise FromNamedError
+                 g = d.named
+                 ctx.load(g, default=False)
 
     return evalPart(ctx, main)

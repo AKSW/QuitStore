@@ -28,7 +28,7 @@
     value: '{{ config["defaultQuery"] | safe }}',
     sparql: {
       showQueryButton: true,
-      endpoint: '{{ request.url }}'
+      endpoint: '{{ url_for('endpoint.sparql') }}'
     }
   });
   var yasr = YASR(document.getElementById("yasr"), {

@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
+import cgi
 import logging
 import os
+from pprint import pprint
+from xml.dom.minidom import parse
+
+import uwsgi
 from pyparsing import ParseException
+from rdflib import Graph
+from werkzeug.wsgi import make_chunk_iter
+
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
-from rdflib.term import URIRef
+from rdflib.term import URIRef, Variable
 from rdflib.plugins.sparql.parserutils import CompValue, plist
-from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
-from quit.tools.algebra import translateQuery, translateUpdate
+from rdflib.plugins.sparql.parser import parseQuery, parseUpdate, Query
+from quit.tools.algebra import translateQuery, translateUpdate, pprintAlgebra
 from rdflib.plugins.serializers.nt import _nt_row as _nt
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
@@ -153,6 +161,7 @@ def configure_query_dataset(parsed_query, default_graphs, named_graphs):
           default_graphs: a list of uri strings for default graphs
           named_graphs: a list of uri strings for named graphs
     """
+
     if not isinstance(default_graphs, list) or not isinstance(named_graphs, list):
         return parsed_query
 
@@ -167,7 +176,8 @@ def configure_query_dataset(parsed_query, default_graphs, named_graphs):
     for uri in default_graphs:
         parsed_query[1]['datasetClause'].append(CompValue('DatasetClause', default=URIRef(uri)))
     for uri in named_graphs:
-        parsed_query[1]['datasetClause'].append(CompValue('DatasetClause', named=URIRef(uri)))
+        if uri not in default_graphs:
+            parsed_query[1]['datasetClause'].append(CompValue('DatasetClause', named=URIRef(uri)))
 
     return parsed_query
 
@@ -210,8 +220,11 @@ def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
     """Parse a query and add default and named graph uri if possible."""
     try:
         parsed_query = parseQuery(query)
+        parsed_query = parse_named_graph_query(parsed_query)
         parsed_query = configure_query_dataset(parsed_query, default_graph, named_graph)
         translated_query = translateQuery(parsed_query, base=base)
+
+
     except ParseException:
         raise UnSupportedQuery()
     except SparqlProtocolError as e:
@@ -287,6 +300,7 @@ def parse_sparql_request(request):
     default_graph = []
     named_graph = []
     accept_header = None
+    comment = None
 
     if request.method == "GET":
         default_graph = request.args.getlist('default-graph-uri')
@@ -296,6 +310,7 @@ def parse_sparql_request(request):
     elif request.method == "POST":
         if 'Content-Type' in request.headers:
             content_mimetype, options = parse_options_header(request.headers['Content-Type'])
+
             if content_mimetype == "application/x-www-form-urlencoded":
                 if 'query' in request.form:
                     default_graph = request.form.getlist('default-graph-uri')
@@ -317,5 +332,74 @@ def parse_sparql_request(request):
                 named_graph = request.args.getlist('using-named-graph-uri')
                 query = request.data.decode("utf-8")
                 type = 'update'
+            elif content_mimetype == "application/rdf+xml":
+                default_graph = request.args.getlist('default-graph-uri')
+                named_graph = request.args.getlist('named-graph-uri')
+                graph = request.args.get('graph')
+                data = request.data.decode("utf-8")
+                g = Graph()
+                g.parse(data=data, format='application/rdf+xml')
+                query = 'INSERT DATA { GRAPH <' + graph + '> { ' + g.serialize(format="nt").decode("utf-8") + ' } }'
+                type = 'update'
+    elif request.method == "PUT":
+        if 'Content-Type' in request.headers:
+            content_mimetype, options = parse_options_header(request.headers['Content-Type'])
+        default_graph = request.args.getlist('default-graph-uri')
+        named_graph = request.args.getlist('named-graph-uri')
+        graph = request.args.get('graph')
+        data = request.input_stream.read()
+        g = Graph()
+        if content_mimetype is not None:
+            print("content type not none")
+            g.parse(data=data, format=content_mimetype)
+        else:
+            g.parse(data=data, format='application/rdf+xml')
+        query = 'WITH <' + graph + '> DELETE { ?s ?p ?o . } INSERT { ' + g.serialize(format="nt").decode("utf-8") + ' } WHERE { ?s ?p ?o .}'
+        type = 'update'
+        comment = 'Replace'
 
-    return query, type, default_graph, named_graph
+    return query, type, default_graph, named_graph, comment
+
+
+def parse_named_graph_query(query):
+
+    datasetClause = query[1].datasetClause
+
+    if datasetClause is not None:
+        default_list = []
+        named_list = []
+        for d in datasetClause:
+            if d.default:
+                default_list.append(d.default)
+
+        for d in datasetClause:
+            if d.named:
+                if d.named in default_list:
+                    query[1].datasetClause.remove(d)
+                    print("namedGraph")
+                    print(d)
+                    print("was removed")
+                else:
+                    named_list.append(d.named)
+
+        if len(named_list) > 0:
+            q = "SELECT * WHERE{ FILTER ( ?"
+            for t in query[1].where.part:
+                try:
+                    term = t.term
+                except ParseException:
+                    raise UnSupportedQuery()
+            q = q + term + " IN (<" + '>,<'.join(named_list) + ">))}"
+
+            parsedFilter = Query.parseString(q, parseAll=True)[1].where.part[0]
+            query[1].where.part.append(parsedFilter)
+    else:
+        if 'graph' in query[1].where.part[0]:
+            pass
+        else:
+            print("no graph defined")
+            graphValue = query[1].where
+            whereValue = CompValue('GroupGraphPatternSub', part=[CompValue('GraphGraphPattern', term=Variable('selfDefinedGraphVariable'), graph=graphValue)])
+            query[1].where = whereValue
+
+    return query

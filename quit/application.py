@@ -209,6 +209,7 @@ def parseArgs(args):
     configfile_default = "config.ttl"
     oauthclientid_default = None
     oauthclientsecret_default = None
+    feature_default = Feature.Unknown
 
     if 'QUIT_PORT' in os.environ:
         port_default = os.environ['QUIT_PORT']
@@ -234,6 +235,9 @@ def parseArgs(args):
     if 'QUIT_OAUTH_SECRET' in os.environ:
         oauthclientsecret_default = os.environ['QUIT_OAUTH_SECRET']
 
+    if 'FEATURE' in os.environ:
+        feature_default = os.environ['FEATURE']
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
     parser.add_argument(
@@ -248,7 +252,7 @@ def parseArgs(args):
     parser.add_argument('--flask-debug', action='store_true')
     parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
-                        default=Feature.Unknown,
+                        default=feature_default,
                         help=featurehelp)
     parser.add_argument('-p', '--port', default=port_default, type=int)
     parser.add_argument('--host', default='::', type=str)
