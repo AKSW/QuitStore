@@ -2797,6 +2797,51 @@ class QuitAppTestCase(unittest.TestCase):
             response = app.post('/provenance', data=dict(query=query))
             self.assertEqual(response.status, '404 NOT FOUND')
 
+    def testSubdirectoriesGraphfile(self):
+        """Test if subdirectories are recognized and commits are working."""
+        # Prepare a Repository with subdirectories
+        repo_content = {'urn:graph0': '<urn:0> <urn:0> <urn:0> .\n',
+                        'urn:graph1': '<urn:1> <urn:1> <urn:1> .\n'}
+
+        with TemporaryRepositoryFactory().withGraphs(repo_content, 'graphfiles', True) as repo:
+            select = 'SELECT ?s ?p ?o WHERE {{ GRAPH <urn:graph{}> {{ ?s ?p ?o }} }}'
+            update = """
+                DELETE DATA {{
+                    GRAPH <urn:graph{i}> {{
+                        <urn:{i}> <urn:{i}> <urn:{i}> . }} }} ;
+                INSERT DATA {{
+                    GRAPH <urn:graph{i}> {{
+                        <urn:{i}{i}> <urn:{i}{i}> <urn:{i}{i}> . }} }}"""
+
+            # Start Quit
+            args = quitApp.parseArgs(['-t', repo.workdir])
+            objects = quitApp.initialize(args)
+            config = objects['config']
+            app = create_app(config).test_client()
+
+            for i in [0, 1]:
+                # check file existence
+                with open(path.join(repo.workdir,
+                                    'sub{}'.format(i),
+                                    'graph_{}.nt'.format(i)), 'r') as f:
+                    self.assertEqual(
+                        '<urn:{i}> <urn:{i}> <urn:{i}> .\n'.format(i=i),
+                        f.read())
+
+                # check store content
+                res = app.post('/sparql',
+                               data=dict(query=select.format(i)),
+                               headers=dict(accept='application/sparql-results+json'))
+                obj = json.loads(res.data.decode("utf-8"))
+                print(json.loads(res.data.decode("utf-8")))
+                self.assertEqual(len(obj["results"]["bindings"]), 1)
+                self.assertDictEqual(obj["results"]["bindings"][0], {
+                    "s": {'type': 'uri', 'value': 'urn:{}'.format(i)},
+                    "p": {'type': 'uri', 'value': 'urn:{}'.format(i)},
+                    "o": {'type': 'uri', 'value': 'urn:{}'.format(i)}})
+
+        # TODO update and test
+
     def testWithOnDeleteAndInsert(self):
         """Test WITH on DELETE and INSERT plus USING.
 
