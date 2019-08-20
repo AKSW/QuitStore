@@ -1,6 +1,6 @@
 from tempfile import TemporaryDirectory
 from pygit2 import init_repository, clone_repository, Signature
-from os import path, walk
+from os import path, walk, makedirs
 from os.path import join
 from rdflib import Graph
 from urllib.parse import quote_plus
@@ -156,7 +156,7 @@ class TemporaryRepositoryFactory(object):
 
         return tmpRepo
 
-    def withGraphs(self, graphUriContentDict, mode='graphfiles'):
+    def withGraphs(self, graphUriContentDict, mode='graphfiles', subDirectory=False):
         """Give a TemporaryRepository() initialized with a dictionary of graphUris and content (nt)."""
         uristring = ''
         configFileContent = """@base <http://quit.aksw.org/vocab/> .
@@ -176,29 +176,41 @@ class TemporaryRepositoryFactory(object):
         index.read()
 
         i = 0
+
         for graphUri, graphContent in sorted(graphUriContentDict.items()):
+            subdir = ''
+
+            if subDirectory:
+                subdir = 'sub{}'.format(i)
+                abs_subdir = path.join(tmpRepo.repo.workdir, subdir)
+                makedirs(abs_subdir, exist_ok=True)
+
             filename = 'graph_{}.nt'.format(i)
-            with open(path.join(tmpRepo.repo.workdir, filename), "w") as graphFile:
+
+            with open(path.join(tmpRepo.repo.workdir, subdir, filename), "w") as graphFile:
                 if graphContent:
                     graphFile.write(graphContent)
 
             if mode == 'graphfiles':
                 # Set Graph URI to http://example.org/
-                with open(path.join(tmpRepo.repo.workdir, filename + ".graph"), "w") as graphFile:
+                with open(path.join(tmpRepo.repo.workdir, subdir, filename + ".graph"), "w") as graphFile:
                     graphFile.write(graphUri)
-                index.add(filename + '.graph')
+
+                index.add(path.join(subdir, filename + '.graph'))
             elif mode == 'configfile':
-                uristring += graphResource.format(i, graphUri, filename)
+                uristring += graphResource.format(i, graphUri, join(subdir, filename))
 
             # Add and Commit the empty graph
-            index.add(filename)
+            index.add(path.join(subdir, filename))
             i += 1
         if mode == 'configfile':
             graph = Graph()
+
             with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as configFile:
                 rdf_content = configFileContent.format(tmpRepo.repo.workdir, uristring)
                 graph.parse(format='turtle', data=rdf_content)
                 configFile.write(graph.serialize(format='turtle').decode())
+
             index.add('config.ttl')
 
         index.write()
