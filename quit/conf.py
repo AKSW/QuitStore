@@ -414,25 +414,32 @@ class QuitGraphConfiguration():
             dict: containing names rdf files plus format and oid.
 
         """
+        def find_blobs(tree, prefix=''):
+            # Collect graph files, rdf files and config files
+            for entry in tree:
+                if entry.type == 'blob':
+                    format = guess_format(entry.name)
+                    if format is None and entry.name.endswith('.graph'):
+                        graph_file_blobs[join(prefix, entry.name)] = entry.id
+                    elif format is not None and format == 'nt':
+                        rdf_file_blobs[join(prefix, entry.name)] = (entry.id, format)
+                    elif format is not None and entry.name == 'config.ttl':
+                        config_files.append(str(entry.id))
+                elif entry.type == 'tree':
+                    tree_obj = self.repository[entry.id]
+                    find_blobs(tree_obj, join(prefix, entry.name))
+
         config_files = []
         graph_files = {}
         graph_file_blobs = {}
         rdf_file_blobs = {}
+
         try:
             commit = self.repository.revparse_single(rev)
         except Exception:
             return graph_files, config_files, rdf_file_blobs
 
-        # Collect graph files, rdf files and config files
-        for entry in commit.tree:
-            if entry.type == 'blob':
-                format = guess_format(entry.name)
-                if format is None and entry.name.endswith('.graph'):
-                    graph_file_blobs[entry.name] = entry.id
-                elif format is not None and format == 'nt':
-                    rdf_file_blobs[entry.name] = (entry.id, format)
-                elif format is not None and entry.name == 'config.ttl':
-                    config_files.append(str(entry.id))
+        find_blobs(commit.tree)
 
         # collect pairs of rdf files and graph files
         for filename in rdf_file_blobs.keys():
