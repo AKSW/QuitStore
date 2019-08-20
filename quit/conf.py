@@ -422,14 +422,12 @@ class QuitGraphConfiguration():
                     if format is None and entry.name.endswith('.graph'):
                         graph_file_blobs[join(prefix, entry.name)] = entry.id
                     elif format is not None and format == 'nt':
-                        print('Yeah', join(prefix, entry.name))
                         rdf_file_blobs[join(prefix, entry.name)] = (entry.id, format)
                     elif format is not None and entry.name == 'config.ttl':
                         config_files.append(str(entry.id))
                 elif entry.type == 'tree':
-                    prefix += entry.name + '/'
                     tree_obj = self.repository[entry.id]
-                    find_blobs(tree_obj, prefix)
+                    find_blobs(tree_obj, join(prefix, entry.name))
 
         config_files = []
         graph_files = {}
