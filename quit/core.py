@@ -424,9 +424,6 @@ class Quit(object):
             pass
 
         graphuri = None
-        print(resultingChanges)
-        print("comment: ")
-        print(comment)
 
         if comment is not None:
             queryType = comment
@@ -494,8 +491,6 @@ class Quit(object):
             parent_commit_id = parent_commit.id
             try:
                 blobs = self.getFilesForCommit(parent_commit)
-                print("blobs: ")
-                print(blobs)
             except KeyError:
                 pass
         index = self.repository.index(parent_commit_id)
@@ -505,13 +500,8 @@ class Quit(object):
 
         graphconfig = self._graphconfigs.get(parent_commit_id)
         known_files = graphconfig.getfiles().keys()
-        print("knownfiles: ")
-        print(known_files)
 
         blobs_new = self._applyKnownGraphs(delta, blobs, parent_commit, index, graphconfig)
-        print("blobs_new: ")
-        print(blobs_new)
-        print(graphconfig.getfiles().keys())
         new_contexts = self._applyUnknownGraphs(delta, known_files)
         new_config = copy(graphconfig)
 
@@ -535,15 +525,12 @@ class Quit(object):
         author = self.repository._repository.default_signature
 
         oid = index.commit(message, author.name, author.email, ref=target_ref)
-        print("oid: ")
-        print(oid)
 
         if self.config.hasFeature(Feature.GarbageCollection):
             self.garbagecollection()
 
         if oid:
             self._commits.set(oid.hex, blobs_new)
-            print(oid.hex)
             commit = self.repository.revision(oid.hex)
             self.syncSingle(commit)
 
@@ -584,16 +571,12 @@ class Quit(object):
 
             try:
                 file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
-                print(file_reference)
-                print(context.identifier)
                 for entry in delta:
 
                     changeset = entry['delta'].get(context.identifier, None)
 
                     if changeset:
                         type = entry['type']
-                        print("type: ")
-                        print(type)
                         if type == 'DROP':
                             index.remove(file_reference.path)
                             index.remove(file_reference.path + '.graph')
@@ -611,9 +594,7 @@ class Quit(object):
                     index.add(file_reference.path, file_reference.content)
                     blob = fileName, index.stash[file_reference.path][0]
                     self._blobs.set(blob, (file_reference, context))
-                    print("addToNew")
                     blobs_new.add(blob)
-                    print(blobs_new)
 
             except KeyError:
                 pass
@@ -636,10 +617,8 @@ class Quit(object):
                             int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                         ] + [0]
                         fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
-                        print("created a new file with known name")
 
                     new_contexts[identifier] = FileReference(fileName, '')
-                    print("created a new file with unknown name")
 
                 fileReference = new_contexts[identifier]
                 applyChangeset(fileReference, changeset, identifier)

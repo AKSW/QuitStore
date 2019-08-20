@@ -350,7 +350,6 @@ def parse_sparql_request(request):
         data = request.input_stream.read()
         g = Graph()
         if content_mimetype is not None:
-            print("content type not none")
             g.parse(data=data, format=content_mimetype)
         else:
             g.parse(data=data, format='application/rdf+xml')
@@ -376,9 +375,6 @@ def parse_named_graph_query(query):
             if d.named:
                 if d.named in default_list:
                     query[1].datasetClause.remove(d)
-                    print("namedGraph")
-                    print(d)
-                    print("was removed")
                 else:
                     named_list.append(d.named)
 
@@ -397,7 +393,6 @@ def parse_named_graph_query(query):
         if 'graph' in query[1].where.part[0]:
             pass
         else:
-            print("no graph defined")
             graphValue = query[1].where
             whereValue = CompValue('GroupGraphPatternSub', part=[CompValue('GraphGraphPattern', term=Variable('selfDefinedGraphVariable'), graph=graphValue)])
             query[1].where = whereValue
