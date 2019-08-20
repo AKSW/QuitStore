@@ -2798,7 +2798,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertEqual(response.status, '404 NOT FOUND')
 
     def testSubdirectoriesGraphfile(self):
-        """Test if subdirectories are recognized and commits are working."""
+        """Test if subdirectories are recognized and commits are working using graphfiles."""
         # Prepare a Repository with subdirectories
         repo_content = {'urn:graph0': '<urn:0> <urn:0> <urn:0> .\n',
                         'urn:graph1': '<urn:1> <urn:1> <urn:1> .\n'}
@@ -2819,7 +2819,23 @@ class QuitAppTestCase(unittest.TestCase):
             config = objects['config']
             app = create_app(config).test_client()
 
+            # check states after init
             for i in [0, 1]:
+                self.assertTrue(
+                    path.isfile(path.join(repo.workdir,
+                                          'sub{}'.format(i),
+                                          'graph_{}.nt.graph'.format(i))))
+                # check store content
+                res = app.post('/sparql',
+                               data=dict(query=select.format(i)),
+                               headers=dict(accept='application/sparql-results+json'))
+                obj = json.loads(res.data.decode("utf-8"))
+                self.assertEqual(len(obj["results"]["bindings"]), 1)
+                self.assertDictEqual(obj["results"]["bindings"][0], {
+                    "s": {'type': 'uri', 'value': 'urn:{}'.format(i)},
+                    "p": {'type': 'uri', 'value': 'urn:{}'.format(i)},
+                    "o": {'type': 'uri', 'value': 'urn:{}'.format(i)}})
+
                 # check file existence
                 with open(path.join(repo.workdir,
                                     'sub{}'.format(i),
@@ -2828,19 +2844,30 @@ class QuitAppTestCase(unittest.TestCase):
                         '<urn:{i}> <urn:{i}> <urn:{i}> .\n'.format(i=i),
                         f.read())
 
+            # check states after update
+            for i in [0, 1]:
+                # perform update
+                app.post('/sparql', data=dict(update=update.format(i=i)))
+
                 # check store content
                 res = app.post('/sparql',
                                data=dict(query=select.format(i)),
                                headers=dict(accept='application/sparql-results+json'))
                 obj = json.loads(res.data.decode("utf-8"))
-                print(json.loads(res.data.decode("utf-8")))
+
+                # check file existence
+                with open(path.join(repo.workdir,
+                                    'sub{}'.format(i),
+                                    'graph_{}.nt'.format(i)), 'r') as f:
+                    self.assertEqual(
+                        '<urn:{i}{i}> <urn:{i}{i}> <urn:{i}{i}> .\n'.format(i=i),
+                        f.read())
+
                 self.assertEqual(len(obj["results"]["bindings"]), 1)
                 self.assertDictEqual(obj["results"]["bindings"][0], {
-                    "s": {'type': 'uri', 'value': 'urn:{}'.format(i)},
-                    "p": {'type': 'uri', 'value': 'urn:{}'.format(i)},
-                    "o": {'type': 'uri', 'value': 'urn:{}'.format(i)}})
-
-        # TODO update and test
+                    "s": {'type': 'uri', 'value': 'urn:{i}{i}'.format(i=i)},
+                    "p": {'type': 'uri', 'value': 'urn:{i}{i}'.format(i=i)},
+                    "o": {'type': 'uri', 'value': 'urn:{i}{i}'.format(i=i)}})
 
     def testWithOnDeleteAndInsert(self):
         """Test WITH on DELETE and INSERT plus USING.
