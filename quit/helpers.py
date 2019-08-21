@@ -335,7 +335,9 @@ def parse_sparql_request(request):
                 data = request.data.decode("utf-8")
                 g = Graph()
                 g.parse(data=data, format='application/rdf+xml')
-                query = 'INSERT DATA { GRAPH <' + graph + '> { ' + g.serialize(format="nt").decode("utf-8") + ' } }'
+                query = ('INSERT DATA {{ GRAPH <{graph}> '
+                         '{{ {data} }} }}').format(graph=graph,
+                                                   data=g.serialize(format="nt").decode("utf-8"))
                 type = 'update'
     elif request.method == "PUT":
         if 'Content-Type' in request.headers:
@@ -349,7 +351,9 @@ def parse_sparql_request(request):
             g.parse(data=data, format=content_mimetype)
         else:
             g.parse(data=data, format='application/rdf+xml')
-        query = 'WITH <' + graph + '> DELETE { ?s ?p ?o . } INSERT { ' + g.serialize(format="nt").decode("utf-8") + ' } WHERE { ?s ?p ?o .}'
+        query = ('WITH <{graph}> DELETE {{ ?s ?p ?o }} INSERT {{ {data} }} '
+                 'WHERE {{ ?s ?p ?o }}').format(graph=graph,
+                                                data=g.serialize(format="nt").decode("utf-8"))
         type = 'update'
         comment = 'Replace'
 
@@ -390,7 +394,8 @@ def parse_named_graph_query(query):
             pass
         else:
             graphValue = query[1].where
-            whereValue = CompValue('GroupGraphPatternSub', part=[CompValue('GraphGraphPattern', term=Variable('selfDefinedGraphVariable'), graph=graphValue)])
+            whereValue = CompValue('GroupGraphPatternSub', part=[CompValue('GraphGraphPattern',
+                                   term=Variable('selfDefinedGraphVariable'), graph=graphValue)])
             query[1].where = whereValue
 
     return query

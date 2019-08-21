@@ -110,7 +110,8 @@ def sparql(branch_or_ref):
                 logger.debug("target ref is: {}".format(target_ref))
                 oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
                                               query=query, default_graph=default_graph,
-                                              named_graph=named_graph, queryType=queryType, comment=comment)
+                                              named_graph=named_graph, queryType=queryType,
+                                              comment=comment)
 
                 if resolution_method == "merge":
                     logger.debug(("going to merge update into {} because it is at {} but {} was "
@@ -140,7 +141,8 @@ def sparql(branch_or_ref):
             try:
                 oid = quit.applyQueryOnCommit(parsedQuery, branch_or_ref, target_ref,
                                               query=query, default_graph=default_graph,
-                                              named_graph=named_graph, queryType=queryType, comment=comment)
+                                              named_graph=named_graph, queryType=queryType,
+                                              comment=comment)
                 response = make_response('', 200)
                 response.headers["X-CurrentBranch"] = target_head
                 if oid is not None:
