@@ -161,7 +161,6 @@ def configure_query_dataset(parsed_query, default_graphs, named_graphs):
           default_graphs: a list of uri strings for default graphs
           named_graphs: a list of uri strings for named graphs
     """
-
     if not isinstance(default_graphs, list) or not isinstance(named_graphs, list):
         return parsed_query
 
