@@ -194,7 +194,8 @@ class GitRepositoryTests(unittest.TestCase):
 
         dir = TemporaryDirectory()
         repo = quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
-        self.assertTrue(path.exists(path.join(dir.name, 'example.nq')))
+        self.assertTrue(path.exists(path.join(dir.name, 'example.nt')))
+        self.assertTrue(path.exists(path.join(dir.name, 'example.nt.graph')))
         self.assertFalse(repo.is_bare)
         dir.cleanup()
 

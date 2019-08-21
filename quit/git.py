@@ -657,15 +657,10 @@ class Index(object):
         author = pygit2.Signature(author_name, author_email)
         commiter = pygit2.Signature(commiter_name, commiter_email)
 
-        # Sort index items
-        #items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
-        items = list(self.stash.items())
-
         # Create tree
         tree = IndexTree(self)
-        while len(items) > 0:
-            path, (oid, mode) = items.pop(0)
 
+        for path, (oid, mode) in self.stash.items():
             if oid is None:
                 tree.remove(path)
             else:
