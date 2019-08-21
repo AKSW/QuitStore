@@ -223,8 +223,6 @@ def parse_query_type(query, base=None, default_graph=[], named_graph=[]):
         parsed_query = parse_named_graph_query(parsed_query)
         parsed_query = configure_query_dataset(parsed_query, default_graph, named_graph)
         translated_query = translateQuery(parsed_query, base=base)
-
-
     except ParseException:
         raise UnSupportedQuery()
     except SparqlProtocolError as e:
@@ -310,7 +308,6 @@ def parse_sparql_request(request):
     elif request.method == "POST":
         if 'Content-Type' in request.headers:
             content_mimetype, options = parse_options_header(request.headers['Content-Type'])
-
             if content_mimetype == "application/x-www-form-urlencoded":
                 if 'query' in request.form:
                     default_graph = request.form.getlist('default-graph-uri')

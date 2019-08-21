@@ -109,11 +109,9 @@ def evalDrop(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#drop
     """
-
     res = {}
     res["type"] = "DROP"
     res["delta"] = {}
-
     if ctx.dataset.store.graph_aware:
         for g in _graphAll(ctx, u.graphiri):
             _append(res["delta"], u.graphiri, 'removals', g)
@@ -435,5 +433,4 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
         except Exception:
             if not u.silent:
                 raise
-
     return res, None

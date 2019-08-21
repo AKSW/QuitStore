@@ -1,7 +1,6 @@
 import traceback
 
 import logging
-
 from flask import Blueprint, request, current_app, make_response
 from rdflib import ConjunctiveGraph
 from quit.conf import Feature
@@ -64,12 +63,8 @@ def sparql(branch_or_ref):
                                  'to the SPARQL 1.1 standard', 400)
     else:
         # TODO allow USING NAMED when fixed in rdflib
-        #if len(named_graph) > 0:
-            #print('namedGraph exists')
-            #return make_response('FROM NAMED and USING NAMED not supported, yet', 400)
 
         parse_type = getattr(helpers, 'parse_' + type + '_type')
-
 
         try:
             queryType, parsedQuery = parse_type(
