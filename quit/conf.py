@@ -110,7 +110,7 @@ class QuitStoreConfiguration():
         return
 
     def hasFeature(self, flags):
-        return flags == (self.features and flags)
+        return flags == (self.features & flags)
 
     def getBindings(self):
         q = """SELECT DISTINCT ?prefix ?namespace WHERE {{
