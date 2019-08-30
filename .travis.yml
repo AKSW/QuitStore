@@ -48,6 +48,7 @@ script:
     - coverage run -a --source=quit tests/test_provenance.py
 
 before_deploy:
+  - mkdir dist
   - docker run -it -v "$(pwd):/src/" cdrx/pyinstaller-linux:python3
   - cp dist/linux/run dist/quit-64bit-linux
   - git apply requirements.txt.windows.patch
