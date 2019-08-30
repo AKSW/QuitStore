@@ -7,5 +7,4 @@ uritools
 git+https://github.com/RDFLib/rdflib-jsonld@master
 
 uwsgi
-pyinstaller>=3.4
 pylava
