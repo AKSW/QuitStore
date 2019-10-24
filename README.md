@@ -15,7 +15,7 @@ If you want to read more about the Quit Store we can recommend our paper:
 by Natanael Arndt, Patrick Naumann, Norman Radtke, Michael Martin, and Edgard Marx in Journal of Web Semantics, 2018
 [[@sciencedirect](https://www.sciencedirect.com/science/article/pii/S1570826818300416)] [[@arXiv](https://arxiv.org/abs/1805.03721)]
 
-<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. "Graph jam in a git glass" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="200" />
+<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. 'Graph jam in a git glass'" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="512" />
 
 ## Getting Started
 
