@@ -1,3 +1,6 @@
+
+<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. 'Graph jam in a git glass'" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="512" />
+
 # Quit Store
 
 Build status of `master` branch:
