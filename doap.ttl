@@ -1,0 +1,31 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix aksw: <http://aksw.org/> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+
+[]
+    doap:created "2016-02-22" ;
+    doap:description """
+    The Quit Store (stands for Quads in Git) provides a workspace for distributed collaborative Linked Data knowledge engineering.
+    You are able to read and write RDF Datasets (aka. multiple Named Graphs) through a standard SPARQL 1.1 Query and Update interface.
+    To collaborate you can create multiple branches of the Dataset and share your repository with your collaborators as you know it from Git.
+    """@en ;
+    doap:homepage <http://quit.aksw.org/> ;
+    doap:license <http://spdx.org/licenses/GPL-3.0-or-later> ;
+    doap:maintainer aksw:NormanRadtke, aksw:NatanaelArndt ;
+    doap:name "Quit Store" ;
+    doap:release [
+        doap:created "2019-08-30" ;
+        doap:name "unstable" ;
+        doap:revision "2019-08-30.4" ;
+        a doap:Version
+    ] ;
+    doap:repository [
+        doap:browse <https://github.com/AKSW/QuitStore/> ;
+        doap:location <https://github.com/AKSW/QuitStore.git> ;
+        a doap:GitRepository
+    ] ;
+    doap:shortdesc "Quads in Git - Distributed Version Control for RDF Knowledge Bases"@en ,
+               "Quads in Git - Verteilte Versionsverwaltung für RDF Wissensdatenbanken"@de ;
+    a doap:Project .
