@@ -1,3 +1,6 @@
+
+<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. 'Graph jam in a git glass'" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="512" />
+
 # Quit Store
 
 Build status of `master` branch:
@@ -14,8 +17,6 @@ If you want to read more about the Quit Store we can recommend our paper:
 [*Decentralized Collaborative Knowledge Management using Git*](https://natanael.arndt.xyz/bib/arndt-n-2018--jws)
 by Natanael Arndt, Patrick Naumann, Norman Radtke, Michael Martin, and Edgard Marx in Journal of Web Semantics, 2018
 [[@sciencedirect](https://www.sciencedirect.com/science/article/pii/S1570826818300416)] [[@arXiv](https://arxiv.org/abs/1805.03721)]
-
-<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. 'Graph jam in a git glass'" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="512" />
 
 ## Getting Started
 
