@@ -3,7 +3,7 @@ import pygit2
 import re
 import logging
 
-from _pygit2 import GitError
+from _pygit2 import GitError, Oid
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitGitRefNotFound, QuitGitRepoError, QuitGitPushError
@@ -117,7 +117,13 @@ class Repository(object):
                 except KeyError:
                     pass
         except ValueError:
-            return self._repository.get(name).id
+            pass
+        try:
+            revison = self._repository.get(name)
+            if revison:
+                return revison.id
+        except Exception as e:
+            logger.exception(e)
         raise RevisionNotFound(name)
 
     def revision(self, id='HEAD'):
@@ -278,9 +284,9 @@ class Repository(object):
             local_branch = groups.group("dst")
             logger.debug("pull: parsed refspec is: {}, {}, {}".format(plus, remote_branch,
                                                                       local_branch))
-        remote_master_id = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
-        if remote_master_id is not None:
-            self.merge(target=local_branch, branch=remote_master_id, **kwargs)
+        remote_reference = self.fetch(remote_name=remote_name, remote_branch=remote_branch)
+        if remote_reference is not None:
+            self.merge(target=local_branch, branch=remote_reference, **kwargs)
 
     def push(self, remote_name=None, refspec=None):
         """Push changes on a local repository to a remote repository.
@@ -651,14 +657,10 @@ class Index(object):
         author = pygit2.Signature(author_name, author_email)
         commiter = pygit2.Signature(commiter_name, commiter_email)
 
-        # Sort index items
-        items = sorted(self.stash.items(), key=lambda x: (x[1][0], x[0]))
-
         # Create tree
         tree = IndexTree(self)
-        while len(items) > 0:
-            path, (oid, mode) = items.pop(0)
 
+        for path, (oid, mode) in self.stash.items():
             if oid is None:
                 tree.remove(path)
             else:

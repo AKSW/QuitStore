@@ -237,11 +237,13 @@ class Quit(object):
 
             if 'Source' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Import']))
+                g.add((commit_uri, is_a, PROV['Usage']))
                 sources = commit.properties['Source'].strip()
                 for source in re.findall("<.*?>", sources):
                     g.add((commit_uri, QUIT['dataSource'], URIRef(source.strip("<>"))))
             if 'Query' in commit.properties.keys():
                 g.add((commit_uri, is_a, QUIT['Transformation']))
+                g.add((commit_uri, is_a, PROV['Derivation']))
                 g.add((commit_uri, QUIT['query'], Literal(
                     commit.properties['Query'].strip())))
 
@@ -268,7 +270,7 @@ class Quit(object):
             g.add((commit_uri, PROV['qualifiedAssociation'], q_author_uri))
             g.add((q_author_uri, is_a, PROV['Association']))
             g.add((q_author_uri, PROV['agent'], author_uri))
-            g.add((q_author_uri, PROV['role'], role_author_uri))
+            g.add((q_author_uri, PROV['hadRole'], role_author_uri))
 
             if commit.author.name != commit.committer.name:
                 # Committer
@@ -348,6 +350,9 @@ class Quit(object):
                         (private_uri, PROV['specializationOf'], context.identifier))
                     g.add(
                         (private_uri, PROV['wasGeneratedBy'], commit_uri))
+                    g.add((private_uri, PROV['generatedAtTime'], Literal(
+                        git_timestamp(commit.author.time, commit.author.offset),
+                        datatype=XSD.dateTime)))
 
                     q_usage = BNode()
                     g.add((private_uri, PROV['qualifiedGeneration'], q_usage))
@@ -413,6 +418,21 @@ class Quit(object):
             self._blobs.set(blob, quitWorkingData)
             return quitWorkingData
         return self._blobs.get(blob)
+
+    def applyQueryOnCommit(self, parsedQuery, parent_commit_ref, target_ref, query=None,
+                           default_graph=[], named_graph=[]):
+        """Apply an update query on the graph and the git repository."""
+        graph, commitid = self.instance(parent_commit_ref)
+        resultingChanges, exception = graph.update(parsedQuery)
+        if exception:
+            # TODO need to revert or invalidate the graph at this point.
+            pass
+        oid = self.commit(graph, resultingChanges, 'New Commit from QuitStore', parent_commit_ref,
+                          target_ref, query=query, default_graph=default_graph,
+                          named_graph=named_graph)
+        if exception:
+            raise exception
+        return oid
 
     def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
                default_graph=[], named_graph=[], **kwargs):
