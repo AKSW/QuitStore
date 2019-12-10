@@ -14,15 +14,6 @@ Git.
 from setuptools import setup
 import os
 
-install_requires = [
-    'rdflib>=4.2.2',
-    'Flask',
-    'Flask-Cors',
-    'sortedcontainers',
-    'uritools',
-    'pygit2'
-]
-
 setup(
     name='QuitStore',
     version='0.17.0',
@@ -32,6 +23,9 @@ setup(
     author_email='arndtn@gmail.com',
     description='Distributed Version Control for RDF Knowledge Bases',
     long_description=__doc__,
+    entry_points = {
+        'console_scripts': ['quit=quit.run:main'],
+    }
     packages=[
         'quit',
         'quit.plugins',
@@ -55,7 +49,14 @@ setup(
     zip_safe=False,
     include_package_data=True,
     platforms='any',
-    install_requires=install_requires,
+    install_requires=[
+        'rdflib>=4.2.2',
+        'Flask',
+        'Flask-Cors',
+        'sortedcontainers',
+        'uritools',
+        'pygit2>=1.0.0'
+    ],
     dependency_links=[
     ],
     classifiers=[
