@@ -5,17 +5,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')))
 
 import logging
-from quit.application import parseArgs, initialize
+from quit.application import parseArgs
 from quit.web.app import create_app
 from werkzeug.wsgi import DispatcherMiddleware
 
 logger = logging.getLogger('quit.run')
 
 parsedArgs = parseArgs(sys.argv[1:])
-objects = initialize(parsedArgs)
-config = objects['config']
 sys.setrecursionlimit(2 ** 15)
-application = create_app(config)
+application = create_app(parsedArgs)
 
 # Set the basepath
 if parsedArgs.basepath:

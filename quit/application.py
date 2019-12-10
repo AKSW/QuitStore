@@ -160,7 +160,7 @@ def initialize(args):
     logger.info('QuitStore Configuration initialized.')
     logger.debug('Path of Gitrepo: ' + config.getRepoPath())
 
-    return {'config': config}
+    return config
 
 
 class FeaturesAction(argparse.Action):

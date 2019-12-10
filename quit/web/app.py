@@ -12,6 +12,7 @@ from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
 
+from quit.application import initialize
 from quit.conf import Feature as QuitFeature
 from quit.core import MemoryStore, Quit
 from quit.git import Repository, QuitRemoteCallbacks
@@ -99,16 +100,16 @@ def feature_required(feature):
     return wrapper
 
 
-def create_app(config):
+def create_app(arguments):
     """Create a Flask app."""
 
     app = Flask(
         __name__.split('.')[0], template_folder='web/templates', static_folder='web/static'
     )
     app.secret_key = os.urandom(24)
-    register_app(app, config)
+    register_app(app, arguments)
     register_hook(app)
-    register_blueprints(app, config)
+    register_blueprints(app)
     register_extensions(app)
     register_errorhandlers(app)
     register_template_helpers(app)
@@ -116,8 +117,10 @@ def create_app(config):
     return app
 
 
-def register_app(app, config):
+def register_app(app, arguments):
     """Different ways of configurations."""
+
+    config = initialize(arguments)
 
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
@@ -144,7 +147,7 @@ def register_extensions(app):
     cors.init_app(app)
 
 
-def register_blueprints(app, config):
+def register_blueprints(app):
     """Register blueprints in views."""
 
     from quit.web.modules.debug import debug
