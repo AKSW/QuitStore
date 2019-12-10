@@ -10,7 +10,7 @@ matrix:
         - python: "3.8-dev"
         - python: "nightly"
 
-dist: trusty
+dist: bionic
 sudo: required
 
 services:
