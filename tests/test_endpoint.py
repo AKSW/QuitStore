@@ -23,10 +23,9 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -106,10 +105,9 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -200,10 +198,9 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -321,10 +318,9 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {

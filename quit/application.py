@@ -30,40 +30,26 @@ def initialize(args):
         A dictionary containing the store object and git repo object.
 
     """
-    if args.verbose:
-        ch.setLevel(logging.INFO)
-        logger.addHandler(ch)
-        logger.debug('Loglevel: INFO')
+    if args['verbose']:
+        ch.setLevel(logging.ERROR - args['verbose'] * 10)
 
-    if args.verboseverbose:
-        ch.setLevel(logging.DEBUG)
-        logger.addHandler(ch)
-        logger.debug('Loglevel: DEBUG')
-
+    logger.addHandler(ch)
     logger.debug("Parsed args: {}".format(args))
 
     # add the handlers to the logger
-
-    if args.logfile:
+    if args['logfile']:
         try:
-            fh = logging.FileHandler(args.logfile)
+            fh = logging.FileHandler(args['logfile'])
             fh.setLevel(logging.DEBUG)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
-            logger.debug("Logfile: {}".format(args.logfile))
+            logger.debug("Logfile: {}".format(args['logfile']))
         except FileNotFoundError:
-            logger.error("Logfile not found: {}".format(args.logfile))
+            logger.error("Logfile not found: {}".format(args['logfile']))
             sys.exit('Exiting quit')
         except PermissionError:
-            logger.error("Can not create logfile: {}".format(args.logfile))
+            logger.error("Can not create logfile: {}".format(args['logfile']))
             sys.exit('Exiting quit')
-
-    if args.garbagecollection:
-        logger.info(
-            "Please use the option \"--feature garbagecollection\" instead of "
-            + "\"-gc\" or \"--garbagecollection\"."
-        )
-        args.features |= Feature.GarbageCollection
 
     # from Github: https://github.com/RDFLib/rdflib/issues/617
     # Egregious hack, the SequencePath object doesn't support compare, this implements the __lt__
@@ -80,7 +66,7 @@ def initialize(args):
     # End egregious hack
 
     # To get the best behavior, but still we have https://github.com/RDFLib/rdflib/issues/810
-    rdflib.plugins.sparql.SPARQL_DEFAULT_GRAPH_UNION = args.defaultgraph_union
+    rdflib.plugins.sparql.SPARQL_DEFAULT_GRAPH_UNION = args['defaultgraph_union']
 
     # To disable web access: https://github.com/RDFLib/rdflib/issues/810
     rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS = False
@@ -143,13 +129,13 @@ def initialize(args):
 
     try:
         config = QuitStoreConfiguration(
-            configfile=args.configfile,
-            targetdir=args.targetdir,
-            upstream=args.repourl,
-            features=args.features,
-            namespace=args.namespace,
-            oauthclientid=args.oauth_clientid,
-            oauthclientsecret=args.oauth_clientsecret,
+            configfile=args['configfile'],
+            targetdir=args['targetdir'],
+            upstream=args['repourl'],
+            features=args['features'],
+            namespace=args['namespace'],
+            oauthclientid=args['oauth_clientid'],
+            oauthclientsecret=args['oauth_clientsecret'],
         )
     except InvalidConfigurationError as e:
         logger.error(e)
@@ -160,7 +146,7 @@ def initialize(args):
     logger.info('QuitStore Configuration initialized.')
     logger.debug('Path of Gitrepo: ' + config.getRepoPath())
 
-    return {'config': config}
+    return config
 
 
 class FeaturesAction(argparse.Action):
@@ -185,6 +171,60 @@ class FeaturesAction(argparse.Action):
             setattr(namespace, self.dest, flags)
 
 
+def getDefaults():
+    return {
+        'port': 5000,
+        'host': '::',
+        'logfile': None,
+        'basepath': None,
+        'namespace': 'http://quit.instance/',
+        'targetdir': None,
+        'repourl': None,
+        'configfile': "config.ttl",
+        'oauth_clientid': None,
+        'oauth_clientsecret': None,
+        'verbose': 0,
+        'flask_debug': False,
+        'defaultgraph_union': False,
+        'features': 0
+    }
+
+
+def parseEnv():
+    """Parse command line arguments.
+
+    Returns:
+        parsed object representing the config arguments.
+    """
+
+    env = {}
+    if 'QUIT_PORT' in os.environ:
+        env['port'] = os.environ['QUIT_PORT']
+
+    if 'QUIT_LOGFILE' in os.environ:
+        env['logfile'] = os.environ['QUIT_LOGFILE']
+
+    if 'QUIT_BASEPATH' in os.environ:
+        env['basepath'] = os.environ['QUIT_BASEPATH']
+
+    if 'QUIT_NAMESPACE' in os.environ:
+        env['namespace'] = os.environ['QUIT_NAMESPACE']
+
+    if 'QUIT_TARGETDIR' in os.environ:
+        env['targetdir'] = os.environ['QUIT_TARGETDIR']
+
+    if 'QUIT_CONFIGFILE' in os.environ:
+        env['configfile'] = os.environ['QUIT_CONFIGFILE']
+
+    if 'QUIT_OAUTH_CLIENT_ID' in os.environ:
+        env['oauth_clientid'] = os.environ['QUIT_OAUTH_CLIENT_ID']
+
+    if 'QUIT_OAUTH_SECRET' in os.environ:
+        env['oauth_clientsecret'] = os.environ['QUIT_OAUTH_SECRET']
+
+    return env
+
+
 def parseArgs(args):
     """Parse command line arguments.
 
@@ -201,60 +241,26 @@ def parseArgs(args):
     namespacehelp = """A base namespace that will be applied when dealing with relative URIs in
                     SPARQL UPDATE queries."""
 
-    port_default = 5000
-    logfile_default = None
-    basepath_default = None
-    namespace_default = 'http://quit.instance/'
-    targetdir_default = None
-    configfile_default = "config.ttl"
-    oauthclientid_default = None
-    oauthclientsecret_default = None
-
-    if 'QUIT_PORT' in os.environ:
-        port_default = os.environ['QUIT_PORT']
-
-    if 'QUIT_LOGFILE' in os.environ:
-        logfile_default = os.environ['QUIT_LOGFILE']
-
-    if 'QUIT_BASEPATH' in os.environ:
-        basepath_default = os.environ['QUIT_BASEPATH']
-
-    if 'QUIT_NAMESPACE' in os.environ:
-        namespace = os.environ['QUIT_NAMESPACE']
-
-    if 'QUIT_TARGETDIR' in os.environ:
-        targetdir_default = os.environ['QUIT_TARGETDIR']
-
-    if 'QUIT_CONFIGFILE' in os.environ:
-        configfile_default = os.environ['QUIT_CONFIGFILE']
-
-    if 'QUIT_OAUTH_CLIENT_ID' in os.environ:
-        oauthclientid_default = os.environ['QUIT_OAUTH_CLIENT_ID']
-
-    if 'QUIT_OAUTH_SECRET' in os.environ:
-        oauthclientsecret_default = os.environ['QUIT_OAUTH_SECRET']
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--basepath', type=str, default=basepath_default, help=basepathhelp)
-    parser.add_argument(
-        '-n', '--namespace', type=str, default=namespace_default, help=namespacehelp)
-    parser.add_argument('-gc', '--garbagecollection', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('-vv', '--verboseverbose', action='store_true')
-    parser.add_argument('-c', '--configfile', type=str, default=configfile_default, help=confighelp)
-    parser.add_argument('-l', '--logfile', type=str, default=logfile_default, help=loghelp)
+    parser.add_argument('-p', '--port', type=int)
+    parser.add_argument('--host', type=str)
+    parser.add_argument('-l', '--logfile', type=str, help=loghelp)
+    parser.add_argument('-b', '--basepath', type=str, help=basepathhelp)
+    parser.add_argument('-n', '--namespace', type=str, help=namespacehelp)
+    parser.add_argument('-t', '--targetdir', type=str, help=targethelp)
     parser.add_argument('-r', '--repourl', type=str, help='A link/URI to a remote repository.')
-    parser.add_argument('-t', '--targetdir', type=str, default=targetdir_default, help=targethelp)
+    parser.add_argument('-c', '--configfile', type=str, help=confighelp)
+    parser.add_argument('--oauth-clientid', type=str, dest='oauth_clientid')
+    parser.add_argument('--oauth-clientsecret', type=str, dest='oauth_clientsecret')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--flask-debug', action='store_true')
     parser.add_argument('--defaultgraph-union', action='store_true')
     parser.add_argument('-f', '--features', nargs='*', action=FeaturesAction,
                         default=Feature.Unknown,
                         help=featurehelp)
-    parser.add_argument('-p', '--port', default=port_default, type=int)
-    parser.add_argument('--host', default='::', type=str)
-    parser.add_argument('--oauth-clientid', default=oauthclientid_default, type=str)
-    parser.add_argument('--oauth-clientsecret', default=oauthclientsecret_default, type=str)
 
     logger.debug("Parsing args: {}".format(args))
 
-    return parser.parse_args(args)
+    # Remove all values that received the default value None
+    parsedArgs = {k: v for k, v in vars(parser.parse_args(args)).items() if v is not None}
+    return parsedArgs
