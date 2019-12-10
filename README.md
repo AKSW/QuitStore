@@ -1,3 +1,6 @@
+
+<img alt="The QuitStore Logo: A glass of quinch jam (German: Quittenmarmelade) with the Git logo on the lid. 'Graph jam in a git glass'" src="https://raw.githubusercontent.com/AKSW/QuitStore/master/assets/quitstore.png" width="512" />
+
 # Quit Store
 
 Build status of `master` branch:
@@ -25,9 +28,6 @@ To get the Quit Store you have three options:
 
 ### Installation from Source
 
-Install [libgit2](https://libgit2.github.com/) including the headers (e.g. `libgit2-27` and `libgit2-dev` on ubuntu) which is needed for the pygit2 bindings.
-Find out which version of libgit2 you've got on your system and adjust the respective line in the `requirements.txt` of the Quit Store. The minor levels of the versions have to be equal (libgit2 `0.27.4` -> `pygit2==0.27.2`).
-
 Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`).
 
 Get the Quit Store source code:
@@ -37,7 +37,7 @@ $ cd QuitStore
 ```
 If you are using virtualenvwrapper:
 ```
-$ mkvirtualenv -p /usr/bin/python3.5 -r requirements.txt quit
+$ mkvirtualenv -p /usr/bin/python3 -r requirements.txt quit
 $ workon quit # this has to be executed befor you use quit store
 …
 $ deactivate # this can be used after you are done with quit and want to get back your “normal” environment
@@ -53,8 +53,8 @@ Configure your name and email for Git.
 This information will be stored in each commit you are creating with Git and the Quit Store on your system.
 It is relevant so people know which contribution is coming from whom. Execute the following command if you haven't done that before.
 
-    $ git config --global user.name="Your Name"
-    $ git config --global user.email=you@e-mail-provider.org
+    $ git config --global user.name "Your Name"
+    $ git config --global user.email "you@e-mail-provider.org"
 
 ### Start with Existing Data (Optional)
 
@@ -118,16 +118,13 @@ Specify a path to a configuration file. (Defaults to ./config.ttl)
 
 Run Quit-Store without versioning activated
 
-`-gc`, `--garbagecollection`
-
-Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
-
 `-f`, `--features`
 
 This option enables additional features of the store:
 
 - `provenance` - Enable browsing interfaces for provenance information.
 - `persistance` - Store all internal data as RDF graph.
+- `garbagecollection` - Enable garbage collection. With this feature enabled, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
 
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
 
@@ -221,24 +218,42 @@ Further options which can be set are:
 * `QUIT_OAUTH_CLIENT_ID` - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
 * `QUIT_OAUTH_SECRET` - the GitHub OAuth secret
 
-To run the image execute the following command:
+You need a local directory where you want to store the git repository.
+In the example below `mkdir /store/repo`.
+Make sure the quit process in the docker container has write access to this directory by executing:
+```
+sudo chown 1000 /store/repo
+sudo chmod u+w /store/repo
+```
+To run the image execute the following command (maybe you have to replace `docker` with `sudo docker`):
 
 ```
-docker run --name containername -v /existing/store/repo:/data aksw/quitstore
+docker run -it --name containername -p 8080:8080 -v /store/repo:/data aksw/quitstore
 ```
 
-The following example will map the quit store port to the host port 80.
+The following example will start the quit store in the background in the detached mode.
 
 ```
-docker run --name containername -p 80:8080 -v /existing/store.repo:/data aksw/quitstore
+docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitstore
 ```
 
-## TODO:
+Now you should be able to access the quit web interface under `http://localhost:8080` and the SPARQL 1.1 interface under `http://localhost:8080/sparql`.
 
-Re initialize the store with data from commit with id
+## Migrate from old Versions
+
+### Update to 2018-11-20 from 2018-10-29 and older
+
+If you are migrating from an NQuads based repository, as used in older versions of the QuitStore (release 2018-10-29 and older), to an NTriples based repository (release 2018-11-20 and newer) you can use teh following commands to migrate the graphs.
+You should know that it is possible to have multiple graphs in one NQuads file, which is not possible for NTriples files.
+Thus, you should make sure to have only one graph per file.
+You may execute the steps for each NQuads file and replace `graphfile.nq` according to your filenames.
 
 ```
-http://your.host/git/checkout?commitid=12345
+sed "s/<[^<>]*> .$/./g" graphfile.nq | LC_ALL=C sort -u > graphfile.nt
+mv graphfile.nq.graph graphfile.nt.graph
+git rm graphfile.nq
+git add graphfile.nq.graph graphfile.nt graphfile.nt.graph
+git commit -m "Migrate from nq to nt"
 ```
 
 ## License

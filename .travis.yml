@@ -1,18 +1,21 @@
 language: python
 python:
-    - "3.4" # debian jessie, lts 2020-04
-    - "3.5" # debian stretch, lts 2022-06
-    - "3.6" # debian buster, testing as of 2018-09
-    - "3.7-dev" # 3.7 development branch
+    - "3.5" # debian stretch (oldstable), lts 2022-06
+    - "3.7" # debian buster (stable) as of 2019-12
+    - "3.8-dev" # 3.8 development branch
     - "nightly"
 
 matrix:
     allow_failures:
-        - python: "3.7-dev"
+        - python: "3.8-dev"
         - python: "nightly"
 
-dist: trusty
+dist: bionic
 sudo: required
+
+services:
+  - docker
+
 addons:
   apt:
     packages:
@@ -20,12 +23,6 @@ addons:
       - cmake
       - libssl-dev
       - libssh2-1-dev
-
-env: LIBGIT2=~/libgit2/_install/ LD_LIBRARY_PATH=~/libgit2/_install/lib
-
-# install libgit2
-before_install:
-    - "./.travis.sh"
 
 # command to install dependencies
 install:
@@ -50,14 +47,20 @@ script:
     - coverage run -a --source=quit tests/test_provenance.py
 
 before_deploy:
-  - pyinstaller -F quit.spec
-  - cp dist/run dist/quit
+  - mkdir dist
+  - docker run -it -v "$(pwd):/src/" cdrx/pyinstaller-linux:python3
+  - cp dist/linux/run dist/quit-64bit-linux
+  - git apply requirements.txt.windows.patch
+  - docker run -it -v "$(pwd):/src/" --entrypoint /bin/sh cdrx/pyinstaller-windows:python3 -c "apt-get update -y && apt-get install -y git && git clone -b merge/forQuit https://github.com/white-gecko/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
+  - cp dist/windows/run.exe dist/quit-64bit-windows.exe
 
 deploy:
   provider: releases
   api_key:
     secure: lvGR9nWYc/FI98SIGwRaTXXqjcL1hVDMc/P4W4Tg8gdNQ3LSJ4yYzYdtLOfqOupwUxFKR3//mzYbxBEIxXADNos9QtN5scVdZyiApG+FjYRa4TS/JkQ5tk4/aIjlCdwiUOAM9hKfclO7QmWcUX9xtagBG+Z9f99Xm4Z2gzmlq6+bnD4r/ODm8j3AbyHGq3vRNeuz9CiMxgwTTsOaP738BynmOdAVlL0YNw/Rjt1E6xTfjJ0zGT2CYDqUgA/A/RagrMZnESo/2htzQ2G7cYhv6txvCg2pCP2VIiubTni/cC1h3eTPledbmoePdtd9xHA9xb2WSB4RSBeYBr3DTJIrysTDyUOFhI2L/UHFwXlH1UlQZCaRzf/+cIHvoQPxs6PC1mZHs/SgPm+4m1OoJwrXsAMgn52cvVbM7WIhIWYxtQYshDKCip3XQa8ybzn0bVPNi2/zsl+yKdS1PKzeoNxeoBXExyK3igTXKs+u2He8s97wJZII9C+n2GbK/ndqwOENUDOVKuVytmBJ372XrvBLcxS41dMtX/AnFcr+P6ZCZ+PI71D1+GG+pU7KNglyI2RQPBlWfSOM00bXQ16HDYaWD/ktoDVYaj4YkenxFEMoRYyirHw6fFwXRWHZCCg1CA29EIU+HD3kQXzwmxtoecc9zhFpW5WHYUn9DiKdwq6A9xg=
-  file: dist/quit
+  file:
+    - dist/quit-64bit-linux
+    - dist/quit-64bit-windows.exe
   skip_cleanup: true
   on:
     condition: $TRAVIS_PYTHON_VERSION = 3.6
