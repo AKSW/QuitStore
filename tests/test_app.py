@@ -5,6 +5,7 @@ from os import path
 from urllib.parse import quote_plus
 from datetime import datetime
 from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
+from quit.conf import Feature
 import quit.application as quitApp
 from quit.web.app import create_app
 import unittest
@@ -35,7 +36,8 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             payload = {'query': self.query}
@@ -70,7 +72,8 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -107,7 +110,8 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-query'}
@@ -143,7 +147,8 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -180,7 +185,8 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-update'}
@@ -224,7 +230,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -272,7 +279,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -322,7 +330,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -384,7 +393,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -454,7 +464,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             resp = app.post(
@@ -484,7 +495,8 @@ class SparqlProtocolTests(unittest.TestCase):
 
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             resp = app.post(
@@ -508,7 +520,9 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             payload = {'query': self.query}
@@ -543,7 +557,9 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -580,7 +596,9 @@ class SparqlProtocolTests(unittest.TestCase):
         repoContent = {'http://example.org/': content}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-query'}
@@ -635,8 +653,9 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            ns = 'http://example.org/newNS/'
-            args = quitApp.parseArgs(['-t', repo.workdir, '-n', ns])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['namespace'] = 'http://example.org/newNS/'
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -668,7 +687,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -700,7 +720,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -733,7 +754,9 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
@@ -783,7 +806,9 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = '<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .'
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
@@ -824,7 +849,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
@@ -866,7 +892,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             app.post("/branch/master:develop")
@@ -892,7 +919,8 @@ class QuitAppTestCase(unittest.TestCase):
         """Test /commits API request."""
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             response = app.get('/commits', headers={'Accept': 'application/json'})
@@ -934,7 +962,9 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             query = 'SELECT * WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
@@ -1011,7 +1041,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before DELETE INSERT WHERE
@@ -1086,7 +1117,9 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             # execute SELECT query before DELETE INSERT WHERE
@@ -1190,7 +1223,9 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             # execute multioperational update query
@@ -1203,7 +1238,9 @@ class QuitAppTestCase(unittest.TestCase):
             changesets_1 = json.loads(prov_1.data.decode("utf-8"))
 
             # re-start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             # execute PROVENANCE query again
@@ -1230,7 +1267,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -1299,7 +1337,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -1368,7 +1407,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1429,7 +1469,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1483,7 +1524,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1533,7 +1575,9 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
             query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
@@ -1559,7 +1603,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1586,7 +1631,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1620,7 +1666,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1655,7 +1702,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1689,7 +1737,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -1722,7 +1771,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -1730,7 +1780,7 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # Restart Quit
-            re_app = create_app(config).test_client()
+            re_app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -1757,7 +1807,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -1789,7 +1840,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("http://example.org/") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -1824,7 +1876,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -1861,7 +1914,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, "graph.nt"), "w") as graphFile:
@@ -1906,7 +1960,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # fill graph with one triple
@@ -1955,7 +2010,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query
@@ -2002,7 +2058,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
@@ -2063,7 +2120,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
@@ -2135,7 +2193,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
@@ -2207,7 +2266,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
@@ -2260,7 +2320,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
@@ -2286,7 +2347,9 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir, '-l', logFile])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            args['logfile'] = logFile
             app = create_app(args).test_client()
 
             self.assertTrue(os.path.isfile(logFile))
@@ -2298,7 +2361,8 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(logFile))
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             self.assertFalse(os.path.isfile(logFile))
@@ -2311,7 +2375,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
@@ -2320,7 +2385,7 @@ class QuitAppTestCase(unittest.TestCase):
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
             app.post('/sparql', data={"query": update})
 
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
             # start new app to syncAll()
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
@@ -2336,7 +2401,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
@@ -2345,7 +2411,7 @@ class QuitAppTestCase(unittest.TestCase):
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
             app.post('/sparql', data={"query": update})
 
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
             # start new app to syncAll()
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
@@ -2367,7 +2433,8 @@ class QuitAppTestCase(unittest.TestCase):
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir])
+                args = quitApp.getDefaults()
+                args['targetdir'] = local.workdir
                 app = create_app(args).test_client()
 
                 beforePull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
@@ -2414,7 +2481,8 @@ class QuitAppTestCase(unittest.TestCase):
 
                 createCommit(repository=remote)
 
-                args = quitApp.parseArgs(['-t', local.workdir])
+                args = quitApp.getDefaults()
+                args['targetdir'] = local.workdir
                 app = create_app(args).test_client()
 
                 query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
@@ -2452,7 +2520,8 @@ class QuitAppTestCase(unittest.TestCase):
             with TemporaryRepository() as local:
                 local.remotes.create("origin", remote.path)
 
-                args = quitApp.parseArgs(['-t', local.workdir])
+                args = quitApp.getDefaults()
+                args['targetdir'] = local.workdir
                 app = create_app(args).test_client()
 
                 query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
@@ -2491,7 +2560,8 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -2499,10 +2569,9 @@ class QuitAppTestCase(unittest.TestCase):
             app.post('/sparql', data=dict(update=update))
 
             # reload the store
-            args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            newApp = create_app(config).test_client()
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            newApp = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <urn:graph> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -2532,7 +2601,8 @@ class QuitAppTestCase(unittest.TestCase):
         graphContent = "<urn:x> <urn:y> <urn:z> ."
         with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # get commit message
@@ -2554,7 +2624,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph('urn:graph') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # get commit message
@@ -2577,7 +2648,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -2622,7 +2694,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("urn:graph", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             update = 'INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> "literal" .}}'
@@ -2658,7 +2731,8 @@ class QuitAppTestCase(unittest.TestCase):
         # Prepate a git Repository
         with TemporaryRepository() as repo:
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
@@ -2685,7 +2759,8 @@ class QuitAppTestCase(unittest.TestCase):
                         <urn:{i}{i}> <urn:{i}{i}> <urn:{i}{i}> . }} }}"""
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # check states after init
@@ -2755,7 +2830,8 @@ class QuitAppTestCase(unittest.TestCase):
                         <urn:{i}{i}> <urn:{i}{i}> <urn:{i}{i}> . }} }}"""
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # check states after init
@@ -2823,7 +2899,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -2892,7 +2969,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -2968,7 +3046,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3040,7 +3119,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3109,7 +3189,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3174,7 +3255,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3248,7 +3330,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3321,7 +3404,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3398,7 +3482,8 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
@@ -3459,7 +3544,8 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
             filename = iri_to_name('http://aksw.org/') + '.nt'
 
@@ -3493,7 +3579,8 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, 'config.ttl'), 'r') as f:
@@ -3556,7 +3643,8 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             commit = repo.revparse_single('master')
@@ -3629,7 +3717,8 @@ class FileHandlingTests(unittest.TestCase):
             createCommit(repo, "init")
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             commit = repo.revparse_single('master')
@@ -3684,7 +3773,8 @@ class FileHandlingTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo.workdir])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:

@@ -23,7 +23,8 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -104,7 +105,8 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -196,7 +198,8 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
@@ -315,7 +318,8 @@ class EndpointTests(unittest.TestCase):
         with TemporaryDirectory() as repo:
 
             # Start Quit
-            args = quitApp.parseArgs(['-t', repo])
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo
             app = create_app(args).test_client()
 
             # execute INSERT DATA query
