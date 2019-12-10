@@ -1026,6 +1026,58 @@ class QuitAppTestCase(unittest.TestCase):
                     resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})
                     self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
 
+    def testCreateAppArgs(self):
+        """Test create_app with command line arguments"""
+        with TemporaryRepository() as repo:
+            # Start Quit
+            defaults = quitApp.getDefaults()
+            cliArgs = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance', 'garbagecollection'])
+            app = create_app({**defaults, **cliArgs})
+            self.assertTrue(app.config['quit'].config.hasFeature(Feature.Provenance))
+            self.assertFalse(app.config['quit'].config.hasFeature(Feature.Persistence))
+            self.assertTrue(app.config['quit'].config.hasFeature(Feature.GarbageCollection))
+
+    def testCreateAppArgsOnlyProv(self):
+        """Test create_app with command line arguments"""
+        with TemporaryRepository() as repo:
+            # Start Quit
+            defaults = quitApp.getDefaults()
+            cliArgs = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance', '-v'])
+            app = create_app({**defaults, **cliArgs})
+            self.assertTrue(app.config['quit'].config.hasFeature(Feature.Provenance))
+            self.assertFalse(app.config['quit'].config.hasFeature(Feature.Persistence))
+            self.assertFalse(app.config['quit'].config.hasFeature(Feature.GarbageCollection))
+
+    def testCreateAppEnv(self):
+        """Test create_app with environemnt variables"""
+        with TemporaryRepository() as repo:
+            os.environ['QUIT_TARGETDIR'] = repo.workdir
+            with TemporaryDirectory() as logs:
+                listOfFile = os.listdir(logs)
+                self.assertEqual(0, len(listOfFile))
+                logfile = os.path.join(logs, 'quit.log')
+                os.environ['QUIT_LOGFILE'] = logfile
+                # Start Quit
+                defaults = quitApp.getDefaults()
+                env = quitApp.parseEnv()
+                app = create_app({**defaults, **env})
+                self.assertFalse(app.config['quit'].config.hasFeature(Feature.Provenance))
+                self.assertFalse(app.config['quit'].config.hasFeature(Feature.Persistence))
+                self.assertFalse(app.config['quit'].config.hasFeature(Feature.GarbageCollection))
+                listOfFile = os.listdir(logs)
+                self.assertEqual(1, len(listOfFile))
+                with open(logfile) as logfilepointer:
+                    num_lines = sum(1 for line in logfilepointer)
+                    self.assertTrue(num_lines > 1)
+
+    def testCreateAppFail(self):
+        """Test create_app without targert directory, which should fail"""
+        with TemporaryRepository() as repo:
+            # Start Quit
+            defaults = quitApp.getDefaults()
+            with self.assertRaises(SystemExit):
+                create_app(defaults)
+
     def testDeleteInsertWhere(self):
         """Test DELETE INSERT WHERE with an empty and a non empty graph.
 

@@ -32,8 +32,8 @@ def initialize(args):
     """
     if args['verbose']:
         ch.setLevel(logging.ERROR - args['verbose'] * 10)
-        logger.addHandler(ch)
 
+    logger.addHandler(ch)
     logger.debug("Parsed args: {}".format(args))
 
     # add the handlers to the logger

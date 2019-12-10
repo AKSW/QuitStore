@@ -63,15 +63,11 @@ class QuitStoreConfiguration():
         self.nsMngrSysconf = NamespaceManager(self.sysconf)
         self.nsMngrSysconf.bind('', self.quit, override=False)
 
-        try:
-            self.__initstoreconfig(
-                namespace=namespace,
-                upstream=upstream,
-                targetdir=targetdir,
-                configfile=configfile)
-        except InvalidConfigurationError as e:
-            logger.error(e)
-            raise e
+        self.__initstoreconfig(
+            namespace=namespace,
+            upstream=upstream,
+            targetdir=targetdir,
+            configfile=configfile)
 
     def __initstoreconfig(self, namespace, upstream, targetdir, configfile):
         """Initialize store settings."""
