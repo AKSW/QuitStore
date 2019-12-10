@@ -25,7 +25,7 @@ setup(
     long_description=__doc__,
     entry_points = {
         'console_scripts': ['quit=quit.run:main'],
-    }
+    },
     packages=[
         'quit',
         'quit.plugins',
