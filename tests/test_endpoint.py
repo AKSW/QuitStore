@@ -24,9 +24,7 @@ class EndpointTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -107,9 +105,7 @@ class EndpointTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -201,9 +197,7 @@ class EndpointTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {
@@ -322,9 +316,7 @@ class EndpointTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = """INSERT DATA {

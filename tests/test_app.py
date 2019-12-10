@@ -36,9 +36,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             payload = {'query': self.query}
             response = app.get('/sparql', query_string=payload)
@@ -73,9 +71,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
@@ -112,9 +108,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-query'}
 
@@ -150,9 +144,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
@@ -189,9 +181,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-update'}
 
@@ -235,9 +225,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select_resp = app.post(
@@ -285,9 +273,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select_resp = app.post(
@@ -337,9 +323,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select_resp = app.post(
@@ -401,9 +385,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select_resp = app.post(
@@ -473,9 +455,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             resp = app.post(
                 '/sparql',
@@ -505,9 +485,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             resp = app.post(
                 '/sparql',
@@ -531,9 +509,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             payload = {'query': self.query}
             response = app.get('/provenance', query_string=payload)
@@ -568,9 +544,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
@@ -607,9 +581,7 @@ class SparqlProtocolTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             headers = {'Content-Type': 'application/sparql-query'}
 
@@ -665,9 +637,7 @@ class QuitAppTestCase(unittest.TestCase):
             # Start Quit
             ns = 'http://example.org/newNS/'
             args = quitApp.parseArgs(['-t', repo.workdir, '-n', ns])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<relativeURI> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -699,9 +669,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<relativeURI> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -733,9 +701,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "BASE <http://example.org/newNS/>\nINSERT DATA {graph <http://example.org/> "
@@ -768,9 +734,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
@@ -820,9 +784,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
@@ -863,9 +825,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
 
@@ -907,9 +867,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             app.post("/branch/master:develop")
 
@@ -935,9 +893,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepository() as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             response = app.get('/commits', headers={'Accept': 'application/json'})
             self.assertEqual(response.status, '200 OK')
@@ -979,9 +935,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             query = 'SELECT * WHERE {graph ?g {?s ?p ?o .}} LIMIT 1'
             ask = 'ASK {graph <urn:graph> {<urn:bla> <urn:blub> <urn:foo> .}} LIMIT 1'
@@ -1058,9 +1012,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before DELETE INSERT WHERE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1135,9 +1087,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before DELETE INSERT WHERE
             select_resp_before = app.post('/sparql', data=dict(query=select), headers=dict(accept="application/sparql-results+json"))
@@ -1241,9 +1191,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute multioperational update query
             app.post('/sparql',
@@ -1256,9 +1204,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # re-start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute PROVENANCE query again
             prov_2 = app.post('/provenance', data=dict(query=prov), headers=dict(accept="application/sparql-results+json"))
@@ -1285,9 +1231,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1356,9 +1300,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1427,9 +1369,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1490,9 +1430,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1546,9 +1484,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1598,9 +1534,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepository() as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-f', 'provenance'])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
             response = app.post('/provenance', data=dict(query=query))
@@ -1626,9 +1560,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -1655,9 +1587,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = 'SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o'
@@ -1691,9 +1621,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -1728,9 +1656,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -1764,9 +1690,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -1799,9 +1723,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -1836,9 +1758,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -1870,9 +1790,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> .}}"
@@ -1907,9 +1825,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -1946,9 +1862,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, "graph.nt"), "w") as graphFile:
                 graphContent += '<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .\n'
@@ -1993,9 +1907,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # fill graph with one triple
             insert = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
@@ -2044,9 +1956,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query
             select = "SELECT * WHERE {graph <http://example.org/> {?s ?p ?o .}} ORDER BY ?s ?p ?o"
@@ -2093,9 +2003,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -2156,9 +2064,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -2230,9 +2136,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -2304,9 +2208,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before INSERT WHERE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -2359,9 +2261,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             select = "ASK {graph <http://example.org/> {?s ?p ?o .}}"
             select_resp_after = app.post('/sparql', data={"query": select}, headers=dict(accept="application/sparql-results+json"))
@@ -2387,9 +2287,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir, '-l', logFile])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             self.assertTrue(os.path.isfile(logFile))
 
@@ -2401,9 +2299,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             self.assertFalse(os.path.isfile(logFile))
 
@@ -2416,9 +2312,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
 
@@ -2443,9 +2337,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
 
@@ -2476,10 +2368,7 @@ class QuitAppTestCase(unittest.TestCase):
                 createCommit(repository=remote)
 
                 args = quitApp.parseArgs(['-t', local.workdir])
-                objects = quitApp.initialize(args)
-
-                config = objects['config']
-                app = create_app(config).test_client()
+                app = create_app(args).test_client()
 
                 beforePull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
                               'p': {'type': 'uri', 'value': 'http://ex.org/x'},
@@ -2526,10 +2415,7 @@ class QuitAppTestCase(unittest.TestCase):
                 createCommit(repository=remote)
 
                 args = quitApp.parseArgs(['-t', local.workdir])
-                objects = quitApp.initialize(args)
-
-                config = objects['config']
-                app = create_app(config).test_client()
+                app = create_app(args).test_client()
 
                 query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
 
@@ -2567,10 +2453,7 @@ class QuitAppTestCase(unittest.TestCase):
                 local.remotes.create("origin", remote.path)
 
                 args = quitApp.parseArgs(['-t', local.workdir])
-                objects = quitApp.initialize(args)
-
-                config = objects['config']
-                app = create_app(config).test_client()
+                app = create_app(args).test_client()
 
                 query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
 
@@ -2609,9 +2492,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withEmptyGraph("urn:graph") as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
@@ -2652,9 +2533,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph('urn:graph', graphContent) as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # get commit message
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
@@ -2676,9 +2555,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # get commit message
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
@@ -2701,9 +2578,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <urn:graph> {<urn:x> <urn:y> <urn:z> .}}"
@@ -2748,9 +2623,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             update = 'INSERT DATA {graph <urn:graph> {<urn:x2> <urn:y2> "literal" .}}'
             app.post('/sparql', data=dict(update=update))
@@ -2786,9 +2659,7 @@ class QuitAppTestCase(unittest.TestCase):
         with TemporaryRepository() as repo:
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             query = "SELECT * WHERE {graph ?g {?s ?p ?o .}}"
             response = app.post('/sparql', data=dict(query=query))
@@ -2815,9 +2686,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # check states after init
             for i in [0, 1]:
@@ -2887,9 +2756,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # check states after init
             for i in [0, 1]:
@@ -2957,9 +2824,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3028,9 +2893,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3106,9 +2969,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3180,9 +3041,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3251,9 +3110,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3318,9 +3175,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3394,9 +3249,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3469,9 +3322,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3548,9 +3399,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             # execute SELECT query before UPDATE
             select = "SELECT * WHERE {graph ?g {?s ?p ?o .}} ORDER BY ?g ?s ?p ?o"
@@ -3611,9 +3460,7 @@ class FileHandlingTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
             filename = iri_to_name('http://aksw.org/') + '.nt'
 
             self.assertFalse(path.isfile(path.join(repo.workdir, filename)))
@@ -3647,9 +3494,7 @@ class FileHandlingTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, 'config.ttl'), 'r') as f:
                 configfile_before = f.read()
@@ -3712,9 +3557,7 @@ class FileHandlingTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             commit = repo.revparse_single('master')
 
@@ -3787,9 +3630,7 @@ class FileHandlingTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             commit = repo.revparse_single('master')
 
@@ -3844,9 +3685,7 @@ class FileHandlingTests(unittest.TestCase):
 
             # Start Quit
             args = quitApp.parseArgs(['-t', repo.workdir])
-            objects = quitApp.initialize(args)
-            config = objects['config']
-            app = create_app(config).test_client()
+            app = create_app(args).test_client()
 
             with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual(graphContent, f.read())
