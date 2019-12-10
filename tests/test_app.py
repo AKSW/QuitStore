@@ -4,7 +4,7 @@ from os import path
 
 from urllib.parse import quote_plus
 from datetime import datetime
-from pygit2 import GIT_SORT_TOPOLOGICAL, Signature
+from pygit2 import GIT_SORT_TOPOLOGICAL, Signature, GIT_OBJ_BLOB
 from quit.conf import Feature
 import quit.application as quitApp
 from quit.web.app import create_app
@@ -3702,7 +3702,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nt'):
+                if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3726,7 +3726,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nt'):
+                if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3776,7 +3776,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nt'):
+                if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())
@@ -3800,7 +3800,7 @@ class FileHandlingTests(unittest.TestCase):
             commit = repo.revparse_single('master')
 
             for entry in commit.tree:
-                if entry.type == 'blob' and entry.name.endswith('.nt'):
+                if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
                     self.assertTrue(entry.name in files.keys())
                 else:
                     self.assertTrue(entry.name[:-6] in files.keys())

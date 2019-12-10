@@ -1,7 +1,7 @@
 import logging
 
 import os
-from pygit2 import Repository
+from pygit2 import Repository, GIT_OBJ_BLOB, GIT_OBJ_TREE
 from os import walk
 from os.path import join, isfile, relpath
 from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
@@ -413,7 +413,7 @@ class QuitGraphConfiguration():
         def find_blobs(tree, prefix=''):
             # Collect graph files, rdf files and config files
             for entry in tree:
-                if entry.type == 'blob':
+                if entry.type == GIT_OBJ_BLOB:
                     format = guess_format(entry.name)
                     if format is None and entry.name.endswith('.graph'):
                         graph_file_blobs[join(prefix, entry.name)] = entry.id
@@ -421,7 +421,7 @@ class QuitGraphConfiguration():
                         rdf_file_blobs[join(prefix, entry.name)] = (entry.id, format)
                     elif format is not None and entry.name == 'config.ttl':
                         config_files.append(str(entry.id))
-                elif entry.type == 'tree':
+                elif entry.type == GIT_OBJ_TREE:
                     tree_obj = self.repository[entry.id]
                     find_blobs(tree_obj, join(prefix, entry.name))
 
