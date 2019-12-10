@@ -37,7 +37,7 @@ $ cd QuitStore
 ```
 If you are using virtualenvwrapper:
 ```
-$ mkvirtualenv -p /usr/bin/python3.5 -r requirements.txt quit
+$ mkvirtualenv -p /usr/bin/python3 -r requirements.txt quit
 $ workon quit # this has to be executed befor you use quit store
 …
 $ deactivate # this can be used after you are done with quit and want to get back your “normal” environment
