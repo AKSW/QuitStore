@@ -23,7 +23,7 @@ setup(
     author_email='arndtn@gmail.com',
     description='Distributed Version Control for RDF Knowledge Bases',
     long_description=__doc__,
-    entry_points = {
+    entry_points={
         'console_scripts': ['quit=quit.run:main'],
     },
     packages=[
