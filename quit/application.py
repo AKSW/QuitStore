@@ -177,6 +177,7 @@ class FeaturesAction(argparse.Action):
 
             setattr(namespace, self.dest, flags)
 
+
 def getDefaults():
     return {
         'port': 5000,
@@ -195,6 +196,7 @@ def getDefaults():
         'defaultgraph_union': False,
         'features': 0
     }
+
 
 def parseEnv():
     """Parse command line arguments.
@@ -229,6 +231,7 @@ def parseEnv():
         env['oauth_clientsecret'] = os.environ['QUIT_OAUTH_SECRET']
 
     return env
+
 
 def parseArgs(args):
     """Parse command line arguments.
