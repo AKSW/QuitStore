@@ -51,13 +51,6 @@ def initialize(args):
             logger.error("Can not create logfile: {}".format(args['logfile']))
             sys.exit('Exiting quit')
 
-    if args['garbagecollection']:
-        logger.info(
-            "Please use the option \"--feature garbagecollection\" instead of "
-            + "\"-gc\" or \"--garbagecollection\"."
-        )
-        args['features'] |= Feature.GarbageCollection
-
     # from Github: https://github.com/RDFLib/rdflib/issues/617
     # Egregious hack, the SequencePath object doesn't support compare, this implements the __lt__
     # method so that algebra.py works on sorting in SPARQL queries on e.g. rdf:List paths
@@ -190,7 +183,6 @@ def getDefaults():
         'configfile': "config.ttl",
         'oauth_clientid': None,
         'oauth_clientsecret': None,
-        'garbagecollection': False,
         'verbose': 0,
         'flask_debug': False,
         'defaultgraph_union': False,
@@ -260,7 +252,6 @@ def parseArgs(args):
     parser.add_argument('-c', '--configfile', type=str, help=confighelp)
     parser.add_argument('--oauth-clientid', type=str, dest='oauth_clientid')
     parser.add_argument('--oauth-clientsecret', type=str, dest='oauth_clientsecret')
-    parser.add_argument('-gc', '--garbagecollection', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--flask-debug', action='store_true')
     parser.add_argument('--defaultgraph-union', action='store_true')

@@ -118,16 +118,13 @@ Specify a path to a configuration file. (Defaults to ./config.ttl)
 
 Run Quit-Store without versioning activated
 
-`-gc`, `--garbagecollection`
-
-Enable garbage collection. With this option activated, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
-
 `-f`, `--features`
 
 This option enables additional features of the store:
 
 - `provenance` - Enable browsing interfaces for provenance information.
 - `persistance` - Store all internal data as RDF graph.
+- `garbagecollection` - Enable garbage collection. With this feature enabled, git will check for garbage collection after each commit. This may slow down response time but will keep the repository size small.
 
 `-v`, `--verbose` and `-vv`, `--verboseverbose`
 
