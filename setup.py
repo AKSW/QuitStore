@@ -40,8 +40,7 @@ setup(
         'quit.tools',
         'quit.web',
         'quit.web.extras',
-        'quit.web.modules',
-        'quit.web'
+        'quit.web.modules'
     ],
     package_data={
         'quit.web': [
