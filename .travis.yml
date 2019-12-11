@@ -63,7 +63,7 @@ deploy:
     - dist/quit-64bit-windows.exe
   skip_cleanup: true
   on:
-    condition: $TRAVIS_PYTHON_VERSION = 3.6
+    condition: $TRAVIS_PYTHON_VERSION = 3.7
     tags: true
     repo: AKSW/QuitStore
 
