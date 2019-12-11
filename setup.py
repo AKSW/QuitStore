@@ -15,8 +15,8 @@ from setuptools import setup
 import os
 
 setup(
-    name='QuitStore',
-    version='0.17.0',
+    name='quit-store',
+    version='0.24.0',
     url='https://github.com/AKSW/QuitStore',
     license='GPLv3+',
     author='Natanael Arndt, Norman Radtke',
@@ -24,7 +24,7 @@ setup(
     description='Distributed Version Control for RDF Knowledge Bases',
     long_description=__doc__,
     entry_points={
-        'console_scripts': ['quit=quit.run:main'],
+        'console_scripts': ['quit-store=quit.run:main'],
     },
     packages=[
         'quit',

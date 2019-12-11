@@ -1,3 +1,4 @@
 *.pyc
 build
 dist
+quit_store.egg-info/
