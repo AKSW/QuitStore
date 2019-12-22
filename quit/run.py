@@ -11,35 +11,30 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 logger = logging.getLogger('quit.run')
 
+sys.setrecursionlimit(2 ** 15)
 
-def main():
-    sys.setrecursionlimit(2 ** 15)
+defaults = getDefaults()
+env = parseEnv()
+args = parseArgs(sys.argv[1:])
+args = {**defaults, **env, **args}
+application = create_app(args)
 
-    defaults = getDefaults()
-    env = parseEnv()
-    args = parseArgs(sys.argv[1:])
-    args = {**defaults, **env, **args}
-    application = create_app(args)
+# Set the basepath
+if args['basepath']:
+    logger.info("Configure DispatcherMiddleware for basepath \"{}\"".format(args['basepath']))
 
-    # Set the basepath
-    if args['basepath']:
-        logger.info("Configure DispatcherMiddleware for basepath \"{}\"".format(args['basepath']))
+    def simple(env, resp):
+        """A simple WSGI application.
 
-        def simple(env, resp):
-            """A simple WSGI application.
+        See also: http://werkzeug.pocoo.org/docs/0.14/middlewares/
+        """
+        resp('200 OK', [('Content-Type', 'text/plain')])
 
-            See also: http://werkzeug.pocoo.org/docs/0.14/middlewares/
-            """
-            resp('200 OK', [('Content-Type', 'text/plain')])
-
-        application.wsgi_app = DispatcherMiddleware(
+    application.wsgi_app = DispatcherMiddleware(
             simple, {args['basepath']: application.wsgi_app})
 
+if __name__ == "__main__":
     application.run(debug=args['flask_debug'],
                     use_reloader=False,
                     host=args['host'],
                     port=args['port'])
-
-
-if __name__ == "__main__":
-    main()
