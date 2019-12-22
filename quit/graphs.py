@@ -128,7 +128,7 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
     def contexts(self, triple=None):
 
         def collect():
-            if triple is None or triple is (None, None, None):
+            if triple is None or triple == (None, None, None):
                 contexts = (context for context in self._contexts)
             else:
                 contexts = (context for context in self._contexts
