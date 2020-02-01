@@ -4,8 +4,7 @@ All notable changes to this project should be documented in this file. But actua
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project from now on adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.24.3] - ???
-
+## [0.24.4] - ???
 ### Added
 -
 
@@ -14,6 +13,10 @@ and this project from now on adheres to [Semantic Versioning](http://semver.org/
 
 ### Fixed
 -
+
+## [0.24.3] - 2019-12-22 (iiii)
+### Fixed
+- execution with uwsgi and docker
 
 ## [0.24.2] - 2019-12-17
 ### Fixed
