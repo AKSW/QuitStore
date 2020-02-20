@@ -205,7 +205,7 @@ You can access them with your browser at the following paths.
 ## Docker
 
 We also provide a [Docker image for the Quit Store](https://hub.docker.com/r/aksw/quitstore/) on the public docker hub.
-The Image will expose port 80 by default.
+The Image will expose port 8080 by default.
 An existing repository can be linked to the volume `/data`.
 The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
 
