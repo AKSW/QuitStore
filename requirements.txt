@@ -1,4 +1,4 @@
-git+https://github.com/white-gecko/rdflib@merge/forQuit#egg=rdflib
+git+https://github.com/RDFLib/rdflib@master
 Flask
 Flask-Cors
 pygit2>=1.1.0
