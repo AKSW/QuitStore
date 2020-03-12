@@ -3,7 +3,7 @@ import pygit2
 import re
 import logging
 
-from _pygit2 import GitError, Oid
+from pygit2._pygit2 import GitError, Oid
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitGitRefNotFound, QuitGitRepoError, QuitGitPushError
@@ -800,7 +800,7 @@ class QuitRemoteCallbacks (pygit2.RemoteCallbacks):
                 if "QUIT_SSH_KEY_HOME" in os.environ:
                     ssh = os.environ["QUIT_SSH_KEY_HOME"]
                 # public key is still needed because:
-                # _pygit2.GitError: Failed to authenticate SSH session:
+                # pygit2._pygit2.GitError: Failed to authenticate SSH session:
                 # Unable to extract public key from private key file:
                 # Method unimplemented in libgcrypt backend
                 pubkey = join(ssh, 'id_rsa.pub')
