@@ -1,4 +1,4 @@
-git+https://github.com/RDFLib/rdflib@master
+git+https://github.com/RDFLib/rdflib@master#egg=rdflib[sparql]
 Flask
 Flask-Cors
 pygit2>=1.1.0
