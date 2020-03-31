@@ -1,9 +1,11 @@
 import os
 import pygit2
 import rdflib
+from atomicgraphs import comp_graph
 import logging
 from quit.exceptions import QuitMergeConflict, QuitBlobMergeConflict
 from rdflib.plugins.serializers.nt import _nt_row as _nt
+import rdflib.plugins.parsers as parsers
 
 logger = logging.getLogger('quit.merge')
 
@@ -80,11 +82,12 @@ class Merger(object):
 
         mergedTreeBuilder = self._repository.TreeBuilder(targetCommit.tree)
         logger.debug(diff)
-
+        print("Diff: {}".format(diff))
         logger.debug(diff.stats)
         logger.debug("Diff has following patches")
         conflicts = {}
         for p in diff:
+            print("Patch: {}".format(p))
             logger.debug("A Patch")
             logger.debug(p)
             logger.debug(p.line_stats)
@@ -160,78 +163,117 @@ class Merger(object):
 
     def _merge_threeway_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
         if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
-            a = set()
+            aGraph = rdflib.Graph()
         else:
             graphAblob = self._repository[graphAOid].data
-            a = set(graphAblob.decode("utf-8").strip().split("\n"))
+            aGraph = rdflib.Graph().parse(data=graphAblob.decode("utf-8"), format="nt")
 
         if str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
-            b = set()
+            bGraph = rdflib.Graph()
         else:
             graphBblob = self._repository[graphBOid].data
-            b = set(graphBblob.decode("utf-8").strip().split("\n"))
+            bGraph = rdflib.Graph().parse(data=graphBblob.decode("utf-8"), format="nt")
 
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
-            base = set(graphBaseblob.decode("utf-8").strip().split("\n"))
-            addA = a - base
-            addB = b - base
-            intersect = a.intersection(b)
-            merged = sorted(intersect.union(addA).union(addB))
+            compGraphBase = comp_graph.ComparableGraph()
+            compGraphBase.parse(data=graphBaseblob.decode("utf-8"), format="nt")
+            compGraphA = comp_graph.ComparableGraph(aGraph.store, aGraph.identifier)
+            compGraphB = comp_graph.ComparableGraph(bGraph.store, bGraph.identifier)
+            diffA = compGraphA.diff(compGraphBase)
+            diffB = compGraphB.diff(compGraphBase)
+
+            diffANewTriples = self._accumulate_triples(diffA[1])
+            diffBNewTriples = self._accumulate_triples(diffB[1])
+            diffARemovedTriples = self._accumulate_triples(diffA[0])
+            diffBRemovedTriples = self._accumulate_triples(diffB[0])
+            baseTriples = self._get_triples(compGraphBase)
+            merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples +
+                      diffANewTriples + diffBNewTriples)
+            serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(aGraph))
+            merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
         else:
-            merged = a.union(b)
+            compGraphA = comp_graph.ComparableGraph(aGraph.store, bGraph.identifier)
+            compGraphB = comp_graph.ComparableGraph(bGraph.store, bGraph.identifier)
+            diff = compGraphA.diff(compGraphB)
+            merged = self._get_triples(compGraphA)
+            merged = merged.union(self._accumulate_triples(diff[0]))
+            serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(aGraph))
+            merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
         print("\n".join(merged))
 
         blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
         return blob
 
+    def _accumulate_triples(self, setOfGraphs):
+        result = set()
+        for aGraph in setOfGraphs:
+            result = result.union(self._get_triples(aGraph))
+        return result
+
+    def _get_triples(self, graph):
+        return set(graph.triples((None, None, None)))
+
+    def _serialize_triple_sets(self, set, bIdMap):
+        result = set()
+        for triple in set:
+            result.add("{} {} {} .".format(self._serialize_bNode(triple[0], bIdMap),
+                                           triple[1].n3(),
+                                           self._serialize_bNode(triple[2], bIdMap)))
+        return sorted(result)
+
+    def _serialize_bNode(self, node, bIdMap):
+        if(isinstance(node, rdflib.BNode)):
+            return "_:{}".format(bIdMap[node])
+        else:
+            return node.n3()
+
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
         if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
-            a = set()
+            graphA = comp_graph.ComparableGraph()
         else:
             graphAblob = self._repository[graphAOid].data
-            a = set(graphAblob.decode("utf-8").split("\n"))
+            graphA = comp_graph.ComparableGraph()
+            graphA.parse(data=graphAblob.decode("utf-8"), format="nt")
 
         if str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
-            b = set()
+            graphB = comp_graph.ComparableGraph()
         else:
             graphBblob = self._repository[graphBOid].data
-            b = set(graphBblob.decode("utf-8").split("\n"))
+            graphB = comp_graph.ComparableGraph()
+            graphB.parse(data=graphBblob.decode("utf-8"), format="nt")
 
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
-            base = set(graphBaseblob.decode("utf-8").split("\n"))
+            graphBase = comp_graph.ComparableGraph()
+            graphBase.parse(data=graphBaseblob.decode("utf-8"), format="nt")
         else:
-            base = set()
+            graphBase = comp_graph.ComparableGraph()
 
-        logger.debug("base")
-        logger.debug(base)
-        logger.debug("a")
-        logger.debug(a)
-        logger.debug("b")
-        logger.debug(b)
+        diffA = graphA.diff(graphBase)
+        diffB = graphB.diff(graphBase)
 
-        addA = a - base
-        delA = base - a
-        addB = b - base
-        delB = base - b
-
-        ok, conflicts = self._merge_context_conflict_detection(addA - addB, delA - delB,
-                                                               addB - addA, delB - delA)
-
-        logger.debug("intersect and ok, then merged")
-        logger.debug(a.intersection(b))
-        logger.debug(ok)
-        merged = sorted(a.intersection(b).union(ok))
-        logger.debug(merged)
-        print(merged)
-
-        if conflicts is not None:
-            print("raised")
-            raise QuitBlobMergeConflict('Conflicts, ahhhhh!!', merged, conflicts)
+        diffANewTriples = self._accumulate_triples(diffA[1])
+        diffBNewTriples = self._accumulate_triples(diffB[1])
+        diffARemovedTriples = self._accumulate_triples(diffA[0])
+        diffBRemovedTriples = self._accumulate_triples(diffB[0])
+        baseTriples = self._get_triples(graphBase)
+        merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples +
+                  diffANewTriples + diffBNewTriples)
+        serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(graphA))
+        merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
 
         blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
         return blob
+
+    def _compare_atomic_graphs(self, graphDataA, graphDataB):
+        aGraph = comp_graph.ComparableGraph()
+        aGraph.parse(data=graphDataA, format="n3")
+        bGraph = comp_graph.ComparableGraph()
+        bGraph.parse(data=graphDataB, format="n3")
+        aData = aGraph.serialize(destination=None, format='nt')
+        diffData = aGraph.diff(bGraph)[1].serialize(destination=None, format='nt')
+        return aData + diffData
 
     def _merge_context_conflict_detection(self, addA, delA, addB, delB):
 
