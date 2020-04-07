@@ -1,6 +1,6 @@
 language: python
 python:
-    - "3.5" # debian stretch (oldstable), lts 2022-06
+    - "3.6" # oldest rdflib supported by libgit2
     - "3.7" # debian buster (stable) as of 2019-12
     - "3.8-dev" # 3.8 development branch
     - "nightly"
