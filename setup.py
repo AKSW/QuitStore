@@ -50,7 +50,7 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'rdflib [sparql] >4',
+        'rdflib [sparql] >=5.0.0rc1',
         'Flask',
         'Flask-Cors',
         'sortedcontainers',

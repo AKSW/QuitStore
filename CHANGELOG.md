@@ -10,6 +10,7 @@ and this project from now on adheres to [Semantic Versioning](http://semver.org/
 
 ### Changed
 - Minimum Python version is now 3.6 (pygit2 does not support any older)
+- use rdflib 5.0.0rc1 and above
 -
 
 ### Fixed
