@@ -66,7 +66,7 @@ If you already have data which you want to use in the quit store follow these st
 $ git init /path/to/repo
 ```
 
-2. Put your RDF data formatted as [N-Triples](https://www.w3.org/TR/n-triples/) into files like `<graph>.nt` into this directory.
+2. Put your RDF data formatted as [N-Triples](https://www.w3.org/TR/n-triples/) and sorted (e.g. using `cat data-in.nt | LC_ALL=C sort -u > data-out.nt`) into files like `<graph>.nt` into this directory.
 3. For each `<graph>.nt` file create a corresponding `<graph>.nt.graph` file which must contain the IRI for the respective graph. (These `.graph` files are also used by the [Virtuoso bulk loading process](https://virtuoso.openlinksw.com/dataspace/doc/dav/wiki/Main/VirtBulkRDFLoader#Bulk%20loading%20process)).
 4. Add the data to the repository and create a commit.
 
@@ -74,6 +74,9 @@ $ git init /path/to/repo
 $ git add …
 $ git commit -m "init repository"
 ```
+
+To ingest further versions of your data into the Quit Store you can add further commits by going through steps 2.-4..
+Alternatively you are also able to execute SPARQL 1.1. Update operations to create new versions on the Quit Store.
 
 ### Start the Quit Store
 
