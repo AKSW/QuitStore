@@ -3,10 +3,10 @@ index a7db224..d0907a3 100644
 --- a/requirements.txt
 +++ b/requirements.txt
 @@ -1,10 +1,7 @@
--git+https://github.com/white-gecko/rdflib@merge/forQuit#egg=rdflib[sparql]
+-git+https://github.com/RDFLib/rdflib@master#egg=rdflib[sparql]
  Flask
  Flask-Cors
- pygit2>=1.0.0
+ pygit2>=1.1.0
  sortedcontainers
  uritools
 -git+https://github.com/RDFLib/rdflib-jsonld@master
