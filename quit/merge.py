@@ -1,4 +1,3 @@
-import os
 import pygit2
 import rdflib
 from atomicgraphs import comp_graph
@@ -168,11 +167,12 @@ class Merger(object):
             graphAblob = self._repository[graphAOid].data
             aGraph = rdflib.Graph().parse(data=graphAblob.decode("utf-8"), format="nt")
 
-        if str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
-            bGraph = rdflib.Graph()
-        else:
+        bGraph = rdflib.Graph()
+        parserGraphB = parsers.ntriples.W3CNTriplesParser(parsers.ntriples.NTGraphSink(bGraph))
+        if not str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
             graphBblob = self._repository[graphBOid].data
-            bGraph = rdflib.Graph().parse(data=graphBblob.decode("utf-8"), format="nt")
+            source = rdflib.parser.create_input_source(data=graphBblob.decode("utf-8"))
+            parserGraphB.parse(source.getCharacterStream())
 
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
@@ -188,20 +188,18 @@ class Merger(object):
             diffARemovedTriples = self._accumulate_triples(diffA[0])
             diffBRemovedTriples = self._accumulate_triples(diffB[0])
             baseTriples = self._get_triples(compGraphBase)
-            merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples +
-                      diffANewTriples + diffBNewTriples)
-            serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(aGraph))
-            merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
+            merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples |
+                      diffANewTriples | diffBNewTriples)
         else:
             compGraphA = comp_graph.ComparableGraph(aGraph.store, bGraph.identifier)
             compGraphB = comp_graph.ComparableGraph(bGraph.store, bGraph.identifier)
             diff = compGraphA.diff(compGraphB)
             merged = self._get_triples(compGraphA)
             merged = merged.union(self._accumulate_triples(diff[0]))
-            serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(aGraph))
-            merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
-        print("\n".join(merged))
-
+        bNodeNameMap = {}
+        for bNodeName in parserGraphB._bnode_ids:
+            bNodeNameMap[parserGraphB._bnode_ids[bNodeName]] = bNodeName
+        merged = self._serialize_triple_sets(merged, bNodeNameMap)
         blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
         return blob
 
@@ -214,9 +212,9 @@ class Merger(object):
     def _get_triples(self, graph):
         return set(graph.triples((None, None, None)))
 
-    def _serialize_triple_sets(self, set, bIdMap):
+    def _serialize_triple_sets(self, tripleSet, bIdMap):
         result = set()
-        for triple in set:
+        for triple in tripleSet:
             result.add("{} {} {} .".format(self._serialize_bNode(triple[0], bIdMap),
                                            triple[1].n3(),
                                            self._serialize_bNode(triple[2], bIdMap)))
@@ -224,7 +222,10 @@ class Merger(object):
 
     def _serialize_bNode(self, node, bIdMap):
         if(isinstance(node, rdflib.BNode)):
-            return "_:{}".format(bIdMap[node])
+            try:
+                return "_:{}".format(bIdMap[node])
+            except KeyError:
+                return node.n3()
         else:
             return node.n3()
 
