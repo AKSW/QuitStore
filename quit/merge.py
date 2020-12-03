@@ -5,6 +5,8 @@ import logging
 from quit.exceptions import QuitMergeConflict, QuitBlobMergeConflict
 from rdflib.plugins.serializers.nt import _nt_row as _nt
 import rdflib.plugins.parsers as parsers
+import rdflib.plugins.parsers.ntriples as ntriples
+import pprint
 
 logger = logging.getLogger('quit.merge')
 
@@ -161,14 +163,15 @@ class Merger(object):
             return self._merge_context_graph_blobs(graphAOid, graphBOid, graphBaseOid)
 
     def _merge_threeway_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
-        if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
-            aGraph = rdflib.Graph()
-        else:
+        aGraph = comp_graph.ComparableGraph()
+        parserGraphA = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(aGraph))
+        if not str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
             graphAblob = self._repository[graphAOid].data
-            aGraph = rdflib.Graph().parse(data=graphAblob.decode("utf-8"), format="nt")
+            source = rdflib.parser.create_input_source(data=graphAblob.decode("utf-8"))
+            parserGraphA.parse(source.getCharacterStream())
 
-        bGraph = rdflib.Graph()
-        parserGraphB = parsers.ntriples.W3CNTriplesParser(parsers.ntriples.NTGraphSink(bGraph))
+        bGraph = comp_graph.ComparableGraph()
+        parserGraphB = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(bGraph))
         if not str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
             graphBblob = self._repository[graphBOid].data
             source = rdflib.parser.create_input_source(data=graphBblob.decode("utf-8"))
@@ -178,29 +181,28 @@ class Merger(object):
             graphBaseblob = self._repository[graphBaseOid].data
             compGraphBase = comp_graph.ComparableGraph()
             compGraphBase.parse(data=graphBaseblob.decode("utf-8"), format="nt")
-            compGraphA = comp_graph.ComparableGraph(aGraph.store, aGraph.identifier)
-            compGraphB = comp_graph.ComparableGraph(bGraph.store, bGraph.identifier)
-            diffA = compGraphA.diff(compGraphBase)
-            diffB = compGraphB.diff(compGraphBase)
+            diffA = aGraph.diff(compGraphBase)
+            diffB = bGraph.diff(compGraphBase)
 
             diffANewTriples = self._accumulate_triples(diffA[1])
             diffBNewTriples = self._accumulate_triples(diffB[1])
             diffARemovedTriples = self._accumulate_triples(diffA[0])
             diffBRemovedTriples = self._accumulate_triples(diffB[0])
             baseTriples = self._get_triples(compGraphBase)
-            merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples |
+            merged = ((baseTriples - diffARemovedTriples - diffBRemovedTriples) |
                       diffANewTriples | diffBNewTriples)
         else:
-            compGraphA = comp_graph.ComparableGraph(aGraph.store, bGraph.identifier)
-            compGraphB = comp_graph.ComparableGraph(bGraph.store, bGraph.identifier)
-            diff = compGraphA.diff(compGraphB)
-            merged = self._get_triples(compGraphA)
+            diff = aGraph.diff(bGraph)
+            merged = self._get_triples(aGraph)
             merged = merged.union(self._accumulate_triples(diff[0]))
-        bNodeNameMap = {}
-        for bNodeName in parserGraphB._bnode_ids:
-            bNodeNameMap[parserGraphB._bnode_ids[bNodeName]] = bNodeName
-        merged = self._serialize_triple_sets(merged, bNodeNameMap)
+
+        colourMap = {**(compGraphBase.getBNodeColourMap()),
+                     **(bGraph.getBNodeColourMap()),
+                     **(aGraph.getBNodeColourMap())}
+        colourToNameMapA = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
+        merged = self._serialize_triple_sets(merged, colourMap, colourToNameMapA)
         blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
+
         return blob
 
     def _accumulate_triples(self, setOfGraphs):
@@ -212,22 +214,31 @@ class Merger(object):
     def _get_triples(self, graph):
         return set(graph.triples((None, None, None)))
 
-    def _serialize_triple_sets(self, tripleSet, bIdMap):
+    def _serialize_triple_sets(self, tripleSet, colourMap, colourToNameMap):
         result = set()
         for triple in tripleSet:
-            result.add("{} {} {} .".format(self._serialize_bNode(triple[0], bIdMap),
+            result.add("{} {} {} .".format(self._serialize_bNode(triple[0],
+                                                                 colourMap, colourToNameMap),
                                            triple[1].n3(),
-                                           self._serialize_bNode(triple[2], bIdMap)))
+                                           self._serialize_bNode(triple[2],
+                                                                 colourMap,
+                                                                 colourToNameMap)))
         return sorted(result)
 
-    def _serialize_bNode(self, node, bIdMap):
+    def _serialize_bNode(self, node, colourMap, colourToNameMap):
         if(isinstance(node, rdflib.BNode)):
             try:
-                return "_:{}".format(bIdMap[node])
+                return "_:{}".format(colourToNameMap[colourMap[node]])
             except KeyError:
                 return node.n3()
         else:
             return node.n3()
+
+    def _create_colour_to_name_map(self, nodeColourMap, nodeNameMap):
+        colourToNameMap = {}
+        for bNodeName in nodeNameMap:
+            colourToNameMap[nodeColourMap[nodeNameMap[bNodeName]]] = bNodeName
+        return colourToNameMap
 
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
         if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
