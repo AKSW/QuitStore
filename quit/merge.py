@@ -3,10 +3,9 @@ import rdflib
 from atomicgraphs import comp_graph
 import logging
 from quit.exceptions import QuitMergeConflict, QuitBlobMergeConflict
-from rdflib.plugins.serializers.nt import _nt_row as _nt
+from rdflib.plugins.serializers.nt import _quoteLiteral as _qLiteral
 import rdflib.plugins.parsers as parsers
 import rdflib.plugins.parsers.ntriples as ntriples
-import pprint
 
 logger = logging.getLogger('quit.merge')
 
@@ -199,8 +198,8 @@ class Merger(object):
         colourMap = {**(compGraphBase.getBNodeColourMap()),
                      **(bGraph.getBNodeColourMap()),
                      **(aGraph.getBNodeColourMap())}
-        colourToNameMapA = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
-        merged = self._serialize_triple_sets(merged, colourMap, colourToNameMapA)
+        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
+        merged = self._serialize_triple_sets(merged, colourMap, colourToNameMap)
         blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
 
         return blob
@@ -208,6 +207,7 @@ class Merger(object):
     def _accumulate_triples(self, setOfGraphs):
         result = set()
         for aGraph in setOfGraphs:
+            print(aGraph)
             result = result.union(self._get_triples(aGraph))
         return result
 
@@ -241,19 +241,19 @@ class Merger(object):
         return colourToNameMap
 
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
-        if str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
-            graphA = comp_graph.ComparableGraph()
-        else:
+        graphA = comp_graph.ComparableGraph()
+        parserGraphA = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(graphA))
+        if not str(graphAOid) == pygit2.GIT_OID_HEX_ZERO:
             graphAblob = self._repository[graphAOid].data
-            graphA = comp_graph.ComparableGraph()
-            graphA.parse(data=graphAblob.decode("utf-8"), format="nt")
+            source = rdflib.parser.create_input_source(data=graphAblob.decode("utf-8"))
+            parserGraphA.parse(source.getCharacterStream())
 
-        if str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
-            graphB = comp_graph.ComparableGraph()
-        else:
+        graphB = comp_graph.ComparableGraph()
+        parserGraphB = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(graphB))
+        if not str(graphBOid) == pygit2.GIT_OID_HEX_ZERO:
             graphBblob = self._repository[graphBOid].data
-            graphB = comp_graph.ComparableGraph()
-            graphB.parse(data=graphBblob.decode("utf-8"), format="nt")
+            source = rdflib.parser.create_input_source(data=graphBblob.decode("utf-8"))
+            parserGraphB.parse(source.getCharacterStream())
 
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
@@ -265,15 +265,32 @@ class Merger(object):
         diffA = graphA.diff(graphBase)
         diffB = graphB.diff(graphBase)
 
-        diffANewTriples = self._accumulate_triples(diffA[1])
-        diffBNewTriples = self._accumulate_triples(diffB[1])
-        diffARemovedTriples = self._accumulate_triples(diffA[0])
-        diffBRemovedTriples = self._accumulate_triples(diffB[0])
+        colourMap = {**(graphBase.getBNodeColourMap()),
+                     **(graphB.getBNodeColourMap()),
+                     **(graphA.getBNodeColourMap())}
+        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
+
+        # those operations are not ready since they actually need to be done by their colour
+        diffANewTriples = self._accumulate_triples(diffA[1])  # C+c
+        diffANewTriples = self._colour_triple_sets(diffANewTriples, colourMap)
+        diffBNewTriples = self._accumulate_triples(diffB[1])  # C+b
+        diffBNewTriples = self._colour_triple_sets(diffBNewTriples, colourMap)
+        diffARemovedTriples = self._accumulate_triples(diffA[0])  # C-c
+        diffARemovedTriples = self._colour_triple_sets(diffARemovedTriples, colourMap)
+        diffBRemovedTriples = self._accumulate_triples(diffB[0])  # C-b
+        diffBRemovedTriples = self._colour_triple_sets(diffBRemovedTriples, colourMap)
         baseTriples = self._get_triples(graphBase)
-        merged = (baseTriples - diffARemovedTriples - diffBRemovedTriples +
-                  diffANewTriples + diffBNewTriples)
-        serializer = parsers.ntriples.NTriplesParser(parsers.nt.NTSink(graphA))
-        merged = self._serialize_triple_sets(merged, serializer._bnode_ids)
+        ok, conflicts = self._merge_context_conflict_detection(diffANewTriples, diffARemovedTriples,
+                                                               diffBNewTriples, diffBRemovedTriples,
+                                                               colourToNameMap)
+
+        merged = baseTriples - diffARemovedTriples - diffBRemovedTriples  # P(G') ^ P(G'')
+        merged = self._convert_colour_to_name_triple_rows(merged, colourToNameMap)
+        merged = merged.union(ok)
+
+        if conflicts is not None:
+            print("raised")
+            raise QuitBlobMergeConflict("Conflicts, ahhhh", merged, conflicts)
 
         blob = self._repository.create_blob("\n".join(merged).encode("utf-8"))
         return blob
@@ -287,38 +304,58 @@ class Merger(object):
         diffData = aGraph.diff(bGraph)[1].serialize(destination=None, format='nt')
         return aData + diffData
 
-    def _merge_context_conflict_detection(self, addA, delA, addB, delB):
+    def _merge_context_conflict_detection(self, addA, delA, addB, delB, colNameMap):
 
-        def conflictSet(graph, conflictingNodes):
+        def conflictSet(tripleSet, conflictingNodes, colNameMap):
             ok = set()
             conflicts = set()
-            for triple in graph.triples((None, None, None)):
-                if triple[0] in conflictingNodes or triple[2] in conflictingNodes:
-                    conflicts.add(_nt(triple).rstrip())
+            for triple in tripleSet:
+                conflicted = triple[0] in conflictingNodes or triple[2] in conflictingNodes
+                if isinstance(triple[0], bytes):
+                    subject = colNameMap[triple[0]]
                 else:
-                    ok.add(_nt(triple).rstrip())
+                    subject = triple[0].n3()
+
+                if isinstance(triple[2], bytes):
+                    object = colNameMap[triple[2]]
+                elif isinstance(triple[2], rdflib.Literal):
+                    object = _qLiteral(triple[2])
+                else:
+                    object = triple[2].n3()
+
+                cTriple = ("%s %s %s .\n" % (subject, triple[1], object)).rstrip()
+                if conflicted:
+                    conflicts.add(cTriple)
+                else:
+                    ok.add(cTriple)
             return ok, conflicts
 
-        graphAddA = rdflib.ConjunctiveGraph()
-        graphAddA.parse(data="\n".join(addA), format="nt")
-        graphAddB = rdflib.ConjunctiveGraph()
-        graphAddB.parse(data="\n".join(addB), format="nt")
-        graphDelA = rdflib.ConjunctiveGraph()
-        graphDelA.parse(data="\n".join(delA), format="nt")
-        graphDelB = rdflib.ConjunctiveGraph()
-        graphDelB.parse(data="\n".join(delB), format="nt")
+        def collectNodes(tripleSet):
+            nodes = set()
+            for triple in tripleSet:
+                nodes.add(triple[0])
+                nodes.add(triple[2])
+            return nodes
 
-        conflictingNodes = (graphAddA + graphDelA).all_nodes().intersection(
-            (graphAddB + graphDelB).all_nodes())
+        addANoB = addA - addB  # C+c\b
+        addANoBNodes = collectNodes(addANoB)
+        addBNoA = addB - addA  # C+b\c
+        addBNoANodes = collectNodes(addBNoA)
+        delANoB = delA - delB  # C-c\b
+        delANoBNodes = collectNodes(delANoB)
+        delBNoA = delB - delA  # C-b\c
+        delBNoANodes = collectNodes(delBNoA)
+
+        conflictingNodes = (addANoBNodes | delANoBNodes).intersection(addBNoANodes | delBNoANodes)
         print(conflictingNodes)
         logger.debug(conflictingNodes)
 
         conflicts = {}
         ok = set()
 
-        for key, graph in [("addA", graphAddA), ("delA", graphDelA),
-                           ("addB", graphAddB), ("delB", graphDelB)]:
-            newOK, conflict = conflictSet(graph, conflictingNodes)
+        for key, graph in [("addA", addANoB), ("delA", delANoB),
+                           ("addB", addBNoA), ("delB", delBNoA)]:
+            newOK, conflict = conflictSet(graph, conflictingNodes, colNameMap)
             if len(conflict) > 0:
                 conflicts[key] = "\n".join(sorted(conflict))
             if key.startswith("add"):
@@ -330,7 +367,10 @@ class Merger(object):
             nodes = []
             for node in conflictingNodes:
                 logger.debug(node.n3())
-                nodes.append(node.n3())
+                if isinstance(node, bytes):
+                    nodes.append(colNameMap[node])
+                else:
+                    nodes.append(node.n3())
             conflicts["nodes"] = nodes
         print(conflicts)
 
@@ -338,3 +378,34 @@ class Merger(object):
         print(ok)
 
         return sorted(ok), conflicts or None
+
+    def _colour_triple_sets(self, tripleSet, colourMap):
+        result = set()
+        for triple in tripleSet:
+            subject = triple[0]
+            object = triple[2]
+            if triple[0] is rdflib.BNode:
+                subject = colourMap[triple[0]]
+            if triple[2] is rdflib.BNode:
+                object = colourMap[triple[2]]
+            result.add((subject, triple[1], object))
+        return result
+
+    def _convert_colour_to_name_triple_rows(self, tripleSet, colNameMap):
+        result = set()
+        for triple in tripleSet:
+            if isinstance(triple[0], bytes):
+                subject = colNameMap[triple[0]]
+            else:
+                subject = triple[0].n3()
+
+            if isinstance(triple[2], bytes):
+                object = colNameMap[triple[2]]
+            elif isinstance(triple[2], rdflib.Literal):
+                object = _qLiteral(triple[2])
+            else:
+                object = triple[2].n3()
+
+            cTriple = ("%s %s %s .\n" % (subject, triple[1], object)).rstrip()
+            result.add(cTriple)
+        return result
