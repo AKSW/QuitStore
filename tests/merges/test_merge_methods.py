@@ -1,19 +1,10 @@
 from context import quit
-import os
-from os import path
 
-from urllib.parse import quote_plus
-from datetime import datetime
-from pygit2 import GIT_SORT_TOPOLOGICAL, Signature, GIT_OBJ_BLOB
-from quit.conf import Feature
 import quit.application as quitApp
 from quit.web.app import create_app
 import unittest
-from helpers import TemporaryRepository, TemporaryRepositoryFactory
-import json
-from helpers import createCommit, assertResultBindingsEqual
-from tempfile import TemporaryDirectory
-from quit.utils import iri_to_name
+import pygit2
+from helpers import TemporaryRepositoryFactory
 
 
 class GraphMergeTests(unittest.TestCase):
@@ -34,7 +25,20 @@ class GraphMergeTests(unittest.TestCase):
         file.close()
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
 
-
+            def expand_branch(branch, graphFile):
+                reference = repo.lookup_reference('refs/heads/%s' % branch)
+                branchOid = reference.resolve().target
+                branchCommit = repo.get(branchOid)
+                treeBuilder = repo.TreeBuilder(branchCommit.tree)
+                file = open(graphFile, "r")
+                treeBuilder.insert("graph.nt", repo.create_blob(file.read().encode()), 33188)
+                file.close()
+                treeOID = treeBuilder.write()
+                author = pygit2.Signature("test", "test@example.org")
+                newCommitOid = repo.create_commit("refs/heads/componentB", author, author,
+                                                  "this is a test", treeOID, [branchOid])
+                repo.state_cleanup()
+                return newCommitOid
             # Start Quit
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
@@ -43,45 +47,19 @@ class GraphMergeTests(unittest.TestCase):
             app.post("/branch", data={"oldbranch": "master", "newbranch": "componentA"})
             app.post("/branch", data={"oldbranch": "master", "newbranch": "componentB"})
 
-            # execute INSERT DATA query
-            file = open("branch.nt", "r")
-            update = "INSERT DATA {graph <http://example.org/> {" + file.read() + "}}"
-            app.post('/sparql/componentA?ref=componentA', data={"query": update})
-            file.close()
-
-            index = repo.index
-            index.read()
-            id = index['graph.nt'].id
-            blob = repo[id]
-            print(blob.data.decode("utf-8"))
+            expand_branch("componentA", "branch.nt")
+            expand_branch("componentB", "target.nt")
 
             app = create_app(args).test_client()
-            # start new app to syncAll()
-            file = open("target.nt", "r")
-            update = "INSERT DATA {graph <http://example.org/> {" + file.read() + "}}"
-            app.post('/sparql/componentB?ref=componentB', data={"query": update})
-            file.close()
+            app.post("/merge", data={"target": "componentB", "branch": "componentA",
+                                     "method": "three-way"})
 
-            #branchTarget = "refs/heads/componentB"
-            branchTarget =  "componentB"
-            for entry in repo:
-                print(entry)
-            for branch in repo.branches:
-                print(branch)
-
-            reference = repo.lookup_reference('refs/heads/%s' % branchTarget)
-            targetOid = reference.resolve().target
-            #targetOid = repo.get(branchTarget)
-            targetCommit = repo.get(targetOid)
-            print(targetCommit)
-            #targetCommit.index.read()
-            for attr in dir(repo):
-                print(attr)
-            repo.checkout(targetCommit.refname)
-            #print(targetCommit.tree.name)
-
-
-            app.post("/merge", data={"target": "componentB", "branch": "componentA", "method": "three-way"})
+            reference = repo.lookup_reference('refs/heads/%s' % "componentB")
+            branchOid = reference.resolve().target
+            branchCommit = repo.get(branchOid)
+            file = open("result.nt", "r")
+            self.assertEqual(branchCommit.tree["graph.nt"].data.decode("utf-8"),
+                             file.read())
 
 #    def testContextMerge(self):
 #        """Test merging two commits."""
