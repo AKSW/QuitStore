@@ -1,5 +1,8 @@
 from context import quit
 
+import os
+from os import listdir
+from os.path import isdir, join
 import quit.application as quitApp
 from quit.web.app import create_app
 import unittest
@@ -18,27 +21,18 @@ class GraphMergeTests(unittest.TestCase):
 
     def testThreeWayMerge(self):
         """Test merging two commits."""
+        testPath = os.path.dirname(os.path.abspath(__file__))
+        print(testPath)
+        for d in listdir(testPath):
+            if isdir(join(testPath, d)) and d != "__pycache__":
+                self._prepare_merge_test(d, "three-way")
 
+    def _prepare_merge_test(self, dirPath, method):
         # Prepate a git Repository
-        file = open("base.nt", "r")
+        file = open(join(dirPath, "base.nt"), "r")
         content = file.read()
         file.close()
         with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
-
-            def expand_branch(branch, graphFile):
-                reference = repo.lookup_reference('refs/heads/%s' % branch)
-                branchOid = reference.resolve().target
-                branchCommit = repo.get(branchOid)
-                treeBuilder = repo.TreeBuilder(branchCommit.tree)
-                file = open(graphFile, "r")
-                treeBuilder.insert("graph.nt", repo.create_blob(file.read().encode()), 33188)
-                file.close()
-                treeOID = treeBuilder.write()
-                author = pygit2.Signature("test", "test@example.org")
-                newCommitOid = repo.create_commit("refs/heads/componentB", author, author,
-                                                  "this is a test", treeOID, [branchOid])
-                repo.state_cleanup()
-                return newCommitOid
             # Start Quit
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
@@ -47,19 +41,34 @@ class GraphMergeTests(unittest.TestCase):
             app.post("/branch", data={"oldbranch": "master", "newbranch": "componentA"})
             app.post("/branch", data={"oldbranch": "master", "newbranch": "componentB"})
 
-            expand_branch("componentA", "branch.nt")
-            expand_branch("componentB", "target.nt")
+            self.expand_branch(repo, "componentA", join(dirPath, "branch.nt"))
+            self.expand_branch(repo, "componentB", join(dirPath, "target.nt"))
 
             app = create_app(args).test_client()
             app.post("/merge", data={"target": "componentB", "branch": "componentA",
-                                     "method": "three-way"})
+                                     "method": method})
 
             reference = repo.lookup_reference('refs/heads/%s' % "componentB")
             branchOid = reference.resolve().target
             branchCommit = repo.get(branchOid)
-            file = open("result.nt", "r")
-            self.assertEqual(branchCommit.tree["graph.nt"].data.decode("utf-8"),
-                             file.read())
+            file = open(join(dirPath, "result.nt"), "r")
+            self.assertEqual(branchCommit.tree["graph.nt"].data.decode("utf-8"), file.read())
+            file.close()
+
+    def expand_branch(self, repo, branch, graphFile):
+        reference = repo.lookup_reference('refs/heads/%s' % branch)
+        branchOid = reference.resolve().target
+        branchCommit = repo.get(branchOid)
+        treeBuilder = repo.TreeBuilder(branchCommit.tree)
+        file = open(graphFile, "r")
+        treeBuilder.insert("graph.nt", repo.create_blob(file.read().encode()), 33188)
+        file.close()
+        treeOID = treeBuilder.write()
+        author = pygit2.Signature("test", "test@example.org")
+        newCommitOid = repo.create_commit("refs/heads/%s" % branch, author, author,
+                                          "this is a test", treeOID, [branchOid])
+        repo.state_cleanup()
+        return newCommitOid
 
 #    def testContextMerge(self):
 #        """Test merging two commits."""
