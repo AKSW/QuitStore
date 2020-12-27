@@ -1,0 +1,14 @@
+_:a <ed:a> _:b .
+_:b <ed:a> _:c .
+_:c <ed:a> _:d .
+_:d <ed:a> _:a .
+_:a <ed:a> _:c .
+---
+_:a <ed:a> _:b .
+_:b <ed:a> _:d .
+_:d <ed:a> _:e .
+_:e <ed:a> _:b .
+_:b <ed:a> _:c .
+_:c <ed:a> _:d .
+_:d <ed:a> _:a .
+_:a <ed:a> _:e .
