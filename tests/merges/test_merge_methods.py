@@ -21,18 +21,19 @@ class GraphMergeTests(unittest.TestCase):
     def tearDown(self):
         return
 
-    # def testThreeWayMerge(self):
-    #     """Test merging two commits.  Method: Three-Way"""
-    #     testPath = os.path.dirname(os.path.abspath(__file__))
-    #     for d in listdir(testPath):
-    #         if d[0:4] == "Test" and isdir(join(testPath, d)):
-    #             self._merge_test(d, "three-way")
+    def testThreeWayMerge(self):
+        """Test merging two commits.  Method: Three-Way"""
+        testPath = os.path.dirname(os.path.abspath(__file__))
+        for d in listdir(testPath):
+            if d[0:4] == "Test" and isdir(join(testPath, d)):
+                self._merge_test(d, "three-way")
 
     def testContextMerge(self):
         """Test merging two commits. Method: Context"""
         testPath = os.path.dirname(os.path.abspath(__file__))
+        exceptions = ["TestHouseMerge"]  # TestHouse actually raises a merge conflict exception
         for d in listdir(testPath):
-            if d[0:4] == "Test" and isdir(join(testPath, d)):
+            if d[0:4] == "Test" and isdir(join(testPath, d)) and d not in exceptions:
                 self._merge_test(d, "context")
 
     def _merge_test(self, dirPath, method):
@@ -64,7 +65,6 @@ class GraphMergeTests(unittest.TestCase):
                 aControllGraphContents = file.read().split("---")
                 file.close()
                 resultContent = branchCommit.tree["graph.nt"].data.decode("utf-8")
-                print(resultContent)
                 resultGraph = rdflib.Graph().parse(data=resultContent, format="nt")
                 aResultGraphs = set(iter(aGraphFactory(resultGraph)))
                 for aControllGraphContent in aControllGraphContents:
@@ -97,6 +97,7 @@ class GraphMergeTests(unittest.TestCase):
                                           "this is a test", treeOID, [branchOid])
         repo.state_cleanup()
         return newCommitOid
+
 
 if __name__ == '__main__':
     unittest.main()

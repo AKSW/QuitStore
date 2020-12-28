@@ -325,7 +325,8 @@ class Merger(object):
                                                                diffBNewTriples, diffBRemovedTriples,
                                                                colourToNameMap)
 
-        merged = baseTriples - diffARemovedTriples - diffBRemovedTriples  # P(G') ^ P(G'')
+        merged = baseTriples - diffARemovedTriples - \
+            diffBRemovedTriples | (diffANewTriples & diffBNewTriples)  # P(G') ^ P(G'')
         merged = self._convert_colour_to_name_triple_rows(merged, colourToNameMap)
         merged = merged.union(ok)
 
