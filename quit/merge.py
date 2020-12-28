@@ -176,10 +176,14 @@ class Merger(object):
             source = rdflib.parser.create_input_source(data=graphBblob.decode("utf-8"))
             parserGraphB.parse(source.getCharacterStream())
 
+        nameNodeBaseMap = None
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
             compGraphBase = comp_graph.ComparableGraph()
-            compGraphBase.parse(data=graphBaseblob.decode("utf-8"), format="nt")
+            parserGraphBase = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(compGraphBase))
+            source = rdflib.parser.create_input_source(data=graphBaseblob.decode("utf-8"))
+            parserGraphBase.parse(source.getCharacterStream())
+            nameNodeBaseMap = parserGraphBase._bnode_ids
             diffA = aGraph.diff(compGraphBase)
             diffB = bGraph.diff(compGraphBase)
 
@@ -198,7 +202,8 @@ class Merger(object):
         colourMap = {**(compGraphBase.getBNodeColourMap()),
                      **(bGraph.getBNodeColourMap()),
                      **(aGraph.getBNodeColourMap())}
-        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
+        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids,
+                                                          parserGraphB._bnode_ids, nameNodeBaseMap)
         merged = self._serialize_triple_sets(merged, colourMap, colourToNameMap)
         blob = self._repository.create_blob(("\n".join(merged) + "\n").encode("utf-8"))
 
@@ -227,18 +232,47 @@ class Merger(object):
     def _serialize_bNode(self, node, colourMap, colourToNameMap):
         if(isinstance(node, rdflib.BNode)):
             try:
-                return "_:{}".format(colourToNameMap[colourMap[node]])
+                return colourToNameMap[colourMap[node]]
             except KeyError:
                 return node.n3()
         else:
             return node.n3()
 
-    def _create_colour_to_name_map(self, nodeColourMap, nodeNameMap):
+    def _create_colour_to_name_map(self, nodeColourMap, nameNodeMapA,
+                                   nameNodeMapB, nameNodeMapC=None):
         colourToNameMap = {}
-        for bNodeName in nodeNameMap:
-            colourKey = nodeColourMap[nodeNameMap[bNodeName]]
-            if not colourKey in colourToNameMap or bNodeName < colourToNameMap[colourKey]:
-                colourToNameMap[colourKey] = bNodeName
+        for bNodeName in nameNodeMapA:
+            colourKey = nodeColourMap[nameNodeMapA[bNodeName]]
+            if colourKey not in colourToNameMap or bNodeName < colourToNameMap[colourKey]:
+                colourToNameMap[colourKey] = "_:{}".format(bNodeName)
+
+        for bNodeName in nameNodeMapB:
+            bNode = nameNodeMapB[bNodeName]
+            colourKey = nodeColourMap[bNode]
+            # check if the first two loops already took the label
+            unusedCheck = bNodeName not in nameNodeMapA
+            if colourKey not in colourToNameMap:
+                if unusedCheck:
+                    colourToNameMap[colourKey] = "_:{}".format(bNodeName)
+                else:
+                    colourToNameMap[colourKey] = bNode.n3()
+            if bNodeName < colourToNameMap[colourKey] and unusedCheck:
+                colourToNameMap[colourKey] = "_:{}".format(bNodeName)
+
+        if nameNodeMapC is not None:
+            for bNodeName in nameNodeMapB:
+                bNode = nameNodeMapB[bNodeName]
+                colourKey = nodeColourMap[bNode]
+                # check if the first two loops already took the label
+                unusedCheck = bNodeName not in nameNodeMapA and bNodeName not in nameNodeMapB
+                if colourKey not in colourToNameMap:
+                    if unusedCheck:
+                        colourToNameMap[colourKey] = "_:{}".format(bNodeName)
+                    else:
+                        colourToNameMap[colourKey] = bNode.n3()
+                if bNodeName < colourToNameMap[colourKey] and unusedCheck:
+                    colourToNameMap[colourKey] = "_:{}".format(bNodeName)
+
         return colourToNameMap
 
     def _merge_context_graph_blobs(self, graphAOid, graphBOid, graphBaseOid):
@@ -256,10 +290,14 @@ class Merger(object):
             source = rdflib.parser.create_input_source(data=graphBblob.decode("utf-8"))
             parserGraphB.parse(source.getCharacterStream())
 
+        nameNodeBaseMap = None
         if graphBaseOid is not None:
             graphBaseblob = self._repository[graphBaseOid].data
             graphBase = comp_graph.ComparableGraph()
-            graphBase.parse(data=graphBaseblob.decode("utf-8"), format="nt")
+            parserGraphBase = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(graphBase))
+            source = rdflib.parser.create_input_source(data=graphBaseblob.decode("utf-8"))
+            parserGraphBase.parse(source.getCharacterStream())
+            nameNodeBaseMap = parserGraphBase._bnode_ids
         else:
             graphBase = comp_graph.ComparableGraph()
 
@@ -269,7 +307,8 @@ class Merger(object):
         colourMap = {**(graphBase.getBNodeColourMap()),
                      **(graphB.getBNodeColourMap()),
                      **(graphA.getBNodeColourMap())}
-        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids)
+        colourToNameMap = self._create_colour_to_name_map(colourMap, parserGraphA._bnode_ids,
+                                                          parserGraphB._bnode_ids, nameNodeBaseMap)
 
         # those operations are not ready since they actually need to be done by their colour
         diffANewTriples = self._accumulate_triples(diffA[1])  # C+c
@@ -315,7 +354,7 @@ class Merger(object):
                 else:
                     object = triple[2].n3()
 
-                cTriple = ("%s %s %s .\n" % (subject, triple[1], object)).rstrip()
+                cTriple = ("%s %s %s .\n" % (subject, triple[1].n3(), object)).rstrip()
                 if conflicted:
                     conflicts.add(cTriple)
                 else:
@@ -380,12 +419,12 @@ class Merger(object):
         result = set()
         for triple in tripleSet:
             if isinstance(triple[0], bytes):
-                subject = "_:{}".format(colNameMap[triple[0]])
+                subject = colNameMap[triple[0]]
             else:
                 subject = triple[0].n3()
 
             if isinstance(triple[2], bytes):
-                object = "_:{}".format(colNameMap[triple[2]])
+                object = colNameMap[triple[2]]
             elif isinstance(triple[2], rdflib.Literal):
                 object = _qLiteral(triple[2])
             else:

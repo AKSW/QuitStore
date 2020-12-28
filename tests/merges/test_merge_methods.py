@@ -21,19 +21,19 @@ class GraphMergeTests(unittest.TestCase):
     def tearDown(self):
         return
 
-    def testThreeWayMerge(self):
-        """Test merging two commits."""
+    # def testThreeWayMerge(self):
+    #     """Test merging two commits.  Method: Three-Way"""
+    #     testPath = os.path.dirname(os.path.abspath(__file__))
+    #     for d in listdir(testPath):
+    #         if d[0:4] == "Test" and isdir(join(testPath, d)):
+    #             self._merge_test(d, "three-way")
+
+    def testContextMerge(self):
+        """Test merging two commits. Method: Context"""
         testPath = os.path.dirname(os.path.abspath(__file__))
-        # for d in listdir(testPath):
-        # for d in ["TestA", "TestHouseMerge", "TestABCD", "TestB", "TestC"]:
-        #     if isdir(join(testPath, d)) and d != "__pycache__":
-        #         self._merge_test(d, "three-way")
-        for d in ["TestD"]:
-            if isdir(join(testPath, d)) and d != "__pycache__":
-                print("#######################################")
-                print("###              {}              ###".format(d))
-                print("#######################################")
-                self._merge_test(d, "three-way")
+        for d in listdir(testPath):
+            if d[0:4] == "Test" and isdir(join(testPath, d)):
+                self._merge_test(d, "context")
 
     def _merge_test(self, dirPath, method):
         # Prepate a git Repository
@@ -64,26 +64,16 @@ class GraphMergeTests(unittest.TestCase):
                 aControllGraphContents = file.read().split("---")
                 file.close()
                 resultContent = branchCommit.tree["graph.nt"].data.decode("utf-8")
+                print(resultContent)
                 resultGraph = rdflib.Graph().parse(data=resultContent, format="nt")
                 aResultGraphs = set(iter(aGraphFactory(resultGraph)))
-                print("ResultContent:\n{}\n-----".format(resultContent))
-                print("Current Result Set:\n-->{}".format({a.__hash__() for a in aResultGraphs}))
                 for aControllGraphContent in aControllGraphContents:
                     graph = rdflib.Graph().parse(data=aControllGraphContent, format="nt")
                     for aGraph in aGraphFactory(graph):
-                        print("aGraph: {}".format(aGraph.__hash__()))
                         message = "Merge test {}:\n    Graph {} is not in the set: {}"
                         resultSetString = {a.__hash__() for a in aResultGraphs}
                         message = message.format(dirPath, aGraph.__hash__(), resultSetString)
-                        try:
-                            self.assertTrue(aGraph in aResultGraphs, message)
-                        except AssertionError:
-                            graphFile = open(join(dirPath, "debugResult"), "w")
-                            graphFile.write(self.__show_comparison(aGraph, aControllGraphContent))
-                            graphFile.close()
-                            print("- {}".format(self.__show_colours(next(iter(aResultGraphs)))))
-                            print("- {}".format(self.__show_colours(aGraph)))
-                            raise
+                        self.assertTrue(aGraph in aResultGraphs, message)
                         aResultGraphs.remove(aGraph)
                 message = "Merge test {}:\n    Not all graphs were defined in a_graphs: {}"
                 message = message.format(dirPath, aResultGraphs)
@@ -107,73 +97,6 @@ class GraphMergeTests(unittest.TestCase):
                                           "this is a test", treeOID, [branchOid])
         repo.state_cleanup()
         return newCommitOid
-
-    # TODO remove
-    def __show_comparison(self, graph, controllContent):
-        listLabel = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
-        bNodeMap = {}
-        for triple in graph:
-            node = triple[0]
-            if node.n3() not in bNodeMap:
-                if isinstance(node, rdflib.BNode):
-                    bNodeMap[node.n3()] = "_:{}".format(listLabel.pop(0))
-                else:
-                    bNodeMap[node.n3()] = "<{}>".format(node.n3())
-            node = triple[2]
-            if node.n3() not in bNodeMap:
-                if isinstance(node, rdflib.BNode):
-                    bNodeMap[node.n3()] = "_:{}".format(listLabel.pop(0))
-                else:
-                    bNodeMap[node.n3()] = "<{}>".format(node.n3())
-        template = "{1}"
-        result = ""
-        for triple in graph:
-            newLine = "{} <{}> {} .".format(bNodeMap[triple[0].n3()],
-                                            triple[1], bNodeMap[triple[2].n3()])
-            result = template.format(result, newLine)
-            template = "{0}\n{1}"
-        return result
-
-    def __show_colours(self, graph):
-        bNodeSet = set()
-        for triple in graph:
-            if isinstance(triple[0], rdflib.BNode):
-                bNodeSet.add(triple[0])
-            if isinstance(triple[2], rdflib.BNode):
-                bNodeSet.add(triple[2])
-        colourSet = set(graph.colourPartitions[x] for x in bNodeSet)
-        print("===")
-        for node in bNodeSet:
-            print("node  {}".format(graph.colourPartitions[node]))
-        return sorted(colourSet)
-
-
-#    def testContextMerge(self):
-#        """Test merging two commits."""
-#
-#        # Prepate a git Repository
-#        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
-#        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
-#
-#            # Start Quit
-#            args = quitApp.getDefaults()
-#            args['targetdir'] = repo.workdirdevelop
-#            app = create_app(args).test_client()
-#
-#            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
-#
-#            # execute INSERT DATA query
-#            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-#            app.post('/sparql', data={"query": update})
-#
-#            app = create_app(args).test_client()
-#            # start new app to syncAll()
-#
-#            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
-#            app.post('/sparql/develop?ref=develop', data={"query": update})
-#
-#            app.post("/merge", data={"target": "master", "branch": "develop", "method": "context"})
-
 
 if __name__ == '__main__':
     unittest.main()
