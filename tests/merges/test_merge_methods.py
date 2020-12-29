@@ -26,7 +26,7 @@ class GraphMergeTests(unittest.TestCase):
         testPath = os.path.dirname(os.path.abspath(__file__))
         for d in listdir(testPath):
             if d[0:4] == "Test" and isdir(join(testPath, d)):
-                self._merge_test(d, "three-way")
+                self._merge_test(join(testPath, d), "three-way")
 
     def testContextMerge(self):
         """Test merging two commits. Method: Context"""
@@ -34,7 +34,7 @@ class GraphMergeTests(unittest.TestCase):
         exceptions = ["TestHouseMerge"]  # TestHouse actually raises a merge conflict exception
         for d in listdir(testPath):
             if d[0:4] == "Test" and isdir(join(testPath, d)) and d not in exceptions:
-                self._merge_test(d, "context")
+                self._merge_test(join(testPath, d), "context")
 
     def _merge_test(self, dirPath, method):
         # Prepate a git Repository
