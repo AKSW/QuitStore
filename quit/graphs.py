@@ -118,18 +118,18 @@ class InMemoryAggregatedGraph(ConjunctiveGraph):
             len((c for c in self.graphs() if c not in self.store.contexts()))
         )
 
-    def update(self, update_object):
-        comp_graphA = ComparableGraph(self.store)
-        comp_graphB = ComparableGraph(self.store)
-        answer = comp_graphB.update(update_object)
-        diff_tupel = comp_graphA.diff(comp_graphB)
-        for removeGraph in diff_tupel[1]:
-            for triple in removeGraph:
-                self.remove(triple)
-        for additionalGraph in diff_tupel[0]:
-            for triple in additionalGraph:
-                self.add(additionalGraph)
-        return answer
+    #def update(self, update_object):
+    #    comp_graphA = ComparableGraph(self.store)
+    #    comp_graphB = ComparableGraph(self.store)
+    #    answer = comp_graphB.update(update_object)
+    #    diff_tupel = comp_graphA.diff(comp_graphB)
+    #    for removeGraph in diff_tupel[0]:
+    #        for triple in removeGraph:
+    #            self.remove(triple)
+    #    for additionalGraph in diff_tupel[1]:
+    #        for triple in additionalGraph:
+    #            self.add(additionalGraph)
+    #    return answer
 
     def _graph(self, c):
         if c is None:
