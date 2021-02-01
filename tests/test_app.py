@@ -3841,6 +3841,39 @@ class FileHandlingTests(unittest.TestCase):
             with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
                 self.assertEqual('\n', f.read())
 
+    def testUpdateWithBlankNode(self):
+        # Prepate a git Repository
+        graphContent = """<urn:x>  <urn:y>   <urn:z>   . 
+                       _:a <urn:pred> _:c . 
+                       _:c <urn:pred> _:d . 
+                       """
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as repo:
+
+            # Start Quit
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            app = create_app(args).test_client()
+
+            with open(path.join(repo.workdir, 'graph.nt'), 'r') as f:
+                self.assertEqual(graphContent, f.read())
+
+            # execute Update query
+            update = 'INSERT DATA { GRAPH <http://example.org/> { _:c <urn:pred> _:e .}}'
+            result = app.post('/sparql',
+                              content_type="application/sparql-update",
+                              data=update)
+            targetContent = """
+<urn:x> <urn:y> <urn:z> .
+_:a <urn:pred> _:c .
+_:c <urn:pred> _:d .
+_:c <urn:pred> _:e .
+"""
+            
+            reference = repo.lookup_reference('refs/heads/%s' % "master")
+            branchOid = reference.resolve().target
+            branchCommit = repo.get(branchOid)
+            self.assertEqual(targetContent, branchCommit.tree["graph.nt"].data.decode("utf-8"))
+
 
 if __name__ == '__main__':
     unittest.main()
