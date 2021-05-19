@@ -31,5 +31,5 @@ conf:default1 a <Graph> ;
 
 conf:aksw a <Binding> ;
   quit:prefix "aksw" ;
-  quit:namespace <http://aksw.org/> .
+  quit:namespace <http://aksw.org/> ;
   quit:graphFile "default.nt" .
