@@ -1,35 +1,27 @@
+@base <http://quit.aksw.org/vocab/> .
 @prefix conf: <http://my.quit.conf/> .
-@prefix quit: <http://quit.aksw.org/vocab/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-conf:exampleStore a quit:QuitStore ;
-  quit:allowNewGraphs 1 ;
-  quit:pathOfGitRepo "../store.default" ;
-  quit:defaultBranch "master" ;
-  quit:globalFile "global.nt" .
+conf:exampleStore a :QuitStore ;
+  :allowNewGraphs 1 ;
+  :pathOfGitRepo "../store.default" ;
+  :defaultBranch "master" ; 
+  # Optional a git repo that will be cloned into dir given in line above on startup.
+  :origin "git:github.com/your/repository.git" ;
+  :globalFile "global.nt" .
 
-conf:exampleDBpedia a quit:Graph ;
-  quit:graphUri <http://dbpedia.org/> ;
-  quit:isVersioned 1 ;
-  quit:graphFile "dbpedia.nt" .
+conf:exampleDBpedia a :Graph ;
+  :graphUri <http://dbpedia.org/> ;
+  :isVersioned 1 ;
+  :graphFile "dbpedia.nt" .
 
-conf:exampleGraph a quit:Graph ;
-  quit:graphUri <http://my.quit.graph/> ;
-  quit:isVersioned 1 ;
-  quit:graphFile "default.nt" .
+conf:default a :Graph ;
+  :graphUri <http://my.quit.graph/> ;
+  :isVersioned 1 ;
+  :graphFile "default.nt" .
 
-conf:default a <Graph> ;
-  quit:graphUri <http://aksw.org/NormanRadtke> ;
-  quit:isVersioned 1 ;
-  quit:graphFile "radtke.nt" .
-
-conf:default1 a <Graph> ;
-  quit:graphUri <http://aksw.org/NatanaelArndt> ;
-  quit:isVersioned 1 ;
-  quit:graphFile "arndt.nt" .
-
-conf:aksw a <Binding> ;
-  quit:prefix "aksw" ;
-  quit:namespace <http://aksw.org/> ;
-  quit:graphFile "default.nt" .
+conf:aksw a :Binding ;
+  :prefix "aksw" ;
+  :namespace <http://aksw.org/> ;
+  :graphFile "binding.nt" .
