@@ -125,7 +125,7 @@ def register_app(app, arguments):
     garbageCollection = config.hasFeature(QuitFeature.GarbageCollection)
     logger.debug("Has Garbage collection feature?: {}".format(garbageCollection))
 
-    repository = Repository(config.getRepoPath(), create=True, garbageCollection=garbageCollection,
+    repository = Repository(path=config.getRepoPath(), origin=config.getUpstream(), create=True, garbageCollection=garbageCollection,
                             callback=QuitRemoteCallbacks(session=session))
     bindings = config.getBindings()
 
