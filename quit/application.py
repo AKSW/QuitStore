@@ -213,6 +213,9 @@ def parseEnv():
     if 'QUIT_TARGETDIR' in os.environ:
         env['targetdir'] = os.environ['QUIT_TARGETDIR']
 
+    if 'QUIT_REPOURL' in os.environ:
+        env['repourl'] = os.environ['QUIT_REPOURL']
+
     if 'QUIT_CONFIGFILE' in os.environ:
         env['configfile'] = os.environ['QUIT_CONFIGFILE']
 
