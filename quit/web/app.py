@@ -137,8 +137,8 @@ def register_app(app, arguments):
     quit = Quit(config, repository, MemoryStore(bindings))
     quit.syncAll()
 
-    # content = quit.store.store.serialize(format='trig').decode()
-    # logger.debug("Initialize store with following content: {}".format(content))
+    content = quit.store.store.serialize(format='trig')
+    logger.debug("Initialize store with following content: {}".format(content))
 
     app.config['quit'] = quit
     app.config['blame'] = Blame(quit)
