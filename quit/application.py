@@ -19,7 +19,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 
 # create console handler with a higher log level
 ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
+ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 
 
@@ -31,7 +31,7 @@ def initialize(args):
 
     """
     if args['verbose']:
-        ch.setLevel(logging.ERROR - args['verbose'] * 10)
+        ch.setLevel(logging.DEBUG)
 
     logger.addHandler(ch)
     logger.debug("Parsed args: {}".format(args))
