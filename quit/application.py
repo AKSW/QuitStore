@@ -144,7 +144,6 @@ def initialize(args):
     # since repo is handled, we can add graphs to config
 
     logger.info('QuitStore Configuration initialized.')
-    logger.debug('Path of Gitrepo: ' + config.getRepoPath())
 
     return config
 
