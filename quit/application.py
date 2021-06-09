@@ -19,7 +19,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 
 # create console handler with a higher log level
 ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
+ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 
 
@@ -31,7 +31,7 @@ def initialize(args):
 
     """
     if args['verbose']:
-        ch.setLevel(logging.ERROR - args['verbose'] * 10)
+        ch.setLevel(logging.DEBUG)
 
     logger.addHandler(ch)
     logger.debug("Parsed args: {}".format(args))
@@ -144,7 +144,6 @@ def initialize(args):
     # since repo is handled, we can add graphs to config
 
     logger.info('QuitStore Configuration initialized.')
-    logger.debug('Path of Gitrepo: ' + config.getRepoPath())
 
     return config
 
@@ -212,6 +211,9 @@ def parseEnv():
 
     if 'QUIT_TARGETDIR' in os.environ:
         env['targetdir'] = os.environ['QUIT_TARGETDIR']
+
+    if 'QUIT_REPOURL' in os.environ:
+        env['repourl'] = os.environ['QUIT_REPOURL']
 
     if 'QUIT_CONFIGFILE' in os.environ:
         env['configfile'] = os.environ['QUIT_CONFIGFILE']

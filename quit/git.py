@@ -40,28 +40,46 @@ class Repository(object):
         callback -- an instance of pygit2.RemoteCallbacks to handle cedentials and
                   push_update_reference (default: None)
         """
-        if not callback:
-            callback = QuitRemoteCallbacks()
-        self.callback = callback
-
-        try:
-            self._repository = pygit2.Repository(path)
-        except (KeyError, GitError):
-            if not create:
-                raise RepositoryNotFound(
-                    'Repository "%s" does not exist' % path)
-
-            if origin:
-                self._repository = pygit2.clone_repository(
-                    url=origin, path=path, bare=False, callbacks=self.callback
-                )
-            else:
-                self._repository = pygit2.init_repository(path)
-
+        self.path = path
+        self.callback = callback if callback else QuitRemoteCallbacks()
+        self._repository = self.init_repository(path, origin, create)
+        self.log_repository(self._repository)
         if garbageCollection:
             self.init_garbageCollection(path)
 
-        self.path = path
+    def init_repository(self, path, origin, create):
+        try:
+            repository = pygit2.Repository(path)
+            if len(repository.remotes) != 0:
+                logger.warning(
+                    "Repository already exists in {}, but remote is {} and not {}.".format(
+                        repository.workdir, repository.remotes[0].url, origin
+                    )
+                )
+        except (KeyError, GitError):
+            if create:
+                repository = self.create_repository(path, origin)
+            else:
+                raise RepositoryNotFound("Repository {} does not exist".format(path))
+        return repository
+
+    def create_repository(self, path, origin):
+        if origin:
+            repository = pygit2.clone_repository(
+                url=origin, path=path, bare=False, callbacks=self.callback
+            )
+        else:
+            repository = pygit2.init_repository(path)
+        return repository
+
+    def log_repository(self, repository):
+        logger.info("Repository initialized in {}.".format(repository.workdir))
+        if len(repository.remotes) != 0:
+            logger.info(
+                "Remote {} points to {}.".format(
+                    repository.remotes[0].name, repository.remotes[0].url
+                )
+            )
 
     def init_garbageCollection(self, path):
         """Set the threshold for automatic garbage collection for the git repository."""

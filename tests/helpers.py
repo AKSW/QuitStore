@@ -209,7 +209,7 @@ class TemporaryRepositoryFactory(object):
             with open(path.join(tmpRepo.repo.workdir, "config.ttl"), "w") as configFile:
                 rdf_content = configFileContent.format(tmpRepo.repo.workdir, uristring)
                 graph.parse(format='turtle', data=rdf_content)
-                configFile.write(graph.serialize(format='turtle').decode())
+                configFile.write(graph.serialize(format='turtle'))
 
             index.add('config.ttl')
 

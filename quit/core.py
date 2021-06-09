@@ -497,7 +497,7 @@ class Quit(object):
             self._blobs.set(blob, (fileReference, graph.store.get_context(identifier)))
             blobs_new.add(blob)
         if graphconfig.mode == 'configuration':
-            index.add('config.ttl', new_config.graphconf.serialize(format='turtle').decode())
+            index.add('config.ttl', new_config.graphconf.serialize(format='turtle'))
 
         message = self._build_message(message, query, delta, default_graph, named_graph, **kwargs)
         author = self.repository._repository.default_signature
