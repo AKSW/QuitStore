@@ -1,0 +1,49 @@
+name: Run Tests and Build Quit Store Releases
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        python: [3.6, 3.7, 3.9]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install raptor utils
+      run: sudo apt-get install cmake libssl-dev libssh2-1-dev
+    - name: Install Python Dependencies
+      run: |
+           pip install -U setuptools
+           pip install -r requirements.txt
+           pip install coveralls
+    - name: Check Conding style
+      run: pylava
+    - name: Run Tests
+      run: |
+           coverage run -a --source=quit tests/test_app.py
+           coverage run -a --source=quit tests/test_cache.py
+           coverage run -a --source=quit tests/test_conf.py
+           coverage run -a --source=quit tests/test_core.py
+           coverage run -a --source=quit tests/test_endpoint.py
+           coverage run -a --source=quit tests/test_git.py
+           coverage run -a --source=quit tests/test_graphs.py
+           coverage run -a --source=quit tests/test_helpers.py
+           coverage run -a --source=quit tests/test_namespace.py
+           coverage run -a --source=quit tests/test_provenance.py
+    - name: Prepare Deployment
+      run: |
+           mkdir dist
+           docker run -it -v "${{ github.workspace }}:/src/" cdrx/pyinstaller-linux:python3
+           cp dist/linux/run dist/quit-64bit-linux
+           git apply requirements.txt.windows.patch
+           docker run -it -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh cdrx/pyinstaller-windows:python3 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
+           cp dist/windows/run.exe dist/quit-64bit-windows.exe
+    - name: Coverage
+      run: |
+           coverage report -m
+           coveralls
+    - name: TODO: Deploy 🚀
+      run: echo "not yet done"
