@@ -22,9 +22,9 @@ jobs:
     - name: Check Conding style
       run: pylava
     - name: Set Git user
-     run: |
-       git config user.email "quittestsystem@example.org"
-       git config user.name "Quit CI Tests"
+      run: |
+           git config user.email "quittestsystem@example.org"
+           git config user.name "Quit CI Tests"
     - name: Run Tests
       run: |
            coverage run -a --source=quit tests/test_app.py
