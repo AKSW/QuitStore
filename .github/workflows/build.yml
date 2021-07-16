@@ -45,5 +45,5 @@ jobs:
       run: |
            coverage report -m
            coveralls
-    - name: TODO: Deploy 🚀
+    - name: TODO Deploy 🚀
       run: echo "not yet done"
