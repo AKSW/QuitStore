@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Install raptor utils
+    - name: Install Required Packages
       run: sudo apt-get install cmake libssl-dev libssh2-1-dev
     - name: Install Python Dependencies
       run: |
