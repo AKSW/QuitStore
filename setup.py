@@ -50,11 +50,11 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'rdflib [sparql] >=4.2.2',
-        'Flask',
-        'Flask-Cors',
-        'sortedcontainers',
-        'uritools',
+        'rdflib>=5.0.0',
+        'Flask>=2.0',
+        'Flask-Cors>=3.0',
+        'sortedcontainers>=2.4',
+        'uritools>=3.0',
         'pygit2>=1.0.0'
     ],
     dependency_links=[
