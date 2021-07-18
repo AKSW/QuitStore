@@ -1,7 +1,7 @@
 language: python
 python:
-    - "3.6" # oldest rdflib supported by libgit2
-    - "3.7" # debian buster (stable) as of 2019-12
+    #- "3.6" # oldest rdflib supported by libgit2
+    #- "3.7" # debian buster (stable) as of 2019-12
     - "3.8-dev" # 3.8 development branch
     - "nightly"
 
@@ -45,6 +45,7 @@ script:
     - coverage run -a --source=quit tests/test_helpers.py
     - coverage run -a --source=quit tests/test_namespace.py
     - coverage run -a --source=quit tests/test_provenance.py
+    - coverage run -a --source=quit tests/merges/test_merge_methods.py
 
 before_deploy:
   - mkdir dist

@@ -9,7 +9,10 @@ from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
 from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
 from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
 
+import rdflib
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal, URIRef
+import rdflib.plugins.parsers.ntriples as ntriples
+
 import re
 
 from quit.conf import Feature, QuitGraphConfiguration
@@ -189,7 +192,12 @@ class Quit(object):
             for blob in self.getFilesForCommit(commit):
                 try:
                     (name, oid) = blob
-                    (f, context) = self.getFileReferenceAndContext(blob, commit)
+                    result = self.getFileReferenceAndContext(blob, commit)
+                    try:
+                        (f, context, nameMap) = result
+                    except ValueError:
+                        print(result)
+
                     internal_identifier = context.identifier + '-' + str(oid)
 
                     if force or not self.config.hasFeature(Feature.Persistence):
@@ -330,13 +338,15 @@ class Quit(object):
                 blob = (entity.name, entity.oid)
 
                 try:
-                    f, context = self.getFileReferenceAndContext(blob, commit)
+                    f, context, nameMap = self.getFileReferenceAndContext(blob, commit)
                 except KeyError:
                     graph = Graph(identifier=graphUri)
-                    graph.parse(data=entity.content, format='nt')
+                    parserGraph = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(graph))
+                    source = rdflib.parser.create_input_source(data=entity.content)
+                    parserGraph.parse(source.getCharacterStream())
 
                     self._blobs.set(
-                        blob, (FileReference(entity.name, entity.content), graph)
+                        blob, (FileReference(entity.name, entity.content), graph, {})
                     )
 
                 private_uri = QUIT["graph-{}".format(entity.oid)]
@@ -413,17 +423,74 @@ class Quit(object):
             content = commit.node(path=name).content
             graphUri = self._graphconfigs.get(commit.id).getgraphuriforfile(name)
             graph = Graph(identifier=URIRef(graphUri))
-            graph.parse(data=content, format='nt')
-            quitWorkingData = (FileReference(name, content), graph)
+            parserGraph = ntriples.W3CNTriplesParser(ntriples.NTGraphSink(graph))
+            source = rdflib.parser.create_input_source(data=content)
+            parserGraph.parse(source.getCharacterStream())
+            nameMap = {v: k for k, v in parserGraph._bnode_ids.items()}
+            quitWorkingData = (FileReference(name, content), graph, nameMap)
             self._blobs.set(blob, quitWorkingData)
             return quitWorkingData
         return self._blobs.get(blob)
+
+    def _replaceLabledBlankNodes(self, parsedQuery, parent_commit_ref):
+        """Replaces blanknodes in parsedQuery with Blanknodes that have the same label in the graph.nt
+        E.g.  We have a Graph with the content: '_:a <urn:pred> _:b'
+        A BNode('a') found in parsedQuery would be replaced by the blanknode _:a found in the graph.nt.
+        That way, updates can pass Blanknodes as instances and do not have to work on string representations.
+        """
+        def replaceBlankNode(parsedQuery, nameMap):
+            nameMap = {v: k for k, v in nameMap.items()}
+            for update in parsedQuery:
+                for graphURI in update['quads']:
+                    new_triples = []
+                    for triple in update['quads'][graphURI]:
+                        new_triple_subj = None
+                        new_triple_obj = None
+                        if isinstance(triple[0], rdflib.BNode):
+                            bNode_key = triple[0].n3()
+                            bNode_key = bNode_key[2:]
+                            if bNode_key in nameMap:
+                                new_triple_subj = nameMap[bNode_key]
+                            else:
+                                new_triple_subj = triple[0]
+                                nameMap[bNode_key] = triple[0]
+                        else:
+                            new_triple_subj = triple[0]
+                        if isinstance(triple[2], rdflib.BNode):
+                            bNode_key = triple[2].n3()
+                            bNode_key = bNode_key[2:]
+                            if bNode_key in nameMap:
+                                new_triple_obj = nameMap[bNode_key]
+                            else:
+                                new_triple_obj = triple[2]
+                                nameMap[bNode_key] = triple[2]
+                        else:
+                            new_triple_obj = triple[2]
+                        new_triples.append((new_triple_subj, triple[1], new_triple_obj))
+                    update['quads'][graphURI] = new_triples
+
+        if parent_commit_ref == None:
+            return {}
+        parent_commit = self.repository.revision(parent_commit_ref)
+        blobs = self.getFilesForCommit(parent_commit)
+        for blob in blobs:
+            (name, oid) = blob
+            if(name == "graph.nt"):
+                file_reference, context, nameMap = self.getFileReferenceAndContext(
+                    blob, parent_commit)
+                replaceBlankNode(parsedQuery, nameMap)
+                return nameMap
+        return {}
 
     def applyQueryOnCommit(self, parsedQuery, parent_commit_ref, target_ref, query=None,
                            default_graph=[], named_graph=[]):
         """Apply an update query on the graph and the git repository."""
         graph, commitid = self.instance(parent_commit_ref)
+        triples = {(x.n3(), y.n3(), z.n3()) for x, y, z in graph.store}
+        nameMap = self._replaceLabledBlankNodes(parsedQuery, parent_commit_ref)
         resultingChanges, exception = graph.update(parsedQuery)
+        self._replaceExplicitNamedBlankNodesInChanges(resultingChanges, nameMap)
+        triples = {(x.n3(), y.n3(), z.n3()) for x, y, z in graph.store}
         if exception:
             # TODO need to revert or invalidate the graph at this point.
             pass
@@ -432,6 +499,7 @@ class Quit(object):
                           named_graph=named_graph)
         if exception:
             raise exception
+        triples = {(x.n3(), y.n3(), z.n3()) for x, y, z in graph.store}
         return oid
 
     def commit(self, graph, delta, message, parent_commit_ref, target_ref, query=None,
@@ -494,7 +562,7 @@ class Quit(object):
 
             # Update Cache and add new contexts to store
             blob = fileReference.path, index.stash[fileReference.path][0]
-            self._blobs.set(blob, (fileReference, graph.store.get_context(identifier)))
+            self._blobs.set(blob, (fileReference, graph.store.get_context(identifier), {}))
             blobs_new.add(blob)
         if graphconfig.mode == 'configuration':
             index.add('config.ttl', new_config.graphconf.serialize(format='turtle'))
@@ -541,12 +609,40 @@ class Quit(object):
             out.append('{}: "{}"'.format(k, v.replace('"', "\\\"")))
         return "\n".join(out)
 
+    def _replaceExplicitNamedBlankNodesInChanges(self, changes, nameMap):
+        """Any changes applied to the update query by _replaceLabledBlankNodes have to be reverted for git deltas.
+        Otherwise the serialization results in Blanknodes being represented as random hashes instead of their original labels.
+        """
+        def lookUpBNode(bNode, nameMap):
+            if(bNode in nameMap):
+                return rdflib.BNode(nameMap[bNode])
+            return bNode
+
+        def replaceBNodesByName(triple, nameMap):
+            new_subject = triple[0]
+            new_object = triple[2]
+            if(isinstance(new_subject, BNode)):
+                new_subject = lookUpBNode(new_subject, nameMap)
+            if(isinstance(new_object, BNode)):
+                new_object = lookUpBNode(new_object, nameMap)
+            return (new_subject, triple[1], new_object)
+
+        if len(nameMap) == 0:
+            return
+        for change in changes:
+            for context in change['delta']:
+                for payload in change['delta'][context]:
+                    if(isinstance(payload[1], list)):
+                        for i in range(0, len(payload[1])):
+                            payload[1][i] = replaceBNodesByName(payload[1][i], nameMap)
+
     def _applyKnownGraphs(self, delta, blobs, parent_commit, index):
         blobs_new = set()
         for blob in blobs:
             (fileName, oid) = blob
             try:
-                file_reference, context = self.getFileReferenceAndContext(blob, parent_commit)
+                file_reference, context, nameMap = self.getFileReferenceAndContext(
+                    blob, parent_commit)
                 for entry in delta:
                     changeset = entry['delta'].get(context.identifier, None)
 
@@ -558,7 +654,7 @@ class Quit(object):
 
                 self._blobs.remove(blob)
                 blob = fileName, index.stash[file_reference.path][0]
-                self._blobs.set(blob, (file_reference, context))
+                self._blobs.set(blob, (file_reference, context, nameMap))
                 blobs_new.add(blob)
             except KeyError:
                 pass
@@ -580,7 +676,7 @@ class Quit(object):
                         n = [
                             int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                         ] + [0]
-                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
+                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n) + 1)
 
                     new_contexts[identifier] = FileReference(fileName, '')
 
