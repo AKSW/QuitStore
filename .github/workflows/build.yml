@@ -31,9 +31,6 @@ jobs:
            git config --global user.name "Quit CI Tests"
     - name: Run Tests
       run: |
-           git config user.name
-           git config user.email
-           python tests/check_git_env.py
            coverage run -a --source=quit tests/test_app.py
            coverage run -a --source=quit tests/test_cache.py
            coverage run -a --source=quit tests/test_conf.py
