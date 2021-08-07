@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Print Versions
+      run: |
+           python --version
+           git --version
     - uses: actions/checkout@v2
     - name: Install Required Packages
       run: sudo apt-get install cmake libssl-dev libssh2-1-dev
