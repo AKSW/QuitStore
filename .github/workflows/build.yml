@@ -27,8 +27,8 @@ jobs:
       run: pylava
     - name: Set Git user
       run: |
-           git config user.email "quittestsystem@example.org"
-           git config user.name "Quit CI Tests"
+           git config --global user.email "quittestsystem@example.org"
+           git config --global user.name "Quit CI Tests"
     - name: Run Tests
       run: |
            git config user.name
