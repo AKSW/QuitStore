@@ -46,6 +46,7 @@ jobs:
            coverage run -a --source=quit tests/test_namespace.py
            coverage run -a --source=quit tests/test_provenance.py
     - name: Prepare Deployment
+      if: matrix.python == '3.7'
       run: |
            mkdir dist
            docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh cdrx/pyinstaller-linux:python3 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
