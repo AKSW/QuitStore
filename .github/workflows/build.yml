@@ -62,4 +62,9 @@ jobs:
            coverage report -m
            coveralls
     - name: TODO Deploy 🚀
-      run: echo "not yet done"
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') && matrix.python == '3.7' && false
+      with:
+        files: |
+               quit-64bit-linux
+               quit-64bit-windows.exe
