@@ -55,6 +55,7 @@ jobs:
            docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh cdrx/pyinstaller-windows:python3 -c "apt-get update -y && apt-get install -y libgit2-dev git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
            cp dist/windows/run.exe dist/quit-64bit-windows.exe
     - name: Coverage
+      env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
            coverage report -m
            coveralls
