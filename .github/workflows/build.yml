@@ -9,7 +9,7 @@ jobs:
       matrix:
         python: [3.6, 3.7, 3.9]
         include:
-          - python: 3.10
+          - python: "3.10"
             experimental: true
 
     runs-on: ubuntu-latest
