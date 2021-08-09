@@ -26,7 +26,7 @@ jobs:
            git --version
     - uses: actions/checkout@v2
     - name: Install Required Packages
-      run: sudo apt-get install cmake libssl-dev libssh2-1-dev
+      run: sudo apt-get install cmake libssl-dev libssh2-1-dev libgit2-dev
     - name: Install Python Dependencies
       run: |
            pip install -U setuptools
