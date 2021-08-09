@@ -15,6 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Configures the python version
+    - uses: actions/setup-python@v2
+      with:
+        # The Node.js version to configure
+        python-version: ${{ matrix.python }}
     - name: Print Versions
       run: |
            python --version
