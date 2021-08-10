@@ -1,0 +1,75 @@
+name: Run Tests and Build Quit Store Releases
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: [3.7, 3.8, 3.9]
+        # include:
+        #   - python: "3.10.0-rc.1"
+        #     experimental: true
+
+    runs-on: ubuntu-latest
+
+    steps:
+    # Configures the python version
+    - uses: actions/setup-python@v2
+      with:
+        # The Node.js version to configure
+        python-version: ${{ matrix.python }}
+    - name: Print Versions
+      run: |
+           python --version
+           git --version
+    - uses: actions/checkout@v2
+    - name: Install Required Packages
+      run: sudo apt-get install cmake libssl-dev libssh2-1-dev
+    - name: Install Python Dependencies
+      run: |
+           pip install -U setuptools
+           pip install -r requirements.txt
+           pip install coveralls
+    - name: Check Conding style
+      run: pylava
+    - name: Set Git user
+      run: |
+           git config --global user.email "quittestsystem@example.org"
+           git config --global user.name "Quit CI Tests"
+    - name: Run Tests
+      run: |
+           coverage run -a --source=quit tests/test_app.py
+           coverage run -a --source=quit tests/test_cache.py
+           coverage run -a --source=quit tests/test_conf.py
+           coverage run -a --source=quit tests/test_core.py
+           coverage run -a --source=quit tests/test_endpoint.py
+           coverage run -a --source=quit tests/test_git.py
+           coverage run -a --source=quit tests/test_graphs.py
+           coverage run -a --source=quit tests/test_helpers.py
+           coverage run -a --source=quit tests/test_namespace.py
+           coverage run -a --source=quit tests/test_provenance.py
+    - name: Prepare Deployment
+      if: matrix.python == '3.7' && false
+      run: |
+           mkdir dist
+           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh cdrx/pyinstaller-linux:python3 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
+           cp dist/linux/run dist/quit-64bit-linux
+           git apply requirements.txt.windows.patch
+           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh cdrx/pyinstaller-windows:python3 -c "apt-get update -y && apt-get install -y libgit2-dev git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
+           cp dist/windows/run.exe dist/quit-64bit-windows.exe
+    - name: Coverage
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
+      run: |
+           coverage report -m
+           coveralls
+    - name: TODO Deploy 🚀
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') && matrix.python == '3.7' && false
+      with:
+        files: |
+               quit-64bit-linux
+               quit-64bit-windows.exe
