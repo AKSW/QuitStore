@@ -57,6 +57,7 @@ jobs:
            docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-amd64 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
            cp dist/linux/run dist/quit-64bit-linux
            # i386 does not work because libgit2-dev is to old, or pygit2 to new
+           # maybe install compatible pygit2 with pip
            #docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-i386 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
            #cp dist/linux/run dist/quit-32bit-linux
            git apply requirements.txt.windows.patch
