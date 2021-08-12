@@ -54,15 +54,15 @@ jobs:
       if: matrix.python == '3.7' && false
       run: |
            mkdir dist
-           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:py3-amd64 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
+           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-amd64 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
            cp dist/linux/run dist/quit-64bit-linux
            # i386 does not work because libgit2-dev is to old, or pygit2 to new
-           #docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:py3-i386 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
+           #docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-i386 -c "apt-get update -y && apt-get install -y libgit2-dev && /entrypoint.sh"
            #cp dist/linux/run dist/quit-32bit-linux
            git apply requirements.txt.windows.patch
-           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:py3-win64 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
+           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-win64 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
            cp dist/windows/run.exe dist/quit-64bit-windows.exe
-           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:py3-win32 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
+           docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-win32 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
            cp dist/windows/run.exe dist/quit-32bit-windows.exe
     - name: Coverage
       env:
