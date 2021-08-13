@@ -26,7 +26,9 @@ RUN wget https://github.com/libgit2/libgit2/releases/download/v1.1.0/libgit2-1.1
     && cd libgit2-1.1.0/ \
     && cmake . \
     && make \
-    && sudo make install
+    && make install \
+    && cd .. \
+    && rm -r libgit2-1.1.0/
 
 RUN pip install --no-cache-dir -r requirements.txt \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
