@@ -21,14 +21,8 @@ COPY requirements.txt /usr/src/app/
 
 USER root
 # Install libgit2
-RUN wget https://github.com/libgit2/libgit2/releases/download/v1.1.0/libgit2-1.1.0.tar.gz \
-    && tar xzf libgit2-1.1.0.tar.gz \
-    && cd libgit2-1.1.0/ \
-    && cmake . \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -r libgit2-1.1.0/
+RUN pip install --no-deps --only-binary :all: pygit2 \
+    || ./scripts/install-libgit2.sh
 
 RUN pip install --no-cache-dir -r requirements.txt \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
