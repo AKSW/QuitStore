@@ -18,8 +18,13 @@ WORKDIR /usr/src/app
 
 COPY quit/ /usr/src/app/quit
 COPY requirements.txt /usr/src/app/
+COPY scripts/install-libgit2.sh /
 
 USER root
+# Install libgit2
+RUN pip install --no-deps --only-binary :all: pygit2 \
+    || /install-libgit2.sh
+
 RUN pip install --no-cache-dir -r requirements.txt \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
