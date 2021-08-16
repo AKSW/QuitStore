@@ -58,7 +58,7 @@ jobs:
            coverage report -m
            coveralls
     - name: Prepare Deployment
-      if: matrix.python == '3.9'
+      if: startsWith(github.ref, 'refs/tags/') && matrix.python == '3.9'
       run: |
            mkdir dist
            # Linux 64bit
