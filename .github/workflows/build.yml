@@ -80,9 +80,10 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/') && matrix.python == '3.9'
       with:
         files: |
-               quit-64bit-linux
-               quit-64bit-windows.exe
-               quit-32bit-windows.exe
+               dist/quit-64bit-linux
+               dist/quit-32bit-linux
+               dist/quit-64bit-windows.exe
+               dist/quit-32bit-windows.exe
 
   docker:
     runs-on: ubuntu-latest
