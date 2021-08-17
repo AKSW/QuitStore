@@ -66,6 +66,7 @@ jobs:
       matrix:
         python-version: [3.9]
         os: ['windows-2019', 'ubuntu-18.04', 'macos-11']
+        platform: ['x64', 'x86']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
