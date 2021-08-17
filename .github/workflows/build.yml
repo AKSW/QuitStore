@@ -65,7 +65,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9]
-        os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
+        os: ['windows-2019', 'ubuntu-18.04', 'macos-11']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -86,7 +86,7 @@ jobs:
         run: |
              git apply requirements.txt.windows.patch
 
-      - name: Set up environment
+      - name: Pyinstaller
         run: |
           # Update pip
           python -m pip install -U pip setuptools wheel
@@ -97,6 +97,14 @@ jobs:
           # Run PyInstaller
           pyinstaller --clean -y --dist ./dist/${{ matrix.os }} --workpath /tmp *.spec
           cp ./dist/${{ matrix.os }}/run ./dist/quit-${{ matrix.os }} || cp ./dist/${{ matrix.os }}/run.exe ./dist/quit-${{ matrix.os }}.exe
+
+      - name: Rename Lin/Mac Release
+        if: !startsWith(matrix.os, 'windows')
+        run: cp ./dist/${{ matrix.os }}/run ./dist/quit-${{ matrix.os }}
+
+      - name: Rename Win Release
+        if: startsWith(matrix.os, 'windows')
+        run: cp ./dist/${{ matrix.os }}/run.exe ./dist/quit-${{ matrix.os }}.exe
 
       #- name: Prepare Deployment
       #  run: |
@@ -117,8 +125,8 @@ jobs:
       #       cp dist/windows/run.exe dist/quit-32bit-windows.exe
       - name: Release 🚀
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
+          draft: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: |
                  dist/quit-64bit-linux
                  dist/quit-32bit-linux
