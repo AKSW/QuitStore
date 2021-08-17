@@ -131,6 +131,9 @@ jobs:
                  dist/quit-32bit-linux
                  dist/quit-64bit-windows.exe
                  dist/quit-32bit-windows.exe
+                 dist/quit-windows-2019.exe
+                 dist/quit-ubuntu-18.04
+                 dist/quit-macos-11
 
 
   docker:
