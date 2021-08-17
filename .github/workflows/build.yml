@@ -69,11 +69,6 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install apt packages
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qq \
       - name: Patch Windows requirements
         if: startsWith(matrix.os, 'windows')
         run: |
