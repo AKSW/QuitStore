@@ -4,16 +4,39 @@ All notable changes to this project should be documented in this file. But actua
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project from now on adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.24.4] - ???
+## [0.25.4] - 2021-08-17
 ### Added
--
+- Build for MacOS
 
 ### Changed
-- Minimum Python version is now 3.6 (pygit2 does not support any older)
--
+- Update build system for Github Actions
+- No 32bit builds any more (open an issue, if you need them)
 
+## [0.25.3] - 2021-08-16
+### Changed
+- Update build system for Github Actions
+
+## [0.25.2] - 2021-08-16
+### Changed
+- Update build system for Github Actions
+
+## [0.25.1] - 2021-08-16
+### Changed
+- Update build system for Github Actions
+
+## [0.25.0] - 2021-08-16
+### Changed
+- Minimum Python version is now 3.7 (pygit2 and rdflib 6.0.0 does not support any older)
+- Move build system to Github Actions
+- Init repos with upstream URL also as environment variable
+
+## [0.24.5] - 2020-08-15/2020-08-17
 ### Fixed
--
+- Fix windows requirements.txt
+
+## [0.24.4] - 2020-05-14
+### Changed
+- Minimum Python version is now 3.6 (pygit2 does not support any older)
 
 ## [0.24.3] - 2019-12-22 (iiii)
 ### Fixed
