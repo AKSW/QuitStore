@@ -95,7 +95,7 @@ jobs:
           # Install PyInstaller
           pip install --progress-bar=off pyinstaller
           # Run PyInstaller
-          python -m pyinstaller --clean -y --dist ./dist/${{ matrix.os }} --workpath /tmp *.spec
+          pyinstaller --clean -y --dist ./dist/${{ matrix.os }} --workpath /tmp *.spec
           cp ./dist/${{ matrix.os }}/run ./dist/quit-${{ matrix.os }} || cp ./dist/${{ matrix.os }}/run.exe ./dist/quit-${{ matrix.os }}.exe
 
       #- name: Prepare Deployment

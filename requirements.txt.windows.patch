@@ -10,6 +10,6 @@ index fccdc79..57d340f 100644
  sortedcontainers
  uritools
  git+https://github.com/RDFLib/rdflib-jsonld@master
-
+ 
 -uwsgi
  pylava
