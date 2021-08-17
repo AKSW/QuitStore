@@ -157,7 +157,7 @@ jobs:
         with:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-          cache-from: type=registry,ref=aksw/quitstore:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
