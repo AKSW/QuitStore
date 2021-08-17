@@ -98,11 +98,11 @@ jobs:
           pyinstaller --clean -y --dist ./dist/${{ matrix.os }} --workpath /tmp *.spec
 
       - name: Rename Lin and Mac Release
-        if: !startsWith(matrix.os, 'windows')
+        if: ${{ !startsWith(matrix.os, 'windows') }}
         run: cp ./dist/${{ matrix.os }}/run ./dist/quit-${{ matrix.os }}
 
       - name: Rename Win Release
-        if: startsWith(matrix.os, 'windows')
+        if: ${{ startsWith(matrix.os, 'windows') }}
         run: cp ./dist/${{ matrix.os }}/run.exe ./dist/quit-${{ matrix.os }}.exe
 
       #- name: Prepare Deployment
