@@ -4,6 +4,7 @@ on: [push]
 
 jobs:
   test:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -11,57 +12,52 @@ jobs:
         # include:
         #   - python: "3.10.0-rc.1"
         #     experimental: true
-
-    runs-on: ubuntu-latest
-
     steps:
-    # Configures the python version
-    - uses: actions/setup-python@v2
-      with:
-        # The Node.js version to configure
-        python-version: ${{ matrix.python }}
-    - name: Print Versions
-      run: |
-           python --version
-           git --version
-    - uses: actions/checkout@v2
-    - name: Install Required Packages
-      run: sudo apt-get install cmake libssl-dev libssh2-1-dev
-    - name: Install Python Dependencies
-      run: |
-           pip install -U setuptools
-           pip install -r requirements.txt
-           pip install coveralls
-    - name: Check Conding style
-      run: pylava
-    - name: Set Git user
-      run: |
-           git config --global user.email "quittestsystem@example.org"
-           git config --global user.name "Quit CI Tests"
-    - name: Run Tests
-      run: |
-           coverage run -a --source=quit tests/test_app.py
-           coverage run -a --source=quit tests/test_cache.py
-           coverage run -a --source=quit tests/test_conf.py
-           coverage run -a --source=quit tests/test_core.py
-           coverage run -a --source=quit tests/test_endpoint.py
-           coverage run -a --source=quit tests/test_git.py
-           coverage run -a --source=quit tests/test_graphs.py
-           coverage run -a --source=quit tests/test_helpers.py
-           coverage run -a --source=quit tests/test_namespace.py
-           coverage run -a --source=quit tests/test_provenance.py
-    - name: Coverage
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_SERVICE_NAME: github
-      run: |
-           coverage report -m
-           coveralls
+      # Configures the python version
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Print Versions
+        run: |
+             python --version
+             git --version
+      - uses: actions/checkout@v2
+      - name: Install Required Packages
+        run: sudo apt-get install cmake libssl-dev libssh2-1-dev
+      - name: Install Python Dependencies
+        run: |
+             pip install -U setuptools
+             pip install -r requirements.txt
+             pip install coveralls
+      - name: Check Conding style
+        run: pylava
+      - name: Set Git user
+        run: |
+             git config --global user.email "quittestsystem@example.org"
+             git config --global user.name "Quit CI Tests"
+      - name: Run Tests
+        run: |
+             coverage run -a --source=quit tests/test_app.py
+             coverage run -a --source=quit tests/test_cache.py
+             coverage run -a --source=quit tests/test_conf.py
+             coverage run -a --source=quit tests/test_core.py
+             coverage run -a --source=quit tests/test_endpoint.py
+             coverage run -a --source=quit tests/test_git.py
+             coverage run -a --source=quit tests/test_graphs.py
+             coverage run -a --source=quit tests/test_helpers.py
+             coverage run -a --source=quit tests/test_namespace.py
+             coverage run -a --source=quit tests/test_provenance.py
+      - name: Coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_SERVICE_NAME: github
+        run: |
+             coverage report -m
+             coveralls
 
   release:
     runs-on: ${{ matrix.os }}
     needs: test
-    #if: startsWith(github.ref, 'refs/tags/')
     strategy:
       matrix:
         python-version: [3.9]
@@ -69,23 +65,19 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Install apt packages
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qq \
-
       - name: Patch Windows requirements
         if: startsWith(matrix.os, 'windows')
         run: |
              git apply requirements.txt.windows.patch
-
       - name: Pyinstaller
         run: |
           # Update pip
@@ -96,19 +88,15 @@ jobs:
           pip install --progress-bar=off pyinstaller
           # Run PyInstaller
           pyinstaller quit.spec
-
       - name: Rename Lin Release
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: cp ./dist/run ./dist/quit-linux
-
       - name: Rename Mac Release
         if: ${{ startsWith(matrix.os, 'macos') }}
         run: cp ./dist/run ./dist/quit-macos
-
       - name: Rename Win Release
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: cp ./dist/run.exe ./dist/quit-windows.exe
-
       - name: Release 🚀
         uses: softprops/action-gh-release@v1
         with:
@@ -118,40 +106,33 @@ jobs:
                  dist/quit-linux
                  dist/quit-macos
 
-
   docker:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      -
-        name: Set up QEMU
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      -
-        name: Login to DockerHub
+      - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v3.4.1
         with:
           images: |
             aksw/quitstore
             ghcr.io/aksw/quitstore
-      -
-        name: Build and push for many architectures
+      - name: Build and push for many architectures
         id: docker_build_tagged
         uses: docker/build-push-action@v2
         with:
