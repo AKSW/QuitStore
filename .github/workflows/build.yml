@@ -66,7 +66,6 @@ jobs:
       matrix:
         python-version: [3.9]
         os: ['windows-2019', 'ubuntu-18.04', 'macos-11']
-        platform: ['x64', 'x86']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -98,46 +97,26 @@ jobs:
           # Run PyInstaller
           pyinstaller quit.spec
 
-      - name: Rename Lin and Mac Release
-        if: ${{ !startsWith(matrix.os, 'windows') }}
-        run: cp ./dist/run ./dist/quit-${{ matrix.os }}-${{ matrix.platform }}
+      - name: Rename Lin Release
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        run: cp ./dist/run ./dist/quit-linux
+
+      - name: Rename Mac Release
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        run: cp ./dist/run ./dist/quit-macos
 
       - name: Rename Win Release
         if: ${{ startsWith(matrix.os, 'windows') }}
-        run: cp ./dist/run.exe ./dist/quit-${{ matrix.os }}-${{ matrix.platform }}.exe
+        run: cp ./dist/run.exe ./dist/quit-windows.exe
 
-      #- name: Prepare Deployment
-      #  run: |
-      #       mkdir dist
-      #       # Linux 64bit
-      #       docker run -v "${{ github.workspace }}:/src/" ghcr.io/white-gecko/docker-pyinstaller:master-py3-amd64
-      #       cp dist/linux/run dist/quit-64bit-linux
-      #       # Linux 32bit, requires libgit2 from source, as no wheel is available on pypi
-      #       docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-i386 -c ". /root/.bashrc && pip install --no-deps --only-binary :all: pygit2 || { apt-get update -y && apt-get install -y cmake && /src/scripts/install-libgit2.sh; } && /entrypoint.sh"
-      #       cp dist/linux/run dist/quit-32bit-linux
-      #       # Windows
-      #       git apply requirements.txt.windows.patch
-      #       # Windows 64bit
-      #       docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-win64 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
-      #       cp dist/windows/run.exe dist/quit-64bit-windows.exe
-      #       # Windows 32bit
-      #       docker run -v "${{ github.workspace }}:/src/" --entrypoint /bin/sh ghcr.io/white-gecko/docker-pyinstaller:master-py3-win32 -c "apt-get update -y && apt-get install -y git && git clone https://github.com/rdflib/rdflib /wine/drive_c/rdflib && pip install -e /wine/drive_c/rdflib && git clone https://github.com/RDFLib/rdflib-jsonld /wine/drive_c/rdflib-jsonld && pip install -e /wine/drive_c/rdflib-jsonld && /entrypoint.sh"
-      #       cp dist/windows/run.exe dist/quit-32bit-windows.exe
       - name: Release 🚀
         uses: softprops/action-gh-release@v1
         with:
           draft: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: |
-                 dist/quit-64bit-linux
-                 dist/quit-32bit-linux
-                 dist/quit-64bit-windows.exe
-                 dist/quit-32bit-windows.exe
-                 dist/quit-windows-2019-x64.exe
-                 dist/quit-ubuntu-18.04-x64
-                 dist/quit-macos-11-x64
-                 dist/quit-windows-2019-x86.exe
-                 dist/quit-ubuntu-18.04-x86
-                 dist/quit-macos-11-x86
+                 dist/quit-windows.exe
+                 dist/quit-linux
+                 dist/quit-macos
 
 
   docker:
