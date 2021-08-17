@@ -95,15 +95,15 @@ jobs:
           # Install PyInstaller
           pip install --progress-bar=off pyinstaller
           # Run PyInstaller
-          pyinstaller --clean -y --dist ./dist/${{ matrix.os }} *.spec
+          pyinstaller quit.spec
 
       - name: Rename Lin and Mac Release
         if: ${{ !startsWith(matrix.os, 'windows') }}
-        run: cp ./dist/${{ matrix.os }}/run ./dist/quit-${{ matrix.os }}
+        run: cp ./dist/run ./dist/quit-${{ matrix.os }}
 
       - name: Rename Win Release
         if: ${{ startsWith(matrix.os, 'windows') }}
-        run: cp ./dist/${{ matrix.os }}/run.exe ./dist/quit-${{ matrix.os }}.exe
+        run: cp ./dist/run.exe ./dist/quit-${{ matrix.os }}.exe
 
       #- name: Prepare Deployment
       #  run: |
