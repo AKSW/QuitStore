@@ -1,13 +1,8 @@
 diff --git a/requirements.txt b/requirements.txt
-index fccdc79..57d340f 100644
+index fccdc79..86bd7b0 100644
 --- a/requirements.txt
 +++ b/requirements.txt
-@@ -1,10 +1,7 @@
- git+https://github.com/RDFLib/rdflib@master#egg=rdflib
- Flask
- Flask-Cors
- pygit2>=1.1.0
- sortedcontainers
+@@ -6,5 +6,4 @@ sortedcontainers
  uritools
  git+https://github.com/RDFLib/rdflib-jsonld@master
  
