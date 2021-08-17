@@ -95,7 +95,7 @@ jobs:
           # Install PyInstaller
           pip install --progress-bar=off pyinstaller
           # Run PyInstaller
-          pyinstaller --clean -y --dist ./dist/${{ matrix.os }} --workpath /tmp *.spec
+          pyinstaller --clean -y --dist ./dist/${{ matrix.os }} *.spec
 
       - name: Rename Lin and Mac Release
         if: ${{ !startsWith(matrix.os, 'windows') }}
