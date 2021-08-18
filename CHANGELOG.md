@@ -4,6 +4,16 @@ All notable changes to this project should be documented in this file. But actua
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project from now on adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.25.X] - ???
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+-
+
 ## [0.25.4] - 2021-08-17
 ### Added
 - Build for MacOS
