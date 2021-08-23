@@ -1,10 +1,10 @@
-FROM python:3-alpine
+FROM python:3-alpine as builder
 
 MAINTAINER Norman Radtke <radtke@informatik.uni-leipzig.de>
 MAINTAINER Natanael Arndt <arndt@informatik.uni-leipzig.de>
 ENV SSH_AUTH_SOCK /var/run/ssh-agent.sock
 
-RUN apk update && apk add \
+RUN apk --no-cache add \
     git \
     gcc \
     musl-dev \
@@ -17,19 +17,29 @@ RUN adduser -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
 
-ENV PATH="/usr/src/app/.local/bin:${PATH}"
-
-COPY quit/ /usr/src/app/quit
 COPY requirements.txt /usr/src/app/
-
-USER root
-COPY docker/config.ttl /etc/quit/
-RUN mkdir /data && chown quit /data
-USER quit
 
 RUN pip install --no-cache-dir -r requirements.txt \
     && ln -s /usr/src/app/quit/run.py /usr/src/app/.local/bin/quit
 
+FROM python:3-alpine
+
+RUN apk --no-cache add \
+    git \
+    libgit2 \
+    libssh2
+
+RUN adduser -h /usr/src/app -S quit
+WORKDIR /usr/src/app
+
+COPY quit/ /usr/src/app/quit
+COPY docker/config.ttl /etc/quit/
+COPY --from=builder /usr/src/app/.local ./.local
+RUN mkdir /data && chown quit /data
+
+USER quit
+
+ENV PATH="/usr/src/app/.local/bin:${PATH}"
 ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
 
 VOLUME /data
