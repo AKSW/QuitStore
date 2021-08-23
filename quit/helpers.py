@@ -6,7 +6,7 @@ from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBa
 from rdflib.term import URIRef
 from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
-from quit.tools.algebra import translateQuery, translateUpdate
+from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from rdflib.plugins.serializers.nt import _nt_row as _nt
 from rdflib.plugins.sparql import parser, algebra
 from rdflib.plugins import sparql
