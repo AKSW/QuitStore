@@ -17,6 +17,8 @@ RUN adduser -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
 
+ENV PATH="/usr/src/app/.local/bin:${PATH}"
+
 COPY quit/ /usr/src/app/quit
 COPY requirements.txt /usr/src/app/
 
