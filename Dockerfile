@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3-slim
 
 MAINTAINER Norman Radtke <radtke@informatik.uni-leipzig.de>
 MAINTAINER Natanael Arndt <arndt@informatik.uni-leipzig.de>
