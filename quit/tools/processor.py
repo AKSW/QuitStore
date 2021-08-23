@@ -1,5 +1,5 @@
-from quit.tools.algebra import translateQuery, translateUpdate
 from quit.tools.update import evalUpdate
+from rdflib.plugins.sparql.algebra import translateQuery, translateUpdate
 from rdflib.plugins.sparql.evaluate import evalQuery
 
 import rdflib.plugins.sparql.processor
