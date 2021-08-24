@@ -21,14 +21,16 @@ RUN git config --global user.name QuitStore && git config --global user.email qu
 
 COPY requirements.txt /usr/src/app/
 
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN git apply requirements.txt.windows.patch \
+    && pip install --no-cache-dir -r requirements.txt \
     && ln -s /usr/src/app/quit/run.py /usr/src/app/.local/bin/quit
 
 FROM python:3-alpine
 
 RUN apk --no-cache add \
      libgit2 \
-     libssh2
+     libssh2 \
+     uwsgi
 
 RUN adduser -h /usr/src/app -S quit
 WORKDIR /usr/src/app
