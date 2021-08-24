@@ -2,3 +2,4 @@
 !docker/
 !quit/
 !requirements.txt
+!requirements.txt.windows.patch

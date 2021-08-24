@@ -20,6 +20,7 @@ WORKDIR /usr/src/app
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
 COPY requirements.txt /usr/src/app/
+COPY requirements.txt.windows.patch /usr/src/app/
 
 RUN git apply requirements.txt.windows.patch \
     && pip install --no-cache-dir -r requirements.txt \
