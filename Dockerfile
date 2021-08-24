@@ -28,13 +28,13 @@ RUN git apply requirements.txt.windows.patch \
 
 FROM python:3-alpine
 
+RUN adduser -h /usr/src/app -S quit
+WORKDIR /usr/src/app
+
 RUN apk --no-cache add \
      libgit2 \
      libssh2 \
-     uwsgi
-
-RUN adduser -h /usr/src/app -S quit
-WORKDIR /usr/src/app
+     uwsgi uwsgi-http uwsgi-python3
 
 COPY quit/ /usr/src/app/quit
 COPY docker/config.ttl /etc/quit/
@@ -52,4 +52,4 @@ VOLUME /data
 VOLUME /etc/quit
 EXPOSE 8080
 
-CMD uwsgi --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
+CMD uwsgi --plugin http --plugin python3 --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
