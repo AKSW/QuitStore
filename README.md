@@ -242,6 +242,20 @@ docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitst
 
 Now you should be able to access the quit web interface under `http://localhost:8080` and the SPARQL 1.1 interface under `http://localhost:8080/sparql`.
 
+## Troubleshooting
+
+### Use on Windows with restricted permissions
+
+On Windows you might not be able to download the `.exe` file directly.
+If so, use the `curl` command in the power shell.
+
+When you start the QuitStore (e.g. with `quit.exe -t .`) it will try to open a port that is available from outside, which will require permission by the administrator user.
+To open the port only locally you should start the QuitStore with:
+
+    quit.exe -t . -h localhost
+
+The default port is `5000` (`http://localhost:5000/`).
+
 ## Migrate from old Versions
 
 ### Update to 2018-11-20 from 2018-10-29 and older
