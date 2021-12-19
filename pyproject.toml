@@ -7,6 +7,14 @@ license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = "^3.7"
+rdflib = "^6.0.2"
+Flask = "^2.0.2"
+Flask-Cors = "^3.0.10"
+pygit2 = ">=1.1.0"
+sortedcontainers = "^2.4.0"
+uritools = "^3.0.2"
+uWSGI = "^2.0.20"
+pylava = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
 
