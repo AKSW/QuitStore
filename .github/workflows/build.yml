@@ -30,7 +30,7 @@ jobs:
              pip install coveralls
              poetry install
       - name: Check Conding style
-        run: pylava
+        run: poetry run pylava
       - name: Set Git user
         run: |
              git config --global user.email "quittestsystem@example.org"
