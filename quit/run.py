@@ -33,11 +33,13 @@ if args['basepath']:
     application.wsgi_app = DispatcherMiddleware(
             simple, {args['basepath']: application.wsgi_app})
 
+
 def run():
     application.run(debug=args['flask_debug'],
                     use_reloader=False,
                     host=args['host'],
                     port=args['port'])
+
 
 if __name__ == "__main__":
     run()
