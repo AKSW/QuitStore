@@ -37,6 +37,7 @@ jobs:
              git config --global user.name "Quit CI Tests"
       - name: Run Tests
         run: |
+             poetry run python tests/test_app.py
              poetry run coverage run -a --source=quit tests/test_app.py
              poetry run coverage run -a --source=quit tests/test_cache.py
              poetry run coverage run -a --source=quit tests/test_conf.py
