@@ -27,7 +27,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
              pip install -U poetry
-             poetry install
+             poetry install -vv
       - name: Check Conding style
         run: poetry run pylava
       - name: Set Git user
