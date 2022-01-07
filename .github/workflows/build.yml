@@ -27,7 +27,6 @@ jobs:
       - name: Install Python Dependencies
         run: |
              pip install -U poetry
-             pip install coveralls
              poetry install
       - name: Check Conding style
         run: poetry run pylava
@@ -37,17 +36,17 @@ jobs:
              git config --global user.name "Quit CI Tests"
       - name: Run Tests
         run: |
-             poetry run python tests/test_app.py
-             poetry run python tests/test_app.py
-             poetry run python tests/test_cache.py
-             poetry run python tests/test_conf.py
-             poetry run python tests/test_core.py
-             poetry run python tests/test_endpoint.py
-             poetry run python tests/test_git.py
-             poetry run python tests/test_graphs.py
-             poetry run python tests/test_helpers.py
-             poetry run python tests/test_namespace.py
-             poetry run python tests/test_provenance.py
+             poetry run coverage run -a --source=quit tests/test_app.py
+             poetry run coverage run -a --source=quit tests/test_app.py
+             poetry run coverage run -a --source=quit tests/test_cache.py
+             poetry run coverage run -a --source=quit tests/test_conf.py
+             poetry run coverage run -a --source=quit tests/test_core.py
+             poetry run coverage run -a --source=quit tests/test_endpoint.py
+             poetry run coverage run -a --source=quit tests/test_git.py
+             poetry run coverage run -a --source=quit tests/test_graphs.py
+             poetry run coverage run -a --source=quit tests/test_helpers.py
+             poetry run coverage run -a --source=quit tests/test_namespace.py
+             poetry run coverage run -a --source=quit tests/test_provenance.py
       - name: Coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
