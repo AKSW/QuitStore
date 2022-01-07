@@ -17,7 +17,6 @@ USER quit
 WORKDIR /usr/src/app
 
 COPY quit/ /usr/src/app/quit
-COPY requirements.txt /usr/src/app/
 COPY scripts/install-libgit2.sh /
 
 USER root
@@ -25,7 +24,12 @@ USER root
 RUN pip install --no-deps --only-binary :all: pygit2 \
     || /install-libgit2.sh
 
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN pip install --no-cache-dir poetry
+
+COPY poetry.lock pyproject.toml /usr/src/app/
+
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-dev --no-ansi --no-interaction \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
 COPY docker/config.ttl /etc/quit/
