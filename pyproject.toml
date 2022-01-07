@@ -18,6 +18,9 @@ uWSGI = "^2.0.20"
 [tool.poetry.dev-dependencies]
 pylava = "^0.3.0"
 
+[tool.poetry.extras]
+ci = ["coveralls"]
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
