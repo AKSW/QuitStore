@@ -28,8 +28,7 @@ RUN pip install --no-cache-dir poetry
 
 COPY poetry.lock pyproject.toml /usr/src/app/
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-ansi --no-interaction \
+RUN poetry export -f requirements.txt | pip install --no-cache-dir -r /dev/stdin \
     && ln -s /usr/src/app/quit/run.py /usr/local/bin/quit
 
 COPY docker/config.ttl /etc/quit/
