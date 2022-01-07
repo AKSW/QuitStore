@@ -121,7 +121,7 @@ python-versions = ">=3.6"
 name = "mccabe"
 version = "0.6.1"
 description = "McCabe checker, plugin for flake8"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -129,7 +129,7 @@ python-versions = "*"
 name = "pycodestyle"
 version = "2.8.0"
 description = "Python style guide checker"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
@@ -145,7 +145,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 name = "pydocstyle"
 version = "6.1.1"
 description = "Python docstring style checker"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -159,7 +159,7 @@ toml = ["toml"]
 name = "pyflakes"
 version = "2.4.0"
 description = "passive checker of Python programs"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -178,7 +178,7 @@ cffi = ">=1.4.0"
 name = "pylava"
 version = "0.3.0"
 description = "Pylava -- Code audit tool for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -228,7 +228,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 name = "snowballstemmer"
 version = "2.2.0"
 description = "This package provides 29 stemmers for 28 languages generated from Snowball algorithms."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -290,7 +290,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "26cf6d005bb7e3c8bf4ba1b5ba4d8f75363eb87c06cecf70d92b9a7da8e28927"
+content-hash = "fafe4f032e068f6cdca51bc8a8f3be6e15b4c7371830046ef97b4a098e93f350"
 
 [metadata.files]
 cffi = [
