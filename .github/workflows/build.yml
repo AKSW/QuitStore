@@ -25,6 +25,7 @@ jobs:
       - name: Install Required Packages
         run: sudo apt-get install cmake libssl-dev libssh2-1-dev
       - name: Install Python Dependencies
+        # pygit2 is installed separately to make sure cached-property is installed on python 3.7
         run: |
              pip install -U poetry
              poetry run pip install pygit2
