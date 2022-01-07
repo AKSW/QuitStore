@@ -28,7 +28,7 @@ jobs:
         run: |
              pip install -U poetry
              poetry run pip install pygit2
-             poetry install --no-root -E ci
+             poetry install --no-root
       - name: Check Conding style
         run: poetry run pylava
       - name: Set Git user
