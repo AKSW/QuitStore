@@ -38,16 +38,16 @@ jobs:
       - name: Run Tests
         run: |
              poetry run python tests/test_app.py
-             poetry run coverage run -a --source=quit tests/test_app.py
-             poetry run coverage run -a --source=quit tests/test_cache.py
-             poetry run coverage run -a --source=quit tests/test_conf.py
-             poetry run coverage run -a --source=quit tests/test_core.py
-             poetry run coverage run -a --source=quit tests/test_endpoint.py
-             poetry run coverage run -a --source=quit tests/test_git.py
-             poetry run coverage run -a --source=quit tests/test_graphs.py
-             poetry run coverage run -a --source=quit tests/test_helpers.py
-             poetry run coverage run -a --source=quit tests/test_namespace.py
-             poetry run coverage run -a --source=quit tests/test_provenance.py
+             poetry run python tests/test_app.py
+             poetry run python tests/test_cache.py
+             poetry run python tests/test_conf.py
+             poetry run python tests/test_core.py
+             poetry run python tests/test_endpoint.py
+             poetry run python tests/test_git.py
+             poetry run python tests/test_graphs.py
+             poetry run python tests/test_helpers.py
+             poetry run python tests/test_namespace.py
+             poetry run python tests/test_provenance.py
       - name: Coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
