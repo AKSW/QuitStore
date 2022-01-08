@@ -24,7 +24,6 @@ USER root
 RUN pip install --no-deps --only-binary :all: pygit2 \
     || /install-libgit2.sh
 
-#RUN pip install --no-cache-dir poetry
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 
 COPY poetry.lock pyproject.toml /usr/src/app/
