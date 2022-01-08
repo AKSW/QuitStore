@@ -24,8 +24,6 @@ USER root
 RUN pip install --no-deps --only-binary :all: pygit2 \
     || /install-libgit2.sh
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
 COPY poetry.lock pyproject.toml /usr/src/app/
 
 RUN poetry export -f requirements.txt | pip install --no-cache-dir -r /dev/stdin \
