@@ -16,15 +16,10 @@ RUN adduser -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
 
-# Set default git user
-RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
+#COPY scripts/install-libgit2.sh /
+COPY poetry.lock pyproject.toml /usr/src/app/
 
-COPY requirements.txt /usr/src/app/
-COPY requirements.txt.windows.patch /usr/src/app/
-
-RUN git apply requirements.txt.windows.patch \
-    && pip install --no-cache-dir -r requirements.txt \
-    && ln -s /usr/src/app/quit/run.py /usr/src/app/.local/bin/quit
+RUN poetry export -f requirements.txt | pip install --no-cache-dir -r /dev/stdin
 
 FROM python:3-alpine
 
@@ -51,5 +46,8 @@ ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
 VOLUME /data
 VOLUME /etc/quit
 EXPOSE 8080
+
+# Set default git user
+RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
 CMD uwsgi --plugin http --plugin python3 --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"

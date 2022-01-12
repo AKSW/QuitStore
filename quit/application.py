@@ -89,7 +89,7 @@ def initialize(args):
 
     register(
         'application/json', Serializer,
-        'rdflib_jsonld.serializer', 'JsonLDSerializer')
+        'rdflib.plugins.serializers.jsonld', 'JsonLDSerializer')
 
     register(
         'application/trig', Serializer,
