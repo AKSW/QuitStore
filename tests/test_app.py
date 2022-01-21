@@ -907,7 +907,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertEqual(res.status, '400 BAD REQUEST')
 
     def testBranchWithRefspec(self):
-        """Test branching and deleting the branch."""
+        """Test branching."""
 
         # Prepate a git Repository
         content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
@@ -917,8 +917,13 @@ class QuitAppTestCase(unittest.TestCase):
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
+            current_head = repo.head.shorthand
 
-            app.post("/branch/master:develop")
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
+
+            app.post("/branch/" + current_head + ":develop")
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
@@ -2606,7 +2611,9 @@ class QuitAppTestCase(unittest.TestCase):
 
                 self.assertEqual(len(resultBindings), 0)
 
-                response = app.get('/pull/origin/master')
+                current_remote_head = remote.head.shorthand
+
+                response = app.get('/pull/origin/' + current_remote_head)
                 self.assertEqual(response.status, '200 OK')
 
                 afterPull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
