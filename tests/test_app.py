@@ -3699,7 +3699,7 @@ class FileHandlingTests(unittest.TestCase):
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3723,7 +3723,7 @@ class FileHandlingTests(unittest.TestCase):
             files[hashed_identifier + '_1.nt'] = (
                 'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3773,7 +3773,7 @@ class FileHandlingTests(unittest.TestCase):
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3797,7 +3797,7 @@ class FileHandlingTests(unittest.TestCase):
             files[hashed_identifier + '_12.nt'] = (
                 'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
