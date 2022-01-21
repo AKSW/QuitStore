@@ -762,6 +762,8 @@ class QuitAppTestCase(unittest.TestCase):
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
 
+            current_head = repo.head.shorthand
+
             expected = {
                 's': {'type': 'uri', 'value': 'http://ex.org/x'},
                 'p': {'type': 'uri', 'value': 'http://ex.org/y'},
@@ -772,7 +774,7 @@ class QuitAppTestCase(unittest.TestCase):
                 'email': {'type': 'literal', 'value': 'quit@quit.aksw.org'}
             }
 
-            for apiPath in ['master', oid]:
+            for apiPath in [current_head, 'HEAD', oid]:
                 response = app.get('/blame/{}'.format(apiPath))
                 resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
                 results = resultBindings[0]
@@ -858,35 +860,47 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.getDefaults()
-            args['targetdir'] = repo.workdir
+            args["targetdir"] = repo.workdir
             app = create_app(args).test_client()
 
-            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+            current_head = repo.head.shorthand
+
+
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
+
+            app.post("/branch", data={"oldbranch": current_head, "newbranch": "develop"})
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            res = app.post('/sparql', data={"update": update})
+            res = app.post("/sparql", data={"update": update})
             self.assertEqual(res.status, '200 OK')
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
-            res = app.post('/sparql/develop', data={"update": update})
+            res = app.post("/sparql/develop", data={"update": update})
             self.assertEqual(res.status, '200 OK')
 
             # Currently we need to checkout master again, because the commit always checks out the latest updated branch
             # If develop is checked out, it is the current HEAD and thus can not be deleted
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/a> <http://ex.org/b> .}}"
-            res = app.post('/sparql/master', data={"update": update})
+            res = app.post("/sparql/" + current_head, data={"update": update})
+            self.assertEqual(res.status, '200 OK')
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             res = app.post("/sparql/develop", data={"query": query})
             self.assertEqual(res.status, '200 OK')
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            res = app.post("/sparql/master", data={"query": query})
+            res = app.post("/sparql/" + current_head, data={"query": query})
             self.assertEqual(res.status, '200 OK')
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             res = app.post("/delete/branch/develop")
             self.assertEqual(res.status, '200 OK')
+
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             res = app.post("/sparql/develop", data={"query": query}, headers={"Accept": "application/json"})
