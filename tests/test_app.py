@@ -811,6 +811,10 @@ class QuitAppTestCase(unittest.TestCase):
             args['features'] = Feature.Provenance
             app = create_app(args).test_client()
 
+            self.assertFalse(repo.head_is_detached)
+
+            current_head = repo.head.shorthand
+
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
 
@@ -824,13 +828,17 @@ class QuitAppTestCase(unittest.TestCase):
             ]
 
             # Test API with existing paths and specified accept headers
-            for apiPath in ['master', oid]:
+            for apiPath in [current_head, 'HEAD', oid]:
                 for header in mimetypes:
                     response = app.get('/blame/{}'.format(apiPath), headers={'Accept': header})
                     self.assertEqual(response.status, '200 OK')
 
             # Test API default accept header
-            response = app.get('/blame/master')
+            response = app.get('/blame/' + current_head)
+            self.assertEqual(response.status, '200 OK')
+
+            # Test API default accept header
+            response = app.get('/blame/HEAD')
             self.assertEqual(response.status, '200 OK')
 
             # Test API with not acceptable header
