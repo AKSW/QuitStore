@@ -8,9 +8,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: [3.7, 3.8, 3.9]
+        python: [3.7, 3.8, 3.9, '3.10']
         # include:
-        #   - python: "3.10.0-rc.1"
+        #   - python: "3.11.0-rc.1"
         #     experimental: true
     steps:
       # Configures the python version
@@ -25,35 +25,37 @@ jobs:
       - name: Install Required Packages
         run: sudo apt-get install cmake libssl-dev libssh2-1-dev
       - name: Install Python Dependencies
+        # pygit2 is installed separately to make sure cached-property is
+        # installed on python 3.7: https://github.com/libgit2/pygit2/issues/1114
         run: |
-             pip install -U setuptools
-             pip install -r requirements.txt
-             pip install coveralls
+             pip install -U poetry
+             poetry run pip install pygit2
+             poetry install --no-root
       - name: Check Conding style
-        run: pylava
+        run: poetry run pylava
       - name: Set Git user
         run: |
              git config --global user.email "quittestsystem@example.org"
              git config --global user.name "Quit CI Tests"
       - name: Run Tests
         run: |
-             coverage run -a --source=quit tests/test_app.py
-             coverage run -a --source=quit tests/test_cache.py
-             coverage run -a --source=quit tests/test_conf.py
-             coverage run -a --source=quit tests/test_core.py
-             coverage run -a --source=quit tests/test_endpoint.py
-             coverage run -a --source=quit tests/test_git.py
-             coverage run -a --source=quit tests/test_graphs.py
-             coverage run -a --source=quit tests/test_helpers.py
-             coverage run -a --source=quit tests/test_namespace.py
-             coverage run -a --source=quit tests/test_provenance.py
+             poetry run coverage run -a --source=quit tests/test_app.py
+             poetry run coverage run -a --source=quit tests/test_cache.py
+             poetry run coverage run -a --source=quit tests/test_conf.py
+             poetry run coverage run -a --source=quit tests/test_core.py
+             poetry run coverage run -a --source=quit tests/test_endpoint.py
+             poetry run coverage run -a --source=quit tests/test_git.py
+             poetry run coverage run -a --source=quit tests/test_graphs.py
+             poetry run coverage run -a --source=quit tests/test_helpers.py
+             poetry run coverage run -a --source=quit tests/test_namespace.py
+             poetry run coverage run -a --source=quit tests/test_provenance.py
       - name: Coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_SERVICE_NAME: github
         run: |
-             coverage report -m
-             coveralls
+             poetry run coverage report -m
+             poetry run coveralls
 
   release:
     runs-on: ${{ matrix.os }}
@@ -69,20 +71,20 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Patch Windows requirements
-        if: startsWith(matrix.os, 'windows')
-        run: |
-             git apply requirements.txt.windows.patch
+      #- name: Patch Windows requirements
+      #  if: startsWith(matrix.os, 'windows')
+      #  run: |
+      #       git apply requirements.txt.windows.patch
       - name: Pyinstaller
         run: |
           # Update pip
-          python -m pip install -U pip setuptools wheel
+          python -m pip install -U pip setuptools wheel poetry
           # Install dependencies
-          pip install --progress-bar=off -U -r requirements.txt
+          poetry install
           # Install PyInstaller
           pip install --progress-bar=off pyinstaller
           # Run PyInstaller
-          pyinstaller quit.spec
+          poetry run pyinstaller quit.spec
       - name: Rename Lin Release
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: cp ./dist/run ./dist/quit-linux

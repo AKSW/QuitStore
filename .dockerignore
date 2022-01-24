@@ -1,4 +1,6 @@
 **
 !docker/
 !quit/
-!requirements.txt
+!scripts/install-libgit2.sh
+!pyproject.toml
+!poetry.lock
