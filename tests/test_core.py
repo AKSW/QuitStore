@@ -115,7 +115,7 @@ class QuitTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
             conf = quit.conf.QuitStoreConfiguration(configfile=os.path.join(repo.workdir, 'config.ttl'), namespace='http://quit.instance/')
             quitInstance = quit.core.Quit(conf, quit.git.Repository(repo.path), None)
-            self.assertEqual(quitInstance.getDefaultBranch(), "master")
+            self.assertTrue(quitInstance.getDefaultBranch() in ["main", "master"])
 
 
 class SeveralOldTest(unittest.TestCase):
