@@ -12,6 +12,12 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 import subprocess
 from helpers import createCommit, TemporaryRepository, TemporaryRepositoryFactory
 
+try:
+    DEFAULT_BRANCH = pygit2.Config.get_global_config()['init.defaultBranch']
+except KeyError:
+    DEFAULT_BRANCH = 'master'
+
+
 class GitRevisionTests(unittest.TestCase):
 
     def setUp(self):
@@ -235,8 +241,6 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPushRepo(self):
         """Test if it is possible to push to an empty remote repository."""
-        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
-
         with TemporaryRepository(True) as remote:
             graphContent = """
                 <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
@@ -247,21 +251,20 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
-                quitRepo.push("origin", default_branch)
+                quitRepo.push("origin", DEFAULT_BRANCH)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
     def testPushRefspecs(self):
         """Test if it is possible to push to an empty remote repository."""
-        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
 
         for refspec in [
-            default_branch, 'refs/heads/' + default_branch,
-            'refs/heads/' + default_branch + ':' + default_branch,
-            default_branch + ':' + default_branch,
-            default_branch + ':refs/heads/' + default_branch,
-            'refs/heads/' + default_branch + ':refs/heads/' + default_branch
+            DEFAULT_BRANCH, 'refs/heads/' + DEFAULT_BRANCH,
+            'refs/heads/' + DEFAULT_BRANCH + ':' + DEFAULT_BRANCH,
+            DEFAULT_BRANCH + ':' + DEFAULT_BRANCH,
+            DEFAULT_BRANCH + ':refs/heads/' + DEFAULT_BRANCH,
+            'refs/heads/' + DEFAULT_BRANCH + ':refs/heads/' + DEFAULT_BRANCH
         ]:
             with TemporaryRepository(True) as remote:
                 graphContent = """
@@ -280,8 +283,6 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPushRepoNotConfiguredRemote(self):
         """Test if the push failes if the origin remote was not defined."""
-        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
-
         with TemporaryRepository(True) as remote:
             graphContent = """
                 <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
@@ -293,15 +294,13 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertFalse(local.is_empty)
 
                 with self.assertRaises(RemoteNotFound):
-                    quitRepo.push("origin", default_branch)
+                    quitRepo.push("origin", DEFAULT_BRANCH)
 
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
     def testPushRepoWithRemoteName(self):
         """Test if it is possible to push to a remote repository, which is not called orign."""
-        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
-
         with TemporaryRepository(True) as remote:
             graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
@@ -311,7 +310,7 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
-                quitRepo.push("upstream", default_branch)
+                quitRepo.push("upstream", DEFAULT_BRANCH)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)

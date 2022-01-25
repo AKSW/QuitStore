@@ -15,6 +15,10 @@ from helpers import TemporaryRepository, TemporaryRepositoryFactory
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import rdflib
 
+try:
+    DEFAULT_BRANCH = pygit2.Config.get_global_config()['init.defaultBranch']
+except KeyError:
+    DEFAULT_BRANCH = 'master'
 
 class TestConfiguration(unittest.TestCase):
     ns = 'http://quit.instance/'
@@ -203,10 +207,9 @@ class TestConfiguration(unittest.TestCase):
             self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, current_head)
 
     def testNoConfigInformation(self):
-        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
         with TemporaryRepositoryFactory().withNoConfigInformation() as repo:
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig(default_branch)
+            conf.initgraphconfig(DEFAULT_BRANCH)
             self.assertEqual(conf.mode, 'graphfiles')
 
 
