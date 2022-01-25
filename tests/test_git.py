@@ -235,6 +235,8 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPushRepo(self):
         """Test if it is possible to push to an empty remote repository."""
+        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
+
         with TemporaryRepository(True) as remote:
             graphContent = """
                 <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
@@ -245,16 +247,21 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
-                quitRepo.push("origin", "master")
+                quitRepo.push("origin", default_branch)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
     def testPushRefspecs(self):
         """Test if it is possible to push to an empty remote repository."""
+        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
+
         for refspec in [
-            'master', 'refs/heads/master', 'refs/heads/master:master', 'master:master',
-            'master:refs/heads/master', 'refs/heads/master:refs/heads/master'
+            default_branch, 'refs/heads/' + default_branch,
+            'refs/heads/' + default_branch + ':' + default_branch,
+            default_branch + ':' + default_branch,
+            default_branch + ':refs/heads/' + default_branch,
+            'refs/heads/' + default_branch + ':refs/heads/' + default_branch
         ]:
             with TemporaryRepository(True) as remote:
                 graphContent = """
@@ -273,6 +280,8 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testPushRepoNotConfiguredRemote(self):
         """Test if the push failes if the origin remote was not defined."""
+        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
+
         with TemporaryRepository(True) as remote:
             graphContent = """
                 <http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."""
@@ -284,13 +293,15 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertFalse(local.is_empty)
 
                 with self.assertRaises(RemoteNotFound):
-                    quitRepo.push("origin", "master")
+                    quitRepo.push("origin", default_branch)
 
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
     def testPushRepoWithRemoteName(self):
         """Test if it is possible to push to a remote repository, which is not called orign."""
+        default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
+
         with TemporaryRepository(True) as remote:
             graphContent = "<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> ."
             with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as local:
@@ -300,7 +311,7 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertTrue(remote.is_empty)
                 self.assertFalse(local.is_empty)
 
-                quitRepo.push("upstream", "master")
+                quitRepo.push("upstream", default_branch)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
@@ -375,8 +386,9 @@ class GitRepositoryTests(unittest.TestCase):
                     quitRepo.revision('HEAD')
 
                 quitRepo.fetch()
+                current_head = remote.head.shorthand
 
-                self.assertEqual(quitRepo.revision('origin/master').id, remoteHead)
+                self.assertEqual(quitRepo.revision('origin/' + current_head).id, remoteHead)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
@@ -407,8 +419,9 @@ class GitRepositoryTests(unittest.TestCase):
                 self.assertNotEqual(localHead, remoteHead)
 
                 quitRepo.fetch()
+                current_head = local.head.shorthand
 
-                self.assertEqual(quitRepo.revision('origin/master').id, remoteHead)
+                self.assertEqual(quitRepo.revision('origin/' + current_head).id, remoteHead)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
@@ -422,6 +435,7 @@ class GitRepositoryTests(unittest.TestCase):
             with TemporaryRepository(False) as local:
                 local.remotes.create("origin", remote.path)
                 quitRepo = quit.git.Repository(local.workdir)
+                current_head = remote.head.shorthand
 
                 self.assertFalse(remote.is_empty)
                 self.assertTrue(local.is_empty)
@@ -432,7 +446,7 @@ class GitRepositoryTests(unittest.TestCase):
                 with self.assertRaises(RevisionNotFound):
                     quitRepo.revision('HEAD')
 
-                quitRepo.pull("origin", "master")
+                quitRepo.pull("origin", current_head)
 
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
@@ -459,8 +473,9 @@ class GitRepositoryTests(unittest.TestCase):
                     quitRepo.revision('HEAD')
 
                 quitRepo.pull()
+                current_head = remote.head.shorthand
 
-                self.assertEqual(quitRepo.revision('origin/master').id, remoteHead)
+                self.assertEqual(quitRepo.revision('origin/' + current_head).id, remoteHead)
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(local.is_empty)
@@ -473,6 +488,7 @@ class GitRepositoryTests(unittest.TestCase):
         with TemporaryRepositoryFactory().withGraph("http://example.org/", graphContent) as remote:
             with TemporaryDirectory() as localDirectory:
                 quitRepo = quit.git.Repository(localDirectory, create=True, origin=remote.path)
+                current_head = remote.head.shorthand
 
                 self.assertFalse(remote.is_empty)
                 self.assertFalse(quitRepo.is_empty)
@@ -481,7 +497,7 @@ class GitRepositoryTests(unittest.TestCase):
 
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
-                quitRepo.pull("origin", "master")
+                quitRepo.pull("origin", current_head)
 
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
@@ -687,8 +703,9 @@ class GitRepositoryTests(unittest.TestCase):
 
                 with self.assertRaises(RevisionNotFound):
                     quitRepo.revision('HEAD')
+                current_remote_head = remote.head.shorthand
 
-                quitRepo.pull(remote_name='upstream', refspec="master")
+                quitRepo.pull(remote_name='upstream', refspec=current_remote_head)
 
                 self.assertEqual(quitRepo.revision('HEAD').id, remoteHead)
 
