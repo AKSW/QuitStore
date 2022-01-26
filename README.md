@@ -28,7 +28,7 @@ To get the Quit Store you have three options:
 
 ### Installation from Source
 
-Install [pip](https://pypi.python.org/pypi/pip/) and optionally [virtualenv resp. virtualenvwrapper](http://virtualenvwrapper.readthedocs.io/en/latest/install.html) (`pip install virtualenvwrapper`).
+Install [poetry](https://python-poetry.org/).
 
 Get the Quit Store source code:
 ```
@@ -37,14 +37,8 @@ $ cd QuitStore
 ```
 If you are using virtualenvwrapper:
 ```
-$ mkvirtualenv -p /usr/bin/python3 -r requirements.txt quit
-$ workon quit # this has to be executed befor you use quit store
-…
-$ deactivate # this can be used after you are done with quit and want to get back your “normal” environment
-```
-If you are not using virtualenvwrapper:
-```
-$ pip install -r requirements.txt
+$ poetry install
+$ poetry run quitstore --help
 ```
 
 ### Git configuration
@@ -53,8 +47,10 @@ Configure your name and email for Git.
 This information will be stored in each commit you are creating with Git and the Quit Store on your system.
 It is relevant so people know which contribution is coming from whom. Execute the following command if you haven't done that before.
 
-    $ git config --global user.name "Your Name"
-    $ git config --global user.email "you@e-mail-provider.org"
+```
+$ git config --global user.name "Your Name"
+$ git config --global user.email "you@e-mail-provider.org"
+```
 
 ### Start with Existing Data (Optional)
 
@@ -88,7 +84,7 @@ $ ./quit -t /path/to/repo
 
 If you have it installed from the sources:
 ```
-$ quit/run.py -t /path/to/repo
+$ poetry run quitstore -t /path/to/repo
 ```
 
 Open your browser and go to [`http://localhost:5000/`](http://localhost:5000/).
@@ -140,6 +136,8 @@ The path is interpreted relative to the current working directory.
 The log level for the logfile is always extra verbose (DEBUG).
 
 ## Configuration File
+
+*deprecated* (we plan to remove the configuration file feature)
 
 If you want to work with configuration files you can create a `config.ttl` file.
 This configuration file consists of two parts, the store configuration and the graph configuration.
@@ -242,6 +240,30 @@ docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitst
 
 Now you should be able to access the quit web interface under `http://localhost:8080` and the SPARQL 1.1 interface under `http://localhost:8080/sparql`.
 
+## Run the Tests
+
+You need to have the quitstore installed from source, see section [Installation from Source](#installation-from-source).
+
+```
+poetry run pytest
+```
+
+## Troubleshooting
+
+### Use on Windows with restricted permissions
+
+On Windows you might not be able to download the `.exe` file directly.
+If so, use the `curl` command in the power shell.
+
+When you start the QuitStore (e.g. with `quit.exe -t .`) it will try to open a port that is available from outside, which will require permission by the administrator user.
+To open the port only locally you should start the QuitStore with:
+
+```
+quit.exe -t . -h localhost
+```
+
+The default port is `5000` (`http://localhost:5000/`).
+
 ## Migrate from old Versions
 
 ### Update to 2018-11-20 from 2018-10-29 and older
@@ -261,7 +283,7 @@ git commit -m "Migrate from nq to nt"
 
 ## License
 
-Copyright (C) 2017 Norman Radtke <http://aksw.org/NormanRadtke> and Natanael Arndt <http://aksw.org/NatanaelArndt>
+Copyright (C) 2017-2022 Norman Radtke <http://aksw.org/NormanRadtke>, Natanael Arndt <http://aksw.org/NatanaelArndt>, and contributors
 
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
