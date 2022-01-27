@@ -124,6 +124,12 @@ class Quit(object):
         repository_current_head = self.repository.current_head
         if repository_current_head:
             return repository_current_head
+        try:
+            git_config_default_branch = pygit2.Config.get_global_config()['init.defaultBranch']
+            if git_config_default_branch:
+                return git_config_default_branch
+        except KeyError:
+            pass
         return "master"
 
     def rebuild(self):

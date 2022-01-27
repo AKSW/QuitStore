@@ -4,6 +4,7 @@ from context import quit
 from glob import glob
 from os import remove
 from os.path import join, isdir
+import pygit2
 from pygit2 import init_repository, Repository, clone_repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE, Signature
 from quit.conf import QuitStoreConfiguration, QuitGraphConfiguration
@@ -14,6 +15,10 @@ from helpers import TemporaryRepository, TemporaryRepositoryFactory
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import rdflib
 
+try:
+    DEFAULT_BRANCH = pygit2.Config.get_global_config()['init.defaultBranch']
+except KeyError:
+    DEFAULT_BRANCH = 'master'
 
 class TestConfiguration(unittest.TestCase):
     ns = 'http://quit.instance/'
@@ -68,8 +73,9 @@ class TestConfiguration(unittest.TestCase):
         content2 += '<urn:a> <urn:b> <urn:c> .\n'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig('master')
+            conf.initgraphconfig(current_head)
             self.assertEqual(conf.mode, 'graphfiles')
 
             graphs = conf.getgraphs()
@@ -103,8 +109,9 @@ class TestConfiguration(unittest.TestCase):
         content3 = '<urn:a> <urn:b> <urn:c> .'
         repoContent = {'no uri': content1, 'http://aksw.org/': content2, '': content3}
         with TemporaryRepositoryFactory().withGraphs(repoContent) as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig('master')
+            conf.initgraphconfig(current_head)
             self.assertEqual(conf.mode, 'graphfiles')
 
             graphs = conf.getgraphs()
@@ -116,6 +123,7 @@ class TestConfiguration(unittest.TestCase):
 
             serialization = conf.getserializationoffile('graph_1.nt')
             self.assertEqual(serialization, 'nt')
+            current_head = repo.head.shorthand
 
             gfMap = conf.getgraphurifilemap()
 
@@ -132,8 +140,9 @@ class TestConfiguration(unittest.TestCase):
         content2 += '<urn:a> <urn:b> <urn:c> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig('master')
+            conf.initgraphconfig(current_head)
             self.assertEqual(conf.mode, 'configuration')
 
             graphs = conf.getgraphs()
@@ -164,8 +173,9 @@ class TestConfiguration(unittest.TestCase):
         content2 += '<urn:a> <urn:b> <urn:c> .'
         repoContent = {'http://example.org/': content1, 'http://aksw.org/': content2}
         with TemporaryRepositoryFactory().withGraphs(repoContent, 'configfile') as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig('master')
+            conf.initgraphconfig(current_head)
 
             conf.removegraph('http://aksw.org/')
 
@@ -186,18 +196,20 @@ class TestConfiguration(unittest.TestCase):
 
     def testGraphConfigurationFailing(self):
         with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, current_head)
 
     def testWrongConfigurationFile(self):
         with TemporaryRepositoryFactory().withBothConfigurations() as repo:
+            current_head = repo.head.shorthand
             conf = QuitGraphConfiguration(repository=repo)
-            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, 'master')
+            self.assertRaises(InvalidConfigurationError, conf.initgraphconfig, current_head)
 
     def testNoConfigInformation(self):
         with TemporaryRepositoryFactory().withNoConfigInformation() as repo:
             conf = QuitGraphConfiguration(repository=repo)
-            conf.initgraphconfig('master')
+            conf.initgraphconfig(DEFAULT_BRANCH)
             self.assertEqual(conf.mode, 'graphfiles')
 
 
