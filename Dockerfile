@@ -16,7 +16,7 @@ RUN apk --no-cache add \
     cargo \
     curl
 
-RUN adduser -h /usr/src/app -S quit
+RUN adduser -u 1000 -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
 
@@ -34,7 +34,7 @@ RUN git config --global user.name QuitStore && git config --global user.email qu
 
 FROM python:3.10-alpine
 
-RUN adduser -h /usr/src/app -S quit
+RUN adduser -u 1000 -h /usr/src/app -S quit
 WORKDIR /usr/src/app
 
 RUN apk --no-cache add \
