@@ -1,4 +1,4 @@
-FROM python:3-alpine as builder
+FROM python:3.10-alpine as builder
 
 MAINTAINER Norman Radtke <radtke@informatik.uni-leipzig.de>
 MAINTAINER Natanael Arndt <arndt@informatik.uni-leipzig.de>
@@ -10,18 +10,29 @@ RUN apk --no-cache add \
     libgit2-dev \
     libffi-dev \
     libressl-dev \
-    libssh2-dev
+    libssh2-dev \
+    python3-dev \
+    openssl-dev \
+    cargo \
+    curl
 
 RUN adduser -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
+
+RUN curl -sSL https://install.python-poetry.org \
+        | python - --version "${POETRY_VERSION}"
+ENV PATH="/usr/src/app/.local/bin:$PATH"
 
 #COPY scripts/install-libgit2.sh /
 COPY poetry.lock pyproject.toml /usr/src/app/
 
 RUN poetry export -f requirements.txt | pip install --no-cache-dir -r /dev/stdin
 
-FROM python:3-alpine
+# Set default git user
+RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
+
+FROM python:3.10-alpine
 
 RUN adduser -h /usr/src/app -S quit
 WORKDIR /usr/src/app
@@ -46,8 +57,5 @@ ENV QUIT_CONFIGFILE="/etc/quit/config.ttl"
 VOLUME /data
 VOLUME /etc/quit
 EXPOSE 8080
-
-# Set default git user
-RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
 CMD uwsgi --plugin http --plugin python3 --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
