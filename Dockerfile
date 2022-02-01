@@ -1,7 +1,8 @@
-FROM python:3.10-alpine as builder
+FROM python:3-alpine as builder
 
-MAINTAINER Norman Radtke <radtke@informatik.uni-leipzig.de>
-MAINTAINER Natanael Arndt <arndt@informatik.uni-leipzig.de>
+LABEL org.opencontainers.image.title="Quit Store" \
+      org.opencontainers.image.authors="Norman Radtke <radtke@informatik.uni-leipzig.de>, Natanael Arndt <arndt@informatik.uni-leipzig.de>" \
+      org.opencontainers.image.source="https://github.com/AKSW/QuitStore/"
 
 RUN apk --no-cache add \
     git \
@@ -20,31 +21,34 @@ RUN adduser -u 1000 -h /usr/src/app -S quit
 USER quit
 WORKDIR /usr/src/app
 
-RUN curl -sSL https://install.python-poetry.org \
-        | python - --version "${POETRY_VERSION}"
 ENV PATH="/usr/src/app/.local/bin:$PATH"
 
-#COPY scripts/install-libgit2.sh /
+# In contrast to `pip install --prefer-binary poetry` the install script installs poetry in a
+# venv in ~/.local/share/pypoetry/ which can be left behind when copying the files from the build stage
+RUN curl -sSL https://install.python-poetry.org \
+        | python - --version "${POETRY_VERSION}"
+
 COPY poetry.lock pyproject.toml /usr/src/app/
 
-RUN poetry export -f requirements.txt | pip install --no-cache-dir -r /dev/stdin
+RUN poetry export -f requirements.txt | pip install --prefer-binary --no-cache-dir -r /dev/stdin
+RUN rm ./.local/bin/poetry
 
 # Set default git user
 RUN git config --global user.name QuitStore && git config --global user.email quitstore@example.org
 
-FROM python:3.10-alpine
+FROM python:3-alpine
 
 RUN adduser -u 1000 -h /usr/src/app -S quit
 WORKDIR /usr/src/app
 
 RUN apk --no-cache add \
      libgit2 \
-     libssh2 \
-     uwsgi uwsgi-http uwsgi-python3
+     libssh2
 
 COPY quit/ /usr/src/app/quit
 COPY docker/config.ttl /etc/quit/
-COPY --from=builder /usr/src/app/.local ./.local
+COPY --from=builder /usr/src/app/.local/lib ./.local/lib
+COPY --from=builder /usr/src/app/.local/bin ./.local/bin
 COPY --from=builder /usr/src/app/.gitconfig .
 RUN mkdir /data && chown quit /data
 
@@ -58,4 +62,4 @@ VOLUME /data
 VOLUME /etc/quit
 EXPOSE 8080
 
-CMD uwsgi --plugin http --plugin python3 --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
+CMD uwsgi --http 0.0.0.0:8080 -w quit.run -b 40960 --pyargv "-vv"
