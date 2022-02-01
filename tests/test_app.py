@@ -747,7 +747,7 @@ class QuitAppTestCase(unittest.TestCase):
 
         1. Prepare a git repository with a non empty graph
         2. Get id of the existing commit
-        3. Call /blame/master and /blame/{commitId} with all specified accept headers and test the
+        3. Call /blame/master resp. /blame/main and /blame/{commitId} with all specified accept headers and test the
            response data
         """
         # Prepate a git Repository
@@ -762,6 +762,8 @@ class QuitAppTestCase(unittest.TestCase):
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
 
+            current_head = repo.head.shorthand
+
             expected = {
                 's': {'type': 'uri', 'value': 'http://ex.org/x'},
                 'p': {'type': 'uri', 'value': 'http://ex.org/y'},
@@ -772,7 +774,7 @@ class QuitAppTestCase(unittest.TestCase):
                 'email': {'type': 'literal', 'value': 'quit@quit.aksw.org'}
             }
 
-            for apiPath in ['master', oid]:
+            for apiPath in [current_head, 'HEAD', oid]:
                 response = app.get('/blame/{}'.format(apiPath))
                 resultBindings = json.loads(response.data.decode("utf-8"))['results']['bindings']
                 results = resultBindings[0]
@@ -799,7 +801,7 @@ class QuitAppTestCase(unittest.TestCase):
 
         1. Prepare a git repository with a non empty graph
         2. Get id of the existing commit
-        3. Call /blame/master and /blame/{commitId} with all specified accept headers and test the
+        3. Call /blame/master resp /blame/main and /blame/{commitId} with all specified accept headers and test the
            response status
         """
         # Prepate a git Repository
@@ -810,6 +812,10 @@ class QuitAppTestCase(unittest.TestCase):
             args['targetdir'] = repo.workdir
             args['features'] = Feature.Provenance
             app = create_app(args).test_client()
+
+            self.assertFalse(repo.head_is_detached)
+
+            current_head = repo.head.shorthand
 
             for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):
                 oid = str(commit.id)
@@ -824,13 +830,17 @@ class QuitAppTestCase(unittest.TestCase):
             ]
 
             # Test API with existing paths and specified accept headers
-            for apiPath in ['master', oid]:
+            for apiPath in [current_head, 'HEAD', oid]:
                 for header in mimetypes:
                     response = app.get('/blame/{}'.format(apiPath), headers={'Accept': header})
                     self.assertEqual(response.status, '200 OK')
 
             # Test API default accept header
-            response = app.get('/blame/master')
+            response = app.get('/blame/' + current_head)
+            self.assertEqual(response.status, '200 OK')
+
+            # Test API default accept header
+            response = app.get('/blame/HEAD')
             self.assertEqual(response.status, '200 OK')
 
             # Test API with not acceptable header
@@ -850,42 +860,54 @@ class QuitAppTestCase(unittest.TestCase):
 
             # Start Quit
             args = quitApp.getDefaults()
-            args['targetdir'] = repo.workdir
+            args["targetdir"] = repo.workdir
             app = create_app(args).test_client()
 
-            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+            current_head = repo.head.shorthand
+
+
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
+
+            app.post("/branch", data={"oldbranch": current_head, "newbranch": "develop"})
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            res = app.post('/sparql', data={"update": update})
+            res = app.post("/sparql", data={"update": update})
             self.assertEqual(res.status, '200 OK')
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
-            res = app.post('/sparql/develop', data={"update": update})
+            res = app.post("/sparql/develop", data={"update": update})
             self.assertEqual(res.status, '200 OK')
 
-            # Currently we need to checkout master again, because the commit always checks out the latest updated branch
+            # Currently we need to checkout master resp. main again, because the commit always checks out the latest updated branch
             # If develop is checked out, it is the current HEAD and thus can not be deleted
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/a> <http://ex.org/b> .}}"
-            res = app.post('/sparql/master', data={"update": update})
+            res = app.post("/sparql/" + current_head, data={"update": update})
+            self.assertEqual(res.status, '200 OK')
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             res = app.post("/sparql/develop", data={"query": query})
             self.assertEqual(res.status, '200 OK')
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            res = app.post("/sparql/master", data={"query": query})
+            res = app.post("/sparql/" + current_head, data={"query": query})
             self.assertEqual(res.status, '200 OK')
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             res = app.post("/delete/branch/develop")
             self.assertEqual(res.status, '200 OK')
+
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
 
             query = "ASK {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
             res = app.post("/sparql/develop", data={"query": query}, headers={"Accept": "application/json"})
             self.assertEqual(res.status, '400 BAD REQUEST')
 
     def testBranchWithRefspec(self):
-        """Test branching and deleting the branch."""
+        """Test branching."""
 
         # Prepate a git Repository
         content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
@@ -895,8 +917,13 @@ class QuitAppTestCase(unittest.TestCase):
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
+            current_head = repo.head.shorthand
 
-            app.post("/branch/master:develop")
+            self.assertEqual(len(repo.raw_listall_branches()), 1)
+
+            app.post("/branch/" + current_head + ":develop")
+
+            self.assertEqual(len(repo.raw_listall_branches()), 2)
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
@@ -2430,20 +2457,59 @@ class QuitAppTestCase(unittest.TestCase):
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
+            current_head = repo.head.shorthand
 
-            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+            response = app.post("/branch", data={"oldbranch": current_head, "newbranch": "develop"})
+            self.assertEqual(response.status, '201 CREATED')
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            app.post('/sparql', data={"query": update})
+            response = app.post('/sparql', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
 
             app = create_app(args).test_client()
             # start new app to syncAll()
 
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
-            app.post('/sparql/develop?ref=develop', data={"query": update})
+            response = app.post('/sparql/develop?ref=develop', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
 
-            app.post("/merge", data={"target": "master", "branch": "develop", "method": "three-way"})
+            response = app.post("/merge", data={"target": current_head, "branch": "develop", "method": "three-way"})
+            self.assertEqual(response.status, '201 CREATED')
+
+    def testContextMergeConflict(self):
+        """Test merging two commits."""
+
+        # Prepate a git Repository
+        content = "<http://ex.org/a> <http://ex.org/b> <http://ex.org/c> ."
+        with TemporaryRepositoryFactory().withGraph("http://example.org/", content) as repo:
+
+            # Start Quit
+            args = quitApp.getDefaults()
+            args['targetdir'] = repo.workdir
+            app = create_app(args).test_client()
+            current_head = repo.head.shorthand
+
+            response = app.post("/branch", data={"oldbranch": current_head, "newbranch": "develop"})
+            self.assertEqual(response.status, '201 CREATED')
+
+            # execute INSERT DATA query
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
+            response = app.post('/sparql', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
+
+            app = create_app(args).test_client()
+            # start new app to syncAll()
+
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
+            response = app.post('/sparql/develop?ref=develop', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
+
+            response = app.post("/merge", data={"target": current_head, "branch": "develop", "method": "context"})
+            self.assertEqual(response.status, '409 CONFLICT')
+
+            # The merge shoudl detect the node <http://ex.org/z> as a potential conflict
+
 
     def testContextMerge(self):
         """Test merging two commits."""
@@ -2456,20 +2522,25 @@ class QuitAppTestCase(unittest.TestCase):
             args = quitApp.getDefaults()
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
+            current_head = repo.head.shorthand
 
-            app.post("/branch", data={"oldbranch": "master", "newbranch": "develop"})
+            response = app.post("/branch", data={"oldbranch": current_head, "newbranch": "develop"})
+            self.assertEqual(response.status, '201 CREATED')
 
             # execute INSERT DATA query
             update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/x> <http://ex.org/y> <http://ex.org/z> .}}"
-            app.post('/sparql', data={"query": update})
+            response = app.post('/sparql', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
 
             app = create_app(args).test_client()
             # start new app to syncAll()
 
-            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/z> <http://ex.org/z> <http://ex.org/z> .}}"
-            app.post('/sparql/develop?ref=develop', data={"query": update})
+            update = "INSERT DATA {graph <http://example.org/> {<http://ex.org/r> <http://ex.org/r> <http://ex.org/r> .}}"
+            response = app.post('/sparql/develop?ref=develop', data={"update": update})
+            self.assertEqual(response.status, '200 OK')
 
-            app.post("/merge", data={"target": "master", "branch": "develop", "method": "context"})
+            response = app.post("/merge", data={"target": current_head, "branch": "develop", "method": "context"})
+            self.assertEqual(response.status, '201 CREATED')
 
     def testPull(self):
         """Test /pull API request."""
@@ -2584,7 +2655,9 @@ class QuitAppTestCase(unittest.TestCase):
 
                 self.assertEqual(len(resultBindings), 0)
 
-                response = app.get('/pull/origin/master')
+                current_remote_head = remote.head.shorthand
+
+                response = app.get('/pull/origin/' + current_remote_head)
                 self.assertEqual(response.status, '200 OK')
 
                 afterPull = {'s': {'type': 'uri', 'value': 'http://ex.org/x'},
@@ -3699,7 +3772,7 @@ class FileHandlingTests(unittest.TestCase):
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3723,7 +3796,7 @@ class FileHandlingTests(unittest.TestCase):
             files[hashed_identifier + '_1.nt'] = (
                 'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3773,7 +3846,7 @@ class FileHandlingTests(unittest.TestCase):
             args['targetdir'] = repo.workdir
             app = create_app(args).test_client()
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):
@@ -3797,7 +3870,7 @@ class FileHandlingTests(unittest.TestCase):
             files[hashed_identifier + '_12.nt'] = (
                 'http://aksw.org/', '<urn:1> <urn:2> <urn:3> .\n')
 
-            commit = repo.revparse_single('master')
+            commit = repo.revparse_single('HEAD')
 
             for entry in commit.tree:
                 if entry.type == GIT_OBJ_BLOB and entry.name.endswith('.nt'):

@@ -40,7 +40,6 @@ jobs:
       - name: Run Tests
         run: |
              poetry run coverage run -a --source=quit tests/test_app.py
-             poetry run coverage run -a --source=quit tests/test_app.py
              poetry run coverage run -a --source=quit tests/test_cache.py
              poetry run coverage run -a --source=quit tests/test_conf.py
              poetry run coverage run -a --source=quit tests/test_core.py
