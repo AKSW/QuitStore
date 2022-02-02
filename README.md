@@ -205,27 +205,27 @@ You can access them with your browser at the following paths.
 
 ## Docker
 
-We also provide a [Docker image for the Quit Store](https://hub.docker.com/r/aksw/quitstore/) on the public docker hub.
-The Image will expose port 8080 by default.
-An existing repository can be linked to the volume `/data`.
-The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
+We provide a Docker image for the Quit Store on the [public docker hub](https://hub.docker.com/r/aksw/quitstore/) as well as on the [github docker registry](https://github.com/AKSW/QuitStore/pkgs/container/quitstore).
+The image exposes port 8080 by default.
+The default user within the image is the user `quit` with the user id `1000`.
+For this user a git configuration with `user.name QuitStore` and `user.email quitstore@example.org` is preset.
+Without any further configuration, a git repository is initialized within the container in the `/data` directory (owned by the default user `quit`).
 
-Further options which can be set are:
+To store the data on the host a local directory or volume is required to store the git repository.
+An host directory or volume can be linked to the directory `/data`.
+Make sure the quit process running with the user id `1000` within the docker container has write access to this directory.
 
-* `QUIT_TARGETDIR` - the target repository directory on which quit should run
-* `QUIT_CONFIGFILE` - the path to the config.ttl (default: `/etc/quit/config.ttl`)
-* `QUIT_LOGFILE` - the path where quit should create its logfile
-* `QUIT_BASEPATH` - the HTTP base path where quit will be served
-* `QUIT_OAUTH_CLIENT_ID` - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
-* `QUIT_OAUTH_SECRET` - the GitHub OAuth secret
+Alternatively the user id within the container can be set using the [`docker run --user $UID …` option](https://docs.docker.com/engine/reference/commandline/run/).
+In this case you have to make sure a `user.name` a `user.email` is configure using `git config` within the repository (`.git/config`) or a git config file is mounted to `/.gitconfig` (to `/usr/src/app/.gitconfig` if you are running it with user id `1000`).
 
-You need a local directory where you want to store the git repository.
-In the example below `mkdir /store/repo`.
-Make sure the quit process in the docker container has write access to this directory by executing:
+Example setup with the default user:
+
 ```
+mkdir /store/repo
 sudo chown 1000 /store/repo
 sudo chmod u+w /store/repo
 ```
+
 To run the image execute the following command (maybe you have to replace `docker` with `sudo docker`):
 
 ```
@@ -239,6 +239,17 @@ docker run -d --name containername -p 8080:8080 -v /store/repo:/data aksw/quitst
 ```
 
 Now you should be able to access the quit web interface under `http://localhost:8080` and the SPARQL 1.1 interface under `http://localhost:8080/sparql`.
+
+The default configuration is located in `/etc/quit/config.ttl`, which can also be overwritten using a respective volume or by setting the `QUIT_CONFIGFILE` environment variable.
+
+Further options which can be set are:
+
+* `QUIT_TARGETDIR` - the target repository directory on which quit should run
+* `QUIT_CONFIGFILE` - the path to the config.ttl (default: `/etc/quit/config.ttl`)
+* `QUIT_LOGFILE` - the path where quit should create its logfile
+* `QUIT_BASEPATH` - the HTTP base path where quit will be served
+* `QUIT_OAUTH_CLIENT_ID` - the GitHub OAuth client id (for OAuth see also the [github docu](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/))
+* `QUIT_OAUTH_SECRET` - the GitHub OAuth secret
 
 ## Run the Tests
 
