@@ -4,7 +4,7 @@ All notable changes to this project should be documented in this file. But actua
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project from now on adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.25.X] - ???
+## [0.26.X] - ???
 ### Added
 -
 
@@ -13,6 +13,19 @@ and this project from now on adheres to [Semantic Versioning](http://semver.org/
 
 ### Fixed
 -
+
+## [0.26.0] - 2022-02-02
+### Added
+- Use poetry for dependency management
+- Use pytest for testing
+
+### Changed
+- Deprecated: Configuration File
+- Much smaller docker image from 1 GB to 70 MB (alpine base image, staged build)
+- Switch to json-ld implementation in the rdflib
+
+### Fixed
+- Flexible regarding to the default branch (master, main, … what you like)
 
 ## [0.25.4] - 2021-08-17
 ### Added
