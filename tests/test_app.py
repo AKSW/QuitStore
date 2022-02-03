@@ -1041,17 +1041,17 @@ class QuitAppTestCase(unittest.TestCase):
                             data=dict(query=query_string),
                             headers={'Accept': accept_type}
                         )
-                        self.assertEqual(response.status, '200 OK')
-                        self.assertEqual(response.headers['Content-Type'], content_type)
+                        self.assertEqual('200 OK', response.status)
+                        self.assertEqual(content_type, response.headers['Content-Type'])
 
                     # test default
                     resp = app.post(ep_path, data=dict(query=query_string))
-                    self.assertEqual(resp.status, '200 OK')
-                    self.assertEqual(resp.headers['Content-Type'], values[1]['*/*'])
+                    self.assertEqual('200 OK', resp.status)
+                    self.assertEqual(values[1]['*/*'], resp.headers['Content-Type'])
 
                     # test unsupported
                     resp = app.post(ep_path, data=dict(query=query_string), headers={'Accept': 'foo/bar'})
-                    self.assertEqual(resp.status, '406 NOT ACCEPTABLE')
+                    self.assertEqual('406 NOT ACCEPTABLE', resp.status)
 
     def testCreateAppArgs(self):
         """Test create_app with command line arguments"""
@@ -1139,7 +1139,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # test select before
             obj = json.loads(select_resp_before.data.decode("utf-8"))
-            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertEqual(1, len(obj["results"]["bindings"]))
             self.assertDictEqual(obj["results"]["bindings"][0], {
                 "g": {'type': 'uri', 'value': 'http://example.org/'},
                 "s": {'type': 'uri', 'value': 'urn:x'},
@@ -1148,7 +1148,7 @@ class QuitAppTestCase(unittest.TestCase):
 
             # test select after
             obj = json.loads(select_resp_after.data.decode("utf-8"))
-            self.assertEqual(len(obj["results"]["bindings"]), 1)
+            self.assertEqual(1, len(obj["results"]["bindings"]))
             self.assertDictEqual(obj["results"]["bindings"][0], {
                 "g": {'type': 'uri', 'value': 'http://aksw.org/'},
                 "s": {'type': 'uri', 'value': 'urn:x'},
