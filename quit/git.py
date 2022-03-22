@@ -545,6 +545,7 @@ class Node(object):
 
     DIRECTORY = "dir"
     FILE = "file"
+    SUBMODULE = "submodule"
 
     def __init__(self, repository, commit, path=None):
 
@@ -558,14 +559,20 @@ class Node(object):
                 entry = commit.tree[path]
             except KeyError:
                 raise NodeNotFound(path, commit.hex)
-            self.obj = repository._repository.get(entry.oid)
             self.name = os.path.normpath(path)
-            if self.obj.type == pygit2.GIT_OBJ_TREE:
-                self.kind = Node.DIRECTORY
-                self.tree = self.obj
-            elif self.obj.type == pygit2.GIT_OBJ_BLOB:
+            if entry.type == pygit2.GIT_OBJ_BLOB:
                 self.kind = Node.FILE
+                self.obj = repository._repository.get(entry.oid)
                 self.blob = self.obj
+            elif entry.type == pygit2.GIT_OBJ_TREE:
+                self.kind = Node.DIRECTORY
+                self.obj = repository._repository.get(entry.oid)
+                self.tree = self.obj
+            elif entry.type == pygit2.GIT_OBJ_COMMIT:
+                # We have a submodule
+                self.kind = Node.SUBMODULE
+                self.tree = None
+                self.obj = None
 
         self._repository = repository
         self._commit = commit
