@@ -196,7 +196,7 @@ class GitRepositoryTests(unittest.TestCase):
 
     def testCloneRepo(self):
         REMOTE_NAME = 'origin'
-        REMOTE_URL = 'git://github.com/AKSW/QuitStore.example.git'
+        REMOTE_URL = 'https://github.com/AKSW/QuitStore.example.git'
 
         dir = TemporaryDirectory()
         repo = quit.git.Repository(dir.name, create=True, origin=REMOTE_URL)
