@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Arndt"
+  given-names: "Natanael"
+  orcid: "https://orcid.org/0000-0002-8130-8677"
+- family-names: "Radtke"
+  given-names: "Norman"
+  orcid: "https://orcid.org/0000-0001-9155-8920"
+- family-names: "Naumann"
+  given-names: "Patrick"
+title: "QuitStore"
+version: 0.26.0
+date-released: 2022-02-02
+url: "https://github.com/AKSW/QuitStore"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Arndt"
+    given-names: "Natanael"
+    orcid: "https://orcid.org/0000-0002-8130-8677"
+  - family-names: "Naumann"
+    given-names: "Patrick"
+  - family-names: "Radtke"
+    given-names: "Norman"
+    orcid: "https://orcid.org/0000-0001-9155-8920"
+  - family-names: "Martin"
+    given-names: "Michael"
+    orcid: "https://orcid.org/0000-0003-0762-8688"
+  - family-names: "Marx"
+    given-names: "Edgard"
+    orcid: "https://orcid.org/0000-0002-3111-9405"
+  doi: 10.1016/j.websem.2018.08.002
+  journal: "Journal of Web Semantics"
+  month: 2
+  start: 29 # First page number
+  end: 47 # Last page number
+  title: "Decentralized Collaborative Knowledge Management using Git"
+  volume: 54
+  year: 2019
