@@ -6,6 +6,7 @@ from rdflib import ConjunctiveGraph
 from quit.conf import Feature
 from quit import helpers as helpers
 from quit.helpers import parse_sparql_request, parse_query_type
+from quit.tools.algebra import pprintAlgebra
 from quit.web.app import render_template, feature_required
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
 from quit.exceptions import FromNamedError, QuitMergeConflict, RevisionNotFound
@@ -33,8 +34,8 @@ rdfMimetypes = ['text/turtle', 'application/x-turtle', 'application/rdf+xml', 'a
                 'application/json']
 
 
-@endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET'])
-@endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET'])
+@endpoint.route("/sparql", defaults={'branch_or_ref': None}, methods=['POST', 'GET', 'PUT'])
+@endpoint.route("/sparql/<path:branch_or_ref>", methods=['POST', 'GET', 'PUT'])
 def sparql(branch_or_ref):
     """Process a SPARQL query (Select or Update).
 
@@ -51,7 +52,7 @@ def sparql(branch_or_ref):
 
     logger.debug("Request method: {}".format(request.method))
 
-    query, type, default_graph, named_graph = parse_sparql_request(request)
+    query, type, default_graph, named_graph, comment = parse_sparql_request(request)
 
     if query is None:
         if request.accept_mimetypes.best_match(['text/html']) == 'text/html':
@@ -62,14 +63,16 @@ def sparql(branch_or_ref):
                                  'to the SPARQL 1.1 standard', 400)
     else:
         # TODO allow USING NAMED when fixed in rdflib
-        if len(named_graph) > 0:
-            return make_response('FROM NAMED and USING NAMED not supported, yet', 400)
 
         parse_type = getattr(helpers, 'parse_' + type + '_type')
 
         try:
             queryType, parsedQuery = parse_type(
                 query, quit.config.namespace, default_graph, named_graph)
+            if queryType != 'AskQuery':
+                print(queryType)
+                print("query:")
+                print(query)
         except UnSupportedQuery:
             return make_response('Unsupported Query', 400)
         except NonAbsoluteBaseError:
@@ -77,7 +80,7 @@ def sparql(branch_or_ref):
         except SparqlProtocolError:
             return make_response('Sparql Protocol Error', 400)
 
-    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Load']:
+    if queryType in ['InsertData', 'DeleteData', 'Modify', 'DeleteWhere', 'Load', 'Drop']:
         if branch_or_ref:
             commit_id = quit.repository.revision(branch_or_ref).id
         else:
@@ -107,7 +110,8 @@ def sparql(branch_or_ref):
                 logger.debug("target ref is: {}".format(target_ref))
                 oid = quit.applyQueryOnCommit(parsedQuery, parent_commit_id, target_ref,
                                               query=query, default_graph=default_graph,
-                                              named_graph=named_graph)
+                                              named_graph=named_graph, queryType=queryType,
+                                              comment=comment)
 
                 if resolution_method == "merge":
                     logger.debug(("going to merge update into {} because it is at {} but {} was "
@@ -137,7 +141,8 @@ def sparql(branch_or_ref):
             try:
                 oid = quit.applyQueryOnCommit(parsedQuery, branch_or_ref, target_ref,
                                               query=query, default_graph=default_graph,
-                                              named_graph=named_graph)
+                                              named_graph=named_graph, queryType=queryType,
+                                              comment=comment)
                 response = make_response('', 200)
                 response.headers["X-CurrentBranch"] = target_head
                 if oid is not None:

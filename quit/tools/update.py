@@ -109,11 +109,20 @@ def evalDrop(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#drop
     """
+    res = {}
+    res["type"] = "DROP"
+    res["delta"] = {}
     if ctx.dataset.store.graph_aware:
         for g in _graphAll(ctx, u.graphiri):
+            _append(res["delta"], u.graphiri, 'removals', g)
             ctx.dataset.store.remove_graph(g)
+            graph = ctx.dataset.get_context(u.graphiri)
+            graph -= g
     else:
+        _append(res["delta"], u.graphiri, 'removals', list(u.triples))
         evalClear(ctx, u)
+
+    return res
 
 
 def evalInsertData(ctx, u):
@@ -390,7 +399,9 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
             elif u.name == 'Clear':
                 evalClear(ctx, u)
             elif u.name == 'Drop':
-                evalDrop(ctx, u)
+                result = evalDrop(ctx, u)
+                if result:
+                    res.append(result)
             elif u.name == 'Create':
                 evalCreate(ctx, u)
             elif u.name == 'Add':
