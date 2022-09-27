@@ -71,8 +71,8 @@ jobs:
           python -m pip install -U pip setuptools wheel poetry
           # Install dependencies
           poetry install
-          # Install PyInstaller
-          pip install --progress-bar=off pyinstaller
+          # Build wheel and source package
+          poetry build
           # Run PyInstaller
           poetry run pyinstaller quit.spec
       - name: Rename Lin Release
@@ -92,6 +92,8 @@ jobs:
                  dist/quit-windows.exe
                  dist/quit-linux
                  dist/quit-macos
+                 dist/quit-*.whl
+                 dist/quit-*.tar.gz
 
   docker:
     runs-on: ubuntu-latest
