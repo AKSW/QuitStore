@@ -1,4 +1,5 @@
 **
+!dist/
 !docker/
 !quit/
 !scripts/install-libgit2.sh
