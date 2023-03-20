@@ -1,0 +1,24 @@
+version: '3'
+
+tasks:
+  check:style:
+    desc: Check Conding style
+    cmds:
+      - poetry run pylava
+
+  install:
+    desc: Install all poetry dependencies
+    cmds:
+      - poetry install
+
+  build:
+    desc: Build the whl package
+    cmds:
+      - poetry build
+
+  build:docker:
+    desc: Build the docker image
+    deps:
+      - task: build
+    cmds:
+      - docker build -t aksw/quitstore .
