@@ -558,7 +558,7 @@ class Quit(object):
 
                     if changeset:
                         applyChangeset(file_reference, changeset, context.identifier)
-                        del(entry['delta'][context.identifier])
+                        del entry['delta'][context.identifier]
 
                 index.add(file_reference.path, file_reference.content)
 
@@ -586,7 +586,7 @@ class Quit(object):
                         n = [
                             int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                         ] + [0]
-                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
+                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n) + 1)
 
                     new_contexts[identifier] = FileReference(fileName, '')
 

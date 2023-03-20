@@ -319,7 +319,7 @@ class Repository(object):
             (head_remote_name, head_remote_branch, head_remote_ref) = self.getUpstreamOfHead()
             if head_remote_ref is None:
                 raise QuitGitRefNotFound("There is no upstream configured for the current branch")
-            refspec = '{src}:{dst}'.format(self._repository.head.name, head_remote_ref)
+            refspec = '{src}:{dst}'.format(src=self._repository.head.name, dst=head_remote_ref)
             remote_name = head_remote_name
 
         if remote_name is None:

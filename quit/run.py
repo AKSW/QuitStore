@@ -31,7 +31,7 @@ if args['basepath']:
         resp('200 OK', [('Content-Type', 'text/plain')])
 
     application.wsgi_app = DispatcherMiddleware(
-            simple, {args['basepath']: application.wsgi_app})
+        simple, {args['basepath']: application.wsgi_app})
 
 
 def run():
