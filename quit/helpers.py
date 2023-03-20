@@ -286,7 +286,6 @@ def parse_sparql_request(request):
     type = None
     default_graph = []
     named_graph = []
-    accept_header = None
 
     if request.method == "GET":
         default_graph = request.args.getlist('default-graph-uri')

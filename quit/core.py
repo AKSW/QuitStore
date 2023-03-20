@@ -4,11 +4,6 @@ import logging
 
 from copy import copy
 
-from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
-from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
-from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
-from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
-
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal, URIRef
 import re
 

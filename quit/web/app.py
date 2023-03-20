@@ -205,7 +205,7 @@ def register_template_helpers(app):
                 config = ctx.get('config')
                 link = config['quit'].store.store.compute_qname(t, False)
                 return u'%s:%s' % (link[0], link[2])
-            except Exception as e:
+            except Exception:
                 return t
 
         if isinstance(t, rdflib.URIRef):

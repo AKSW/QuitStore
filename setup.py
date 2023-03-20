@@ -12,7 +12,6 @@ dataset and share your repository with your collaborators as you know it from
 Git.
 """
 from setuptools import setup
-import os
 
 setup(
     name='quit-store',

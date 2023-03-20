@@ -3,7 +3,7 @@ import pygit2
 import re
 import logging
 
-from pygit2._pygit2 import GitError, Oid
+from pygit2._pygit2 import GitError
 from os.path import expanduser, join
 from quit.exceptions import RepositoryNotFound, RevisionNotFound, NodeNotFound, RemoteNotFound
 from quit.exceptions import QuitGitRefNotFound, QuitGitRepoError, QuitGitPushError
@@ -399,7 +399,7 @@ class Repository(object):
                 if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
                     target_ref = target_ref.resolve()
                 target_ref.set_target(self.lookup(branch))
-            except KeyError as e:
+            except KeyError:
                 # If HEAD is unborn
                 if target_ref.type == pygit2.GIT_REF_SYMBOLIC:
                     target = target_ref.target

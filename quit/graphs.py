@@ -1,5 +1,4 @@
 import functools
-import logging
 from itertools import chain
 from rdflib import Graph, ConjunctiveGraph, URIRef
 from rdflib.graph import ModificationException

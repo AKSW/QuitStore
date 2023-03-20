@@ -56,7 +56,7 @@ def qname(ctx, term):
         else:
             label = nm.compute_qname(term, False)
         return u'%s:%s' % (label[0], label[2])
-    except Exception as e:
+    except Exception:
         return term
 
 
