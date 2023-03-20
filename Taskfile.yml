@@ -4,7 +4,7 @@ tasks:
   check:style:
     desc: Check Conding style
     cmds:
-      - poetry run pylava
+      - poetry run pylama
 
   install:
     desc: Install all poetry dependencies
