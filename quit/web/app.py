@@ -7,7 +7,8 @@ import logging
 from functools import wraps
 
 from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import url_for, redirect, session, request
+from flask import redirect, session
+from flask import url_for, request # noqa ; these are used in the _TEMPLATE strings
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
