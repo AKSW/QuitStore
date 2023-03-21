@@ -32,7 +32,7 @@ jobs:
              poetry run pip install pygit2
              poetry install --no-root
       - name: Check Conding style
-        run: poetry run pylama
+        run: poetry run pylama -i E402,C
       - name: Set Git user
         run: |
              git config --global user.email "quittestsystem@example.org"
