@@ -21,4 +21,4 @@ tasks:
     deps:
       - task: build
     cmds:
-      - docker build -t aksw/quitstore .
+      - docker build --build-context dist=./dist -t aksw/quitstore .

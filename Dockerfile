@@ -28,7 +28,7 @@ RUN apt-get update && \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dist/quit-*.whl .
+COPY --from=dist quit-*.whl .
 RUN pip install --progress-bar=off quit-*.whl
 
 RUN ln -s $( python -c "import site; print(site.getsitepackages()[0])" ) /usr/local/python-site-packages
