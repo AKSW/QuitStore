@@ -14,14 +14,14 @@ jobs:
         #     experimental: true
     steps:
       # Configures the python version
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
       - name: Print Versions
         run: |
              python --version
              git --version
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install Required Packages
         run: sudo apt-get install cmake libssl-dev libssh2-1-dev
       - name: Install Python Dependencies
@@ -55,9 +55,9 @@ jobs:
         python-version: [3.9]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Pyinstaller
@@ -85,9 +85,9 @@ jobs:
         os: ['windows-2019', 'ubuntu-18.04', 'macos-11']
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       #- name: Patch Windows requirements
