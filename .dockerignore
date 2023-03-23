@@ -1,7 +1,4 @@
 **
-!dist/
-!docker/
-!quit/
-!scripts/install-libgit2.sh
-!pyproject.toml
-!poetry.lock
+!dist/**
+!docker/**
+!quit/**
