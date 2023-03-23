@@ -151,6 +151,8 @@ jobs:
           images: |
             aksw/quitstore
             ghcr.io/aksw/quitstore
+      - name: ls
+        run: ls -l -R
       - name: Build and push for many architectures
         id: docker_build_tagged
         uses: docker/build-push-action@v4
