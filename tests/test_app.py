@@ -2409,7 +2409,7 @@ class QuitAppTestCase(unittest.TestCase):
             self.assertFalse(obj["boolean"])
 
             # execute SELECT query before INSERT WHERE
-            load = "LOAD <http://de.dbpedia.org/resource/Das_Leben_ist_sch%C3%B6n> INTO GRAPH <http://example.org/>"
+            load = "LOAD <http://de.dbpedia.org/resource/Das_Leben_ist_schön> INTO GRAPH <http://example.org/>"
             resp = app.post('/sparql', data={"update": load})
             self.assertEqual(resp.status, "200 OK")
 
