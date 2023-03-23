@@ -67,9 +67,9 @@ def evalLoad(ctx, u):
         loadedGraph = Graph()
         try:
             if not format:
-                loadedGraph.load(u.iri)
+                loadedGraph.parse(u.iri)
             else:
-                loadedGraph.load(u.iri, format=format)
+                loadedGraph.parse(u.iri, format=format)
             success = True
             break
         except Exception as e:
