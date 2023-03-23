@@ -22,6 +22,7 @@ RUN apt-get update && \
     git \
     gcc \
     libffi-dev \
+    libgit2-dev \
     libssh-dev \
     python3-dev \
     libssl-dev \
