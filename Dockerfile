@@ -1,10 +1,10 @@
-FROM docker.io/python:3-slim as python
+# FROM docker.io/python:3-slim as python
+FROM ghcr.io/white-gecko/python-libgit2:main as python
 ENV PYTHONUNBUFFERED=true
 WORKDIR /app
 
 RUN apt-get update && \
     apt-get -y install \
-    libgit2-1.1 \
     libssh-4 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,7 +22,6 @@ RUN apt-get update && \
     git \
     gcc \
     libffi-dev \
-    libgit2-dev \
     libssh-dev \
     python3-dev \
     libssl-dev \
