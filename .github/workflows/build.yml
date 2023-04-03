@@ -82,7 +82,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9]
-        os: ['windows-2019', 'ubuntu-18.04', 'macos-11']
+        os: ['windows-2019', 'ubuntu-latest', 'macos-11']
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
