@@ -4,7 +4,7 @@ import os
 from pyparsing import ParseException
 from quit.exceptions import UnSupportedQuery, SparqlProtocolError, NonAbsoluteBaseError
 from rdflib.term import URIRef
-from rdflib.plugins.sparql.parserutils import CompValue, plist
+from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 from quit.tools.algebra import translateQuery, translateUpdate
 from rdflib.plugins.serializers.nt import _nt_row as _nt
@@ -160,7 +160,7 @@ def configure_query_dataset(parsed_query, default_graphs, named_graphs):
         return parsed_query
 
     # clean existing named (FROM NAMED) and default (FROM) DatasetClauses
-    parsed_query[1]['datasetClause'] = plist()
+    parsed_query[1]['datasetClause'] = list()
 
     # add new named (default-graph-uri) and default (named-graph-uri)
     # DatasetClauses from Protocol
@@ -194,7 +194,7 @@ def configure_update_dataset(parsed_update, default_graphs, named_graphs):
     if parsed_update.request[0].using is not None:
         raise SparqlProtocolError
 
-    parsed_update.request[0]['using'] = plist()
+    parsed_update.request[0]['using'] = list()
 
     # add new named (using-named-graph-uri) and default (using-graph-uri)
     # UsingClauses from Protocol
@@ -286,7 +286,6 @@ def parse_sparql_request(request):
     type = None
     default_graph = []
     named_graph = []
-    accept_header = None
 
     if request.method == "GET":
         default_graph = request.args.getlist('default-graph-uri')

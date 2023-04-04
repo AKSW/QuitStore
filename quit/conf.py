@@ -1,19 +1,16 @@
 import logging
 
-import os
-from pygit2 import Repository, GIT_OBJ_BLOB, GIT_OBJ_TREE
-from os import walk
-from os.path import join, isfile, relpath
-from quit.exceptions import MissingConfigurationError, InvalidConfigurationError
+from pygit2 import GIT_OBJ_BLOB, GIT_OBJ_TREE
+from os.path import join, isfile
+from quit.exceptions import InvalidConfigurationError
 from quit.exceptions import UnknownConfigurationError
 from quit.helpers import isAbsoluteUri
-from rdflib import Graph, ConjunctiveGraph, Literal, Namespace, URIRef, BNode
+from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.plugins.parsers import notation3
 from rdflib.namespace import RDF, NamespaceManager
 from rdflib.util import guess_format
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 from rdflib.term import _is_valid_uri
-from uritools import urisplit
 
 logger = logging.getLogger('quit.conf')
 

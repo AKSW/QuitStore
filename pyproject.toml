@@ -6,20 +6,22 @@ authors = ["Norman Radtke <http://aksw.org/NormanRadtke>", "Natanael Arndt <http
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7,<3.12"
 rdflib = "^6.0.2"
 Flask = "^2.0.2"
 Flask-Cors = "^3.0.10"
 pygit2 = ">=1.1.0"
 sortedcontainers = "^2.4.0"
 uritools = "^3.0.2"
-uWSGI = "^2.0.20"
+uWSGI = "^2.0.21"
+Jinja2 = "^3.0.0, <3.1.0"
 
-[tool.poetry.dev-dependencies]
-pylava = "^0.3.0"
+[tool.poetry.group.dev.dependencies]
+pylama = {extras = ["toml"], version = "^8.4.1"}
+pytest = "^7.2.2"
+pytest-cov = "^4.0.0"
 coveralls = "^3.3.1"
-pytest = "^6.2.5"
-pytest-cov = "^3.0.0"
+pyinstaller = "^5.9.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -27,3 +29,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 quitstore = "quit.run:run"
+
+[tool.pylama]
+format = "pylint"
+skip = "tests/*,quit/tools/*"
+ignore = "E402"
+max_line_length = 100

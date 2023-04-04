@@ -6,8 +6,9 @@ import logging
 
 from functools import wraps
 
-from flask import Flask, render_template as rt, render_template_string as rts, g, current_app
-from flask import url_for, redirect, session, request
+from flask import Flask, render_template as rt, render_template_string as rts, current_app
+from flask import redirect, session
+from flask import url_for, request # noqa ; these are used in the _TEMPLATE strings
 from flask_cors import CORS
 
 from jinja2 import Environment, contextfilter, Markup
@@ -108,7 +109,6 @@ def create_app(arguments):
     )
     app.secret_key = os.urandom(24)
     register_app(app, arguments)
-    register_hook(app)
     register_blueprints(app)
     register_extensions(app)
     register_errorhandlers(app)
@@ -168,19 +168,6 @@ def register_blueprints(app):
         return redirect(url_for('git.commits'))
 
 
-def register_hook(app):
-    import time
-
-    @app.before_request
-    def before_request():
-        g.start = time.time()
-
-    @app.after_request
-    def after_request(response):
-        diff = time.time() - g.start
-        return response
-
-
 def register_errorhandlers(app):
 
     @app.errorhandler(404)
@@ -205,7 +192,7 @@ def register_template_helpers(app):
                 config = ctx.get('config')
                 link = config['quit'].store.store.compute_qname(t, False)
                 return u'%s:%s' % (link[0], link[2])
-            except Exception as e:
+            except Exception:
                 return t
 
         if isinstance(t, rdflib.URIRef):

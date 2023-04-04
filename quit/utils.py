@@ -1,5 +1,4 @@
 from __future__ import with_statement
-from flask import Response
 import os
 import contextlib
 import signal
@@ -159,7 +158,6 @@ if __name__ == '__main__':
     # ===============================================================
 
     import unittest
-    import os
 
     class TestOnExit(unittest.TestCase):
 

@@ -9,13 +9,6 @@ MIT License
 
 import json
 
-from itertools import islice
-from pygit2 import (
-    GIT_SORT_TIME,
-    GIT_SORT_TOPOLOGICAL,
-    GIT_SORT_REVERSE
-)
-
 
 class CommitGraph(object):
     def __init__(self, sha, parents):

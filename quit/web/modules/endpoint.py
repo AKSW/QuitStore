@@ -120,7 +120,7 @@ def sparql(branch_or_ref):
                         tmp_branch.delete()
                         response = make_response('success', 200)
                         target_branch = branch_or_ref
-                    except QuitMergeConflict as e:
+                    except QuitMergeConflict:
                         response = make_response('merge failed', 400)
                 else:
                     response = make_response('branched', 200)

@@ -1,8 +1,7 @@
-import sys
 import traceback
 
 from werkzeug.http import parse_accept_header
-from flask import Blueprint, flash, redirect, request, url_for, current_app, make_response, Markup
+from flask import Blueprint, request, current_app, make_response
 from quit.conf import Feature
 from quit.web.app import render_template, feature_required
 

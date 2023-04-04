@@ -1,4 +1,3 @@
-import os
 import pygit2
 import rdflib
 import logging

@@ -4,11 +4,6 @@ import logging
 
 from copy import copy
 
-from pygit2 import GIT_MERGE_ANALYSIS_UP_TO_DATE
-from pygit2 import GIT_MERGE_ANALYSIS_FASTFORWARD
-from pygit2 import GIT_MERGE_ANALYSIS_NORMAL
-from pygit2 import GIT_SORT_REVERSE, GIT_RESET_HARD, GIT_STATUS_CURRENT
-
 from rdflib import Graph, ConjunctiveGraph, BNode, Literal, URIRef
 import re
 
@@ -558,7 +553,7 @@ class Quit(object):
 
                     if changeset:
                         applyChangeset(file_reference, changeset, context.identifier)
-                        del(entry['delta'][context.identifier])
+                        del entry['delta'][context.identifier]
 
                 index.add(file_reference.path, file_reference.content)
 
@@ -586,7 +581,7 @@ class Quit(object):
                         n = [
                             int(m.group(1)) for b in known_blobs for m in [reg.search(b)] if m
                         ] + [0]
-                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n)+1)
+                        fileName = '{}_{}.nt'.format(iri_to_name(identifier), max(n) + 1)
 
                     new_contexts[identifier] = FileReference(fileName, '')
 
