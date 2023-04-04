@@ -1,5 +1,5 @@
 # FROM docker.io/python:3-slim as python
-FROM ghcr.io/white-gecko/python-libgit2:main as python
+FROM ghcr.io/white-gecko/python-libgit2:pygit2-main as python
 ENV PYTHONUNBUFFERED=true
 WORKDIR /app
 
