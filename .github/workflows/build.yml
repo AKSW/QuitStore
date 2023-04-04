@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -48,7 +48,7 @@ jobs:
              poetry run coveralls
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: test
     strategy:
       matrix:
@@ -82,7 +82,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9]
-        os: ['windows-2019', 'ubuntu-latest', 'macos-11']
+        os: ['windows-2019', 'ubuntu-22.04', 'macos-11']
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -121,7 +121,7 @@ jobs:
             dist/quit-macos
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: build
     steps:
       - name: Download build
