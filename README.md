@@ -279,7 +279,7 @@ The default port is `5000` (`http://localhost:5000/`).
 
 ### Update to 2018-11-20 from 2018-10-29 and older
 
-If you are migrating from an NQuads based repository, as used in older versions of the QuitStore (release 2018-10-29 and older), to an NTriples based repository (release 2018-11-20 and newer) you can use teh following commands to migrate the graphs.
+If you are migrating from an NQuads based repository, as used in older versions of the QuitStore (release 2018-10-29 and older), to an NTriples based repository (release 2018-11-20 and newer) you can use the following commands to migrate the graphs.
 You should know that it is possible to have multiple graphs in one NQuads file, which is not possible for NTriples files.
 Thus, you should make sure to have only one graph per file.
 You may execute the steps for each NQuads file and replace `graphfile.nq` according to your filenames.
