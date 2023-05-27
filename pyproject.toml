@@ -2,7 +2,7 @@
 name = "quit"
 version = "0.25.4"
 description = "Quads in Git - Distributed Version Control for RDF Knowledge Bases"
-authors = ["Norman Radtke <http://aksw.org/NormanRadtke>", "Natanael Arndt <http://aksw.org/NatanaelArndt>"]
+authors = ["Norman Radtke <http://aksw.org/NormanRadtke>","Natanael Arndt <http://aksw.org/NatanaelArndt>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
