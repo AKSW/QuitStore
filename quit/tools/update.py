@@ -262,7 +262,7 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     res = []
 
-    for u in update:
+    for u in update.algebra:
 
         ctx = QueryContext(graph)
         ctx.prologue = u.prologue
