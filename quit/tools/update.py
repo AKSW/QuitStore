@@ -16,6 +16,8 @@ from collections import defaultdict
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
 
+import rdflib.plugins.sparql.update
+
 def _append(dct, identifier, action, items):
     if items:
         if not isinstance(identifier, Node):
@@ -23,29 +25,6 @@ def _append(dct, identifier, action, items):
         changes = dct.get(identifier, [])
         changes.append((action, items))
         dct[identifier] = changes
-
-
-def _graphOrDefault(ctx, g):
-    if g == 'DEFAULT':
-        return ctx.graph
-    else:
-        return ctx.dataset.get_context(g)
-
-
-def _graphAll(ctx, g):
-    """
-    return a list of graphs
-    """
-    if g == 'DEFAULT':
-        return [ctx.graph]
-    elif g == 'NAMED':
-        return [c for c in ctx.dataset.contexts()
-                if c.identifier != ctx.graph.identifier]
-    elif g == 'ALL':
-        return list(ctx.dataset.contexts())
-    else:
-        return [ctx.dataset.get_context(g)]
-
 
 def evalLoad(ctx, u):
     """
@@ -86,35 +65,9 @@ def evalLoad(ctx, u):
 
     return res
 
-
-def evalCreate(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#create
-    """
-    g = ctx.datset.get_context(u.graphiri)
-    if len(g) > 0:
-        raise Exception("Graph %s already exists." % g.identifier)
-    raise Exception("Create not implemented!")
-
-
-def evalClear(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#clear
-    """
-    for g in _graphAll(ctx, u.graphiri):
-        g.remove((None, None, None))
-
-
-def evalDrop(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#drop
-    """
-    if ctx.dataset.store.graph_aware:
-        for g in _graphAll(ctx, u.graphiri):
-            ctx.dataset.store.remove_graph(g)
-    else:
-        evalClear(ctx, u)
-
+evalCreate = rdflib.plugins.sparql.update.evalCreate
+evalClear = rdflib.plugins.sparql.update.evalClear
+evalDrop = rdflib.plugins.sparql.update.evalDrop
 
 def evalInsertData(ctx, u):
     """
@@ -283,71 +236,9 @@ def evalModify(ctx, u):
 
     return res
 
-
-def evalAdd(ctx, u):
-    """
-
-    add all triples from src to dst
-
-    http://www.w3.org/TR/sparql11-update/#add
-    """
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg += srcg
-
-
-def evalMove(ctx, u):
-    """
-    remove all triples from dst
-    add all triples from src to dst
-    remove all triples from src
-
-    http://www.w3.org/TR/sparql11-update/#move
-    """
-
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg.remove((None, None, None))
-
-    dstg += srcg
-
-    if ctx.dataset.store.graph_aware:
-        ctx.dataset.store.remove_graph(srcg)
-    else:
-        srcg.remove((None, None, None))
-
-
-def evalCopy(ctx, u):
-    """
-    remove all triples from dst
-    add all triples from src to dst
-
-    http://www.w3.org/TR/sparql11-update/#copy
-    """
-
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg.remove((None, None, None))
-
-    dstg += srcg
+evalAdd = rdflib.plugins.sparql.update.evalAdd
+evalMove = rdflib.plugins.sparql.update.evalMove
+evalCopy = rdflib.plugins.sparql.update.evalCopy
 
 
 def evalUpdate(graph, update, initBindings=None, actionLog=False):
