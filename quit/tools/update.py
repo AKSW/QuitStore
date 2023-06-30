@@ -3,19 +3,20 @@
 Code for carrying out Update Operations
 
 """
-from rdflib import Graph, Variable, URIRef
+from rdflib import Graph
 from rdflib.term import Node
 
-from rdflib.plugins.sparql.sparql import QueryContext
 from rdflib.plugins.sparql.evalutils import _fillTemplate, _join
 from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
 
-from typing import Optional, Sequence
+from typing import Mapping, Optional, Sequence
 from rdflib.plugins.sparql.parserutils import CompValue
-from rdflib.plugins.sparql.sparql import QueryContext
+from rdflib.plugins.sparql.sparql import QueryContext, Update
+from rdflib.term import Identifier, URIRef, Variable
+
 
 import rdflib.plugins.sparql.update as rdflib_update
 
