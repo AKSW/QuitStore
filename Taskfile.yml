@@ -22,3 +22,8 @@ tasks:
       - task: build
     cmds:
       - docker buildx build --build-context dist=./dist -t aksw/quitstore .
+
+  test:
+    desc: Run the quit store tests
+    cmds:
+      - poetry run pytest --cov=quit --cov-report=term-missing
