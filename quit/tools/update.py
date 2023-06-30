@@ -75,6 +75,7 @@ def evalLoad(ctx, u):
 
 def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
     """
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#insertData
     """
 
@@ -102,6 +103,7 @@ def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
 
 def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
     """
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
 
@@ -127,7 +129,7 @@ def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
     return res
 
 
-def evalDeleteWhere(ctx, u):
+def evalDeleteWhere(ctx: QueryContext, u: CompValue) -> dict:
     """
     TODO
     http://www.w3.org/TR/sparql11-update/#deleteWhere
@@ -173,7 +175,6 @@ def evalModify(ctx, u):
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
         otherDefault = False
-
         for d in u.using:
             if d.default:
 
@@ -246,9 +247,11 @@ def evalModify(ctx, u):
     return res
 
 
-def evalUpdate(graph, update, initBindings=None, actionLog=False):
+def evalUpdate(
+    graph: Graph, update: Update, initBindings: Mapping[str, Identifier] = {}
+) -> None:
     """
-    TODO
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#updateLanguage
 
     'A request is a sequence of operations [...] Implementations MUST
