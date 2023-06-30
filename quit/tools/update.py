@@ -92,9 +92,7 @@ def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
     # add triples
     g = ctx.graph
     filled = _filterNonExistingTriples(g, u.triples)
-    if filled:
-        _append(res["delta"], 'default', 'additions', filled)
-        u.triples = filled
+    _append(res["delta"], 'default', 'additions', filled)
 
     # add quads
     # u.quads is a dict of graphURI=>[triples]
@@ -102,9 +100,7 @@ def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
         # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
         cg = ctx.dataset.get_context(g)  # type: ignore[arg-type]
         filledq = _filterExistingTriples(cg, u.quads[g])
-        if filledq:
-            _append(res["delta"], cg.identifier, 'additions', filledq)
-            u.quads[g] = filledq
+        _append(res["delta"], cg.identifier, 'additions', filledq)
 
     rdflib.plugins.sparql.update.evalInsertData(ctx, u)
 
@@ -123,9 +119,7 @@ def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
     # remove triples
     g = ctx.graph
     filled = _filterNonExistingTriples(g, u.triples)
-    if filled:
-        _append(res["delta"], 'default', 'removals', filled)
-        u.triples = filled
+    _append(res["delta"], 'default', 'removals', filled)
 
     # remove quads
     # u.quads is a dict of graphURI=>[triples]
@@ -133,9 +127,7 @@ def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
         # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
         cg = ctx.dataset.get_context(g)
         filledq = _filterNonExistingTriples(cg, u.quads[g])
-        if filledq:
-            _append(res["delta"], cg.identifier, 'removals', filledq)
-            u.quads[g] = filledq
+        _append(res["delta"], cg.identifier, 'removals', filledq)
 
     rdflib.plugins.sparql.update.evalDeleteData(ctx, u)
 
