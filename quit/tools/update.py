@@ -17,7 +17,7 @@ from typing import Optional, Sequence
 from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.sparql import QueryContext
 
-import rdflib.plugins.sparql.update
+import rdflib.plugins.sparql.update as rdflib_update
 
 def _append(dct, identifier, action, items):
     if items:
@@ -73,10 +73,6 @@ def evalLoad(ctx, u):
 
     return res
 
-evalCreate = rdflib.plugins.sparql.update.evalCreate
-evalClear = rdflib.plugins.sparql.update.evalClear
-evalDrop = rdflib.plugins.sparql.update.evalDrop
-
 def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
     """
     http://www.w3.org/TR/sparql11-update/#insertData
@@ -99,7 +95,7 @@ def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
         filledq = _filterExistingTriples(cg, u.quads[g])
         _append(res["delta"], cg.identifier, 'additions', filledq)
 
-    rdflib.plugins.sparql.update.evalInsertData(ctx, u)
+    rdflib_update.evalInsertData(ctx, u)
 
     return res
 
@@ -126,7 +122,7 @@ def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
         filledq = _filterNonExistingTriples(cg, u.quads[g])
         _append(res["delta"], cg.identifier, 'removals', filledq)
 
-    rdflib.plugins.sparql.update.evalDeleteData(ctx, u)
+    rdflib_update.evalDeleteData(ctx, u)
 
     return res
 
@@ -158,6 +154,8 @@ def evalDeleteWhere(ctx, u):
             filledq, filledq_delta = tee(_fillTemplate(u.quads[g], c))
             _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
             cg -= filledq
+
+    #rdflib_update.evalDeleteWhere(ctx, u)
 
     return res
 
@@ -247,9 +245,6 @@ def evalModify(ctx, u):
 
     return res
 
-evalAdd = rdflib.plugins.sparql.update.evalAdd
-evalMove = rdflib.plugins.sparql.update.evalMove
-evalCopy = rdflib.plugins.sparql.update.evalCopy
 
 def evalUpdate(graph, update, initBindings=None, actionLog=False):
     """
@@ -269,20 +264,28 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     This will return None on success and raise Exceptions on error
 
+    .. caution::
+
+        This method can access indirectly requested network endpoints, for
+        example, query processing will attempt to access network endpoints
+        specified in ``SERVICE`` directives.
+
+        When processing untrusted or potentially malicious queries, measures
+        should be taken to restrict network and file access.
+
+        For information on available security measures, see the RDFLib
+        :doc:`Security Considerations </security_considerations>`
+        documentation.
+
     """
 
     res = []
 
     for u in update.algebra:
+        initBindings = dict((Variable(k), v) for k, v in initBindings.items())
 
-        ctx = QueryContext(graph)
+        ctx = QueryContext(graph, initBindings=initBindings)
         ctx.prologue = u.prologue
-
-        if initBindings:
-            for k, v in initBindings.items():
-                if not isinstance(k, Variable):
-                    k = Variable(k)
-                ctx[k] = v
 
         try:
             if u.name == 'Load':
@@ -290,17 +293,17 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 if result:
                     res.append(result)
             elif u.name == 'Clear':
-                evalClear(ctx, u)
+                rdflib_update.evalClear(ctx, u)
             elif u.name == 'Drop':
-                evalDrop(ctx, u)
+                rdflib_update.evalDrop(ctx, u)
             elif u.name == 'Create':
-                evalCreate(ctx, u)
+                rdflib_update.evalCreate(ctx, u)
             elif u.name == 'Add':
-                evalAdd(ctx, u)
+                rdflib_update.evalAdd(ctx, u)
             elif u.name == 'Move':
-                evalMove(ctx, u)
+                rdflib_update.evalMove(ctx, u)
             elif u.name == 'Copy':
-                evalCopy(ctx, u)
+                rdflib_update.evalCopy(ctx, u)
             elif u.name == 'InsertData':
                 result = evalInsertData(ctx, u)
                 if result:
