@@ -16,6 +16,10 @@ from collections import defaultdict
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
 
+from typing import Optional, Sequence
+from rdflib.plugins.sparql.parserutils import CompValue
+from rdflib.plugins.sparql.sparql import QueryContext
+
 import rdflib.plugins.sparql.update
 
 def _append(dct, identifier, action, items):
