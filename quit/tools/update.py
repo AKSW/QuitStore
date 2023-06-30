@@ -26,6 +26,12 @@ def _append(dct, identifier, action, items):
         changes.append((action, items))
         dct[identifier] = changes
 
+def _filterExistingTriples(g, triples):
+    return list(filter(lambda triple: triple not in g, triples))
+
+def _filterNonExistingTriples(g, triples):
+    return list(filter(lambda triple: triple in g, triples))
+
 def evalLoad(ctx, u):
     """
     http://www.w3.org/TR/sparql11-update/#load
@@ -69,7 +75,7 @@ evalCreate = rdflib.plugins.sparql.update.evalCreate
 evalClear = rdflib.plugins.sparql.update.evalClear
 evalDrop = rdflib.plugins.sparql.update.evalDrop
 
-def evalInsertData(ctx, u):
+def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
     """
     http://www.w3.org/TR/sparql11-update/#insertData
     """
@@ -80,46 +86,53 @@ def evalInsertData(ctx, u):
 
     # add triples
     g = ctx.graph
-    filled = list(filter(lambda triple: triple not in g, u.triples))
+    filled = _filterNonExistingTriples(g, u.triples)
     if filled:
         _append(res["delta"], 'default', 'additions', filled)
-        g += filled
+        u.triples = filled
 
     # add quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
-        cg = ctx.dataset.get_context(g)
-        filledq = list(filter(lambda triple: triple not in cg, u.quads[g]))
+        # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
+        cg = ctx.dataset.get_context(g)  # type: ignore[arg-type]
+        filledq = _filterExistingTriples(cg, u.quads[g])
         if filledq:
             _append(res["delta"], cg.identifier, 'additions', filledq)
-            cg += filledq
+            u.quads[g] = filledq
+
+    rdflib.plugins.sparql.update.evalInsertData(ctx, u)
 
     return res
 
 
-def evalDeleteData(ctx, u):
+def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
     """
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
+
     res = {}
     res["type"] = "DELETE"
     res["delta"] = {}
 
     # remove triples
     g = ctx.graph
-    filled = list(filter(lambda triple: triple in g, u.triples))
+    filled = _filterNonExistingTriples(g, u.triples)
     if filled:
         _append(res["delta"], 'default', 'removals', filled)
-        g -= filled
+        u.triples = filled
 
     # remove quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
+        # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
         cg = ctx.dataset.get_context(g)
-        filledq = list(filter(lambda triple: triple in cg, u.quads[g]))
+        filledq = _filterNonExistingTriples(cg, u.quads[g])
         if filledq:
             _append(res["delta"], cg.identifier, 'removals', filledq)
-            cg -= filledq
+            u.quads[g] = filledq
+
+    rdflib.plugins.sparql.update.evalDeleteData(ctx, u)
 
     return res
 
@@ -239,7 +252,6 @@ def evalModify(ctx, u):
 evalAdd = rdflib.plugins.sparql.update.evalAdd
 evalMove = rdflib.plugins.sparql.update.evalMove
 evalCopy = rdflib.plugins.sparql.update.evalCopy
-
 
 def evalUpdate(graph, update, initBindings=None, actionLog=False):
     """
