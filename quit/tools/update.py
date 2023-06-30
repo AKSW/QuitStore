@@ -38,6 +38,7 @@ def _filterNonExistingTriples(g, triples):
 
 def evalLoad(ctx, u):
     """
+    TODO
     http://www.w3.org/TR/sparql11-update/#load
     """
     res = {}
@@ -143,6 +144,7 @@ def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
 
 def evalDeleteWhere(ctx, u):
     """
+    TODO
     http://www.w3.org/TR/sparql11-update/#deleteWhere
     """
 
@@ -172,6 +174,9 @@ def evalDeleteWhere(ctx, u):
 
 
 def evalModify(ctx, u):
+    """
+    TODO
+    """
     originalctx = ctx
 
     res = {}
@@ -259,6 +264,7 @@ evalCopy = rdflib.plugins.sparql.update.evalCopy
 
 def evalUpdate(graph, update, initBindings=None, actionLog=False):
     """
+    TODO
     http://www.w3.org/TR/sparql11-update/#updateLanguage
 
     'A request is a sequence of operations [...] Implementations MUST
