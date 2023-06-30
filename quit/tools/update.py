@@ -3,8 +3,6 @@
 Code for carrying out Update Operations
 
 """
-import functools
-
 from rdflib import Graph, Variable, URIRef
 from rdflib.term import Node
 
@@ -12,7 +10,6 @@ from rdflib.plugins.sparql.sparql import QueryContext
 from rdflib.plugins.sparql.evalutils import _fillTemplate, _join
 from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
-from collections import defaultdict
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
 
