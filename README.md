@@ -22,9 +22,22 @@ by Natanael Arndt, Patrick Naumann, Norman Radtke, Michael Martin, and Edgard Ma
 
 To get the Quit Store you have three options:
 
-- Download a binary from https://github.com/AKSW/QuitStore/releases (Currently works for amd64 Linux)
+- Install via [pipx](https://pipx.pypa.io/)
 - Clone it with Git from our repository: https://github.com/AKSW/QuitStore
 - Use Docker and see the section [Docker](#docker) in the README
+
+- The binary self-contained releasses created with [pyinstaller](https://pyinstaller.org/) are currently broken [#291](https://github.com/AKSW/QuitStore/issues/291) and [#302](https://github.com/AKSW/QuitStore/issues/302). I'm happy about help.
+
+### Installation via pipx
+
+```
+$ pipx install git+https://github.com/AKSW/QuitStore.git
+  installed package quit 0.25.4, installed using Python 3.12.1
+  These apps are now globally available
+    - quitstore
+done! ✨ 🌟 ✨
+$ quitstore --help
+```
 
 ### Installation from Source
 
