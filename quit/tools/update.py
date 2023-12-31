@@ -3,18 +3,22 @@
 Code for carrying out Update Operations
 
 """
-import functools
-
-from rdflib import Graph, Variable, URIRef
+from rdflib import Graph
 from rdflib.term import Node
 
-from rdflib.plugins.sparql.sparql import QueryContext
 from rdflib.plugins.sparql.evalutils import _fillTemplate, _join
 from rdflib.plugins.sparql.evaluate import evalBGP, evalPart
 
-from collections import defaultdict
 from itertools import tee
 from quit.exceptions import UnSupportedQuery
+
+from typing import Mapping, Optional, Sequence
+from rdflib.plugins.sparql.parserutils import CompValue
+from rdflib.plugins.sparql.sparql import QueryContext, Update
+from rdflib.term import Identifier, URIRef, Variable
+
+
+import rdflib.plugins.sparql.update as rdflib_update
 
 def _append(dct, identifier, action, items):
     if items:
@@ -24,31 +28,15 @@ def _append(dct, identifier, action, items):
         changes.append((action, items))
         dct[identifier] = changes
 
+def _filterExistingTriples(g, triples):
+    return list(filter(lambda triple: triple not in g, triples))
 
-def _graphOrDefault(ctx, g):
-    if g == 'DEFAULT':
-        return ctx.graph
-    else:
-        return ctx.dataset.get_context(g)
-
-
-def _graphAll(ctx, g):
-    """
-    return a list of graphs
-    """
-    if g == 'DEFAULT':
-        return [ctx.graph]
-    elif g == 'NAMED':
-        return [c for c in ctx.dataset.contexts()
-                if c.identifier != ctx.graph.identifier]
-    elif g == 'ALL':
-        return list(ctx.dataset.contexts())
-    else:
-        return [ctx.dataset.get_context(g)]
-
+def _filterNonExistingTriples(g, triples):
+    return list(filter(lambda triple: triple in g, triples))
 
 def evalLoad(ctx, u):
     """
+    TODO
     http://www.w3.org/TR/sparql11-update/#load
     """
     res = {}
@@ -86,38 +74,9 @@ def evalLoad(ctx, u):
 
     return res
 
-
-def evalCreate(ctx, u):
+def evalInsertData(ctx: QueryContext, u: CompValue) -> dict:
     """
-    http://www.w3.org/TR/sparql11-update/#create
-    """
-    g = ctx.datset.get_context(u.graphiri)
-    if len(g) > 0:
-        raise Exception("Graph %s already exists." % g.identifier)
-    raise Exception("Create not implemented!")
-
-
-def evalClear(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#clear
-    """
-    for g in _graphAll(ctx, u.graphiri):
-        g.remove((None, None, None))
-
-
-def evalDrop(ctx, u):
-    """
-    http://www.w3.org/TR/sparql11-update/#drop
-    """
-    if ctx.dataset.store.graph_aware:
-        for g in _graphAll(ctx, u.graphiri):
-            ctx.dataset.store.remove_graph(g)
-    else:
-        evalClear(ctx, u)
-
-
-def evalInsertData(ctx, u):
-    """
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#insertData
     """
 
@@ -127,52 +86,53 @@ def evalInsertData(ctx, u):
 
     # add triples
     g = ctx.graph
-    filled = list(filter(lambda triple: triple not in g, u.triples))
-    if filled:
-        _append(res["delta"], 'default', 'additions', filled)
-        g += filled
+    filled = _filterNonExistingTriples(g, u.triples)
+    _append(res["delta"], 'default', 'additions', filled)
 
     # add quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
-        cg = ctx.dataset.get_context(g)
-        filledq = list(filter(lambda triple: triple not in cg, u.quads[g]))
-        if filledq:
-            _append(res["delta"], cg.identifier, 'additions', filledq)
-            cg += filledq
+        # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
+        cg = ctx.dataset.get_context(g)  # type: ignore[arg-type]
+        filledq = _filterExistingTriples(cg, u.quads[g])
+        _append(res["delta"], cg.identifier, 'additions', filledq)
+
+    rdflib_update.evalInsertData(ctx, u)
 
     return res
 
 
-def evalDeleteData(ctx, u):
+def evalDeleteData(ctx: QueryContext, u: CompValue) -> dict:
     """
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#deleteData
     """
+
     res = {}
     res["type"] = "DELETE"
     res["delta"] = {}
 
     # remove triples
     g = ctx.graph
-    filled = list(filter(lambda triple: triple in g, u.triples))
-    if filled:
-        _append(res["delta"], 'default', 'removals', filled)
-        g -= filled
+    filled = _filterNonExistingTriples(g, u.triples)
+    _append(res["delta"], 'default', 'removals', filled)
 
     # remove quads
     # u.quads is a dict of graphURI=>[triples]
     for g in u.quads:
+        # type error: Argument 1 to "get_context" of "ConjunctiveGraph" has incompatible type "Optional[Graph]"; expected "Union[IdentifiedNode, str, None]"
         cg = ctx.dataset.get_context(g)
-        filledq = list(filter(lambda triple: triple in cg, u.quads[g]))
-        if filledq:
-            _append(res["delta"], cg.identifier, 'removals', filledq)
-            cg -= filledq
+        filledq = _filterNonExistingTriples(cg, u.quads[g])
+        _append(res["delta"], cg.identifier, 'removals', filledq)
+
+    rdflib_update.evalDeleteData(ctx, u)
 
     return res
 
 
-def evalDeleteWhere(ctx, u):
+def evalDeleteWhere(ctx: QueryContext, u: CompValue) -> dict:
     """
+    TODO
     http://www.w3.org/TR/sparql11-update/#deleteWhere
     """
 
@@ -198,10 +158,15 @@ def evalDeleteWhere(ctx, u):
             _append(res["delta"], cg.identifier, 'removals', list(filledq_delta))
             cg -= filledq
 
+    #rdflib_update.evalDeleteWhere(ctx, u)
+
     return res
 
 
 def evalModify(ctx, u):
+    """
+    TODO
+    """
     originalctx = ctx
 
     res = {}
@@ -211,7 +176,6 @@ def evalModify(ctx, u):
     # Using replaces the dataset for evaluating the where-clause
     if u.using:
         otherDefault = False
-
         for d in u.using:
             if d.default:
 
@@ -284,74 +248,11 @@ def evalModify(ctx, u):
     return res
 
 
-def evalAdd(ctx, u):
+def evalUpdate(
+    graph: Graph, update: Update, initBindings: Mapping[str, Identifier] = {}
+) -> None:
     """
-
-    add all triples from src to dst
-
-    http://www.w3.org/TR/sparql11-update/#add
-    """
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg += srcg
-
-
-def evalMove(ctx, u):
-    """
-    remove all triples from dst
-    add all triples from src to dst
-    remove all triples from src
-
-    http://www.w3.org/TR/sparql11-update/#move
-    """
-
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg.remove((None, None, None))
-
-    dstg += srcg
-
-    if ctx.dataset.store.graph_aware:
-        ctx.dataset.store.remove_graph(srcg)
-    else:
-        srcg.remove((None, None, None))
-
-
-def evalCopy(ctx, u):
-    """
-    remove all triples from dst
-    add all triples from src to dst
-
-    http://www.w3.org/TR/sparql11-update/#copy
-    """
-
-    src, dst = u.graph
-
-    srcg = _graphOrDefault(ctx, src)
-    dstg = _graphOrDefault(ctx, dst)
-
-    if srcg.identifier == dstg.identifier:
-        return
-
-    dstg.remove((None, None, None))
-
-    dstg += srcg
-
-
-def evalUpdate(graph, update, initBindings=None, actionLog=False):
-    """
+    Updated according to rdflib:1c256765ac7d5e7327695a44269be09e51bd88b1
     http://www.w3.org/TR/sparql11-update/#updateLanguage
 
     'A request is a sequence of operations [...] Implementations MUST
@@ -367,20 +268,28 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
 
     This will return None on success and raise Exceptions on error
 
+    .. caution::
+
+        This method can access indirectly requested network endpoints, for
+        example, query processing will attempt to access network endpoints
+        specified in ``SERVICE`` directives.
+
+        When processing untrusted or potentially malicious queries, measures
+        should be taken to restrict network and file access.
+
+        For information on available security measures, see the RDFLib
+        :doc:`Security Considerations </security_considerations>`
+        documentation.
+
     """
 
     res = []
 
-    for u in update:
+    for u in update.algebra:
+        initBindings = dict((Variable(k), v) for k, v in initBindings.items())
 
-        ctx = QueryContext(graph)
+        ctx = QueryContext(graph, initBindings=initBindings)
         ctx.prologue = u.prologue
-
-        if initBindings:
-            for k, v in initBindings.items():
-                if not isinstance(k, Variable):
-                    k = Variable(k)
-                ctx[k] = v
 
         try:
             if u.name == 'Load':
@@ -388,17 +297,17 @@ def evalUpdate(graph, update, initBindings=None, actionLog=False):
                 if result:
                     res.append(result)
             elif u.name == 'Clear':
-                evalClear(ctx, u)
+                rdflib_update.evalClear(ctx, u)
             elif u.name == 'Drop':
-                evalDrop(ctx, u)
+                rdflib_update.evalDrop(ctx, u)
             elif u.name == 'Create':
-                evalCreate(ctx, u)
+                rdflib_update.evalCreate(ctx, u)
             elif u.name == 'Add':
-                evalAdd(ctx, u)
+                rdflib_update.evalAdd(ctx, u)
             elif u.name == 'Move':
-                evalMove(ctx, u)
+                rdflib_update.evalMove(ctx, u)
             elif u.name == 'Copy':
-                evalCopy(ctx, u)
+                rdflib_update.evalCopy(ctx, u)
             elif u.name == 'InsertData':
                 result = evalInsertData(ctx, u)
                 if result:
