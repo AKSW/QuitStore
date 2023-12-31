@@ -7,7 +7,7 @@ license = "GPL-3.0-or-later"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.12"
+python = ">=3.7,<3.13"
 rdflib = "^6.0.2"
 Flask = "^2.0.2"
 Flask-Cors = "^3.0.10"
