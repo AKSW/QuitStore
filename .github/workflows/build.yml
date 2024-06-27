@@ -102,23 +102,36 @@ jobs:
           poetry install
           # Run PyInstaller
           poetry run pyinstaller quit.spec
-      - name: Rename Lin Release
+      - name: Rename Lin Release 🐧
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: cp ./dist/run ./dist/quit-linux
-      - name: Rename Mac Release
+      - name: Rename Mac Release 🍏
         if: ${{ startsWith(matrix.os, 'macos') }}
         run: cp ./dist/run ./dist/quit-macos
-      - name: Rename Win Release
+      - name: Rename Win Release 🪟
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: cp ./dist/run.exe ./dist/quit-windows.exe
-      - name: Upload Binary Releases 🚀
+      - name: Upload Linux Binary Releases 🚀🐧
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         uses: actions/upload-artifact@v4
         with:
-          name: binary-releases
+          name: binary-releases-linux
+          path: |
+            dist/quit-linux
+      - name: Upload MacOS Binary Releases 🚀🍏
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-releases-macos
+          path: |
+            dist/quit-macos
+      - name: Upload Windows Binary Releases 🚀🪟
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-releases-windows
           path: |
             dist/quit-windows.exe
-            dist/quit-linux
-            dist/quit-macos
 
   docker:
     runs-on: ubuntu-22.04
