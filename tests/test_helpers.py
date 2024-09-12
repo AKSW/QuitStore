@@ -22,9 +22,10 @@ class BaseNamespaceTests(unittest.TestCase):
         self.assertEqual(queryType, 'SelectQuery')
 
         queryType, parsedQuery = parse_update_type(update)
-        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://good.example/1'))
-        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://good.example/2'))
-        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://good.example/3'))
+        parsedQueryAlgebra = parsedQuery.algebra
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][0], URIRef('http://good.example/1'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][1], URIRef('http://good.example/2'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][2], URIRef('http://good.example/3'))
         self.assertEqual(queryType, 'InsertData')
 
         queryType, parsedQuery = parse_query_type(construct)
@@ -44,15 +45,17 @@ class BaseNamespaceTests(unittest.TestCase):
         update2 = "PREFIX ex: <http://ex.org/> BASE <http://in-query/> INSERT DATA { <1> <2> <3> }"
 
         queryType, parsedQuery = parse_update_type(update1, 'http://argument/')
-        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://argument/1'))
-        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://argument/2'))
-        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://argument/3'))
+        parsedQueryAlgebra = parsedQuery.algebra
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][0], URIRef('http://argument/1'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][1], URIRef('http://argument/2'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][2], URIRef('http://argument/3'))
         self.assertEqual(queryType, 'InsertData')
 
         queryType, parsedQuery = parse_update_type(update2, 'http://argument/')
-        self.assertEqual(parsedQuery[0]['triples'][0][0], URIRef('http://in-query/1'))
-        self.assertEqual(parsedQuery[0]['triples'][0][1], URIRef('http://in-query/2'))
-        self.assertEqual(parsedQuery[0]['triples'][0][2], URIRef('http://in-query/3'))
+        parsedQueryAlgebra = parsedQuery.algebra
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][0], URIRef('http://in-query/1'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][1], URIRef('http://in-query/2'))
+        self.assertEqual(parsedQueryAlgebra[0]['triples'][0][2], URIRef('http://in-query/3'))
         self.assertEqual(queryType, 'InsertData')
 
     def testOverwrittenBadBaseNamespace(self):
