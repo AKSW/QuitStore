@@ -62,7 +62,7 @@ class Blame(object):
             PREFIX prov: <http://www.w3.org/ns/prov#>
             PREFIX foaf: <http://xmlns.com/foaf/0.1/>
             SELECT ?s ?p ?o ?context ?hex ?name ?email ?date WHERE {
-                ?commit quit:preceedingCommit* ?c .
+                ?commit quit:precedingCommit* ?c .
                 ?c      prov:endedAtTime ?date ;
                         prov:qualifiedAssociation ?qa ;
                         quit:updates ?update ;
@@ -77,7 +77,7 @@ class Blame(object):
                     ?s ?p ?o
                 }
                 FILTER NOT EXISTS {
-                    ?y quit:preceedingCommit+ ?z .
+                    ?y quit:precedingCommit+ ?z .
                     ?z quit:updates ?update2 .
                     ?update2 quit:graph ?g ;
                         quit:removals ?removals .

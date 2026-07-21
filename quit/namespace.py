@@ -38,7 +38,7 @@ class Vocabulary:
     AssociationAgent = PROV['agent']
     AssociationRole = PROV['role']
 
-    PreceedingCommit = QUIT["preceedingCommit"]
+    PreceedingCommit = QUIT["precedingCommit"]
 
     DiffUpdates = QUIT['updates']
     DiffGraph = QUIT['graph']
