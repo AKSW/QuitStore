@@ -295,7 +295,7 @@ class Quit(object):
             # Parents
             for parent in iter(commit.parents or []):
                 parent_uri = QUIT['commit-' + parent.id]
-                g.add((commit_uri, QUIT["preceedingCommit"], parent_uri))
+                g.add((commit_uri, QUIT["precedingCommit"], parent_uri))
                 g.add((commit_uri, PROV["wasInformedBy"], parent_uri))
 
             # Diff
@@ -448,7 +448,7 @@ class Quit(object):
             graph: the current graph instance
             delta: delta that will be applied
             message: commit message
-            parent_commit_ref: the commit-id of preceeding commit
+            parent_commit_ref: the commit-id of preceding commit
             target_ref: a ref/branch were the commit will be applied to
             query: the query that lead to the commit
             default_graph: using-graph-uri values from SPARQL protocol
